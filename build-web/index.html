@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    
+    <!-- PWA Primary Meta Tags -->
+    <title>Gharplot - Property Management App</title>
+    <meta name="title" content="Gharplot - Property Management App" />
+    <meta name="description" content="Complete property management solution for buying, selling and renting properties" />
+    
+    <!-- PWA Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- PWA iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Gharplot" />
+    
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+    
+    <!-- PWA Theme Color -->
+    <meta name="theme-color" content="#1E90FF" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gharplot.app/" />
+    <meta property="og:title" content="Gharplot - Property Management App" />
+    <meta property="og:description" content="Complete property management solution for buying, selling and renting properties" />
+    <meta property="og:image" content="/icon-512.png" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://gharplot.app/" />
+    <meta property="twitter:title" content="Gharplot - Property Management App" />
+    <meta property="twitter:description" content="Complete property management solution for buying, selling and renting properties" />
+    <meta property="twitter:image" content="/icon-512.png" />
+    
+    <!-- Disable tap highlight on IE -->
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <style>
+        /* Basic loading styles */
+        #root {
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .expo-loading-screen {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            user-select: none;
+            z-index: 1000;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .expo-loading-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            background-color: #007AFF;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .expo-loading-screen {
+                background-color: #000000;
+            }
+        }
+    </style>
+<script defer src="/static/js/bundle.js"></script></head>
+<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    
+    <div id="root">
+        <!-- Loading screen shown until React mounts and replaces this -->
+        <div class="expo-loading-screen">
+            <div class="expo-loading-logo"></div>
+        </div>
+    </div>
+    <!-- Runtime error display (shown only when JS crashes before React mounts) -->
+    <div id="web-error" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#d32f2f;color:#fff;padding:16px;font-family:monospace;font-size:13px;white-space:pre-wrap;overflow:auto;max-height:50vh"></div>
+    
+    <script>
+        // Catch ALL JS errors before React mounts and show them visibly
+        window.addEventListener('error', function(e) {
+            var el = document.getElementById('web-error');
+            if (el) {
+                el.style.display = 'block';
+                el.textContent = 'JS ERROR: ' + e.message + '\n' + (e.filename || '') + ':' + e.lineno + '\n\n' + (e.error && e.error.stack ? e.error.stack : '');
+            }
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            var el = document.getElementById('web-error');
+            if (el) {
+                el.style.display = 'block';
+                el.textContent += '\nUnhandled Promise: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason));
+            }
+        });
+
+        // Register service worker ONLY on production (not localhost)
+        // On localhost, SW caches the bundle and serves old broken versions after fixes
+        if ('serviceWorker' in navigator && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            window.addEventListener('load', function() {
+                // Force the new SW to activate immediately
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(function(registration) {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(function(registrationError) {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+            // On localhost: unregister any previously cached service workers
+            // This clears the old broken bundle from cache
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for (var reg of registrations) {
+                        reg.unregister();
+                        console.log('SW unregistered on localhost:', reg.scope);
+                    }
+                });
+            }
+        }
+        
+        // Simple app install prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('PWA install prompt available');
+            deferredPrompt = e;
+        });
+        
+        // Add to home screen functionality
+        function addToHomeScreen() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the A2HS prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+        
+        // Make function available globally
+        window.addToHomeScreen = addToHomeScreen;
+    </script>
+</body>
+</html>

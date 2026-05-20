@@ -1,0 +1,37 @@
+buildscript {
+    ext {
+        buildToolsVersion = "35.0.0"
+        agp = "8.5.0"
+        minSdkVersion = 24  // Match app module and hermestooling requirement
+        compileSdkVersion = 35
+        targetSdkVersion = 35
+        ndkVersion = "27.0.12077973"
+        kotlinVersion = "2.1.20"
+    }
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://www.jitpack.io" }
+        maven { url "https://maven.google.com" }
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.5.0")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        classpath("com.google.gms:google-services:4.4.0")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://www.jitpack.io" }
+        maven { url "https://maven.google.com" }
+        maven {
+            url "$rootDir/../node_modules/@notifee/react-native/android/libs"
+        }
+    }
+}

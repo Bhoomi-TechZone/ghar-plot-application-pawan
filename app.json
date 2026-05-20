@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Gharplot",
+    "slug": "gharplot",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./src/assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bhoomitechzone.gharplot"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.bhoomitechzone.gharplot"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "Gharplot",
+      "shortName": "Gharplot",
+      "description": "Complete property management solution for buying, selling and renting properties",
+      "backgroundColor": "#ffffff",
+      "themeColor": "#1E90FF",
+      "display": "standalone",
+      "orientation": "portrait",
+      "scope": "/",
+      "startUrl": "/",  
+      "crossorigin": "use-credentials",
+      "relatedApplications": [],
+      "preferRelatedApplications": false,
+      "dir": "auto",
+      "lang": "en-US"
+    },
+    "plugins": []
+  },
+  "name": "Gharplot",
+  "displayName": "Gharplot"
+}

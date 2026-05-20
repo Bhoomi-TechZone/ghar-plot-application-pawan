@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <!-- Default: disallow cleartext for all domains -->
+  <base-config cleartextTrafficPermitted="false" />
+
+  <!-- Allow cleartext only for the backend domain (and its subdomains) -->
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="true">abc.ridealmobility.com</domain>
+  </domain-config>
+
+  <!-- Allow cleartext for common emulator/dev hosts (no subdomains) -->
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">localhost</domain>
+  </domain-config>
+
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">10.0.2.2</domain>
+  </domain-config>
+
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">10.0.3.2</domain>
+  </domain-config>
+</network-security-config>

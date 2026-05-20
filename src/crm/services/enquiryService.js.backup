@@ -1,0 +1,242 @@
+/**
+ * Enquiry Service - Backend Integrated
+ * Re-exports from crmEnquiryApi for backward compatibility
+ */
+
+// Re-export all functions from the new integrated API
+export {
+  getAllEnquiriesMerged,
+  getUserEnquiries,
+  getAllEnquiries,
+  addManualEnquiry,
+  getAvailableEmployees,
+  getAvailableRoles,
+  assignEnquiriesToEmployee,
+  unassignEnquiry,
+  createReminder,
+  createFollowUp
+} from './crmEnquiryApi';
+
+// Default export for backward compatibility
+import crmEnquiryApi from './crmEnquiryApi';
+export default crmEnquiryApi;
+
+/**
+ * Fetch client enquiries from backend
+ */
+export const getClientEnquiries = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/inquiry/get-enquiries`, {
+      method: 'GET',
+      headers: await getAuthHeaders(),
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      console.warn('Client enquiries fetch failed:', data.message);
+      return {
+        success: false,
+        data: [],
+        message: data.message || 'Failed to fetch client enquiries'
+      };
+    }
+    
+    // Normalize client enquiries data
+    const normalizedData = (data.data || []).map(item => ({
+      _id: item._id,
+      enquiryType: 'Inquiry',
+      source: 'client',
+      clientName: item.fullName || item.buyerId?.fullName || 'N/A',
+      email: item.email || item.buyerId?.email || 'N/A',
+      contactNumber: item.contactNumber || item.buyerId?.phone || 'N/A',
+      propertyId: item.propertyId?._id || item.propertyId || 'N/A',
+      propertyType: item.propertyId?.category || 'N/A',
+      propertyLocation: item.propertyId?.location || item.propertyId?.address || 'N/A',
+      price: item.propertyId?.price ? `₹${item.propertyId.price}` : 'N/A',
+      status: item.status || 'pending',
+      createdAt: item.createdAt,
+      assignment: item.assignment || null,
+      ownerInfo: {
+        name: item.ownerId?.fullName || 'N/A',
+        email: item.ownerId?.email || 'N/A',
+        phone: item.ownerId?.phone || 'N/A'
+      }
+    }));
+    
+    return {
+      success: true,
+      data: normalizedData,
+      count: normalizedData.length
+    };
+    
+  } catch (error) {
+    console.error('Error fetching client enquiries:', error);
+    return {
+      success: false,
+      data: [],
+      message: 'Network error while fetching client enquiries'
+    };
+  }
+};
+
+/**
+ * Fetch manual enquiries from backend
+ */
+export const getManualEnquiries = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/inquiry/all`, {
+      method: 'GET',
+      headers: await getAuthHeaders(),
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok || !data.success) {
+      console.warn('Manual enquiries fetch failed:', data.message);
+      return {
+        success: false,
+        data: [],
+        message: data.message || 'Failed to fetch manual enquiries'
+      };
+    }
+    
+    // Normalize manual enquiries data
+    const normalizedData = (data.data || []).map(item => ({
+      _id: item._id,
+      enquiryType: 'ManualInquiry',
+      source: 'manual',
+      clientName: item.clientName || 'N/A',
+      email: item.email || 'N/A',
+      contactNumber: item.contactNumber || 'N/A',
+      propertyId: item.propertyId || 'N/A',
+      propertyType: item.propertyType || 'N/A',
+      propertyLocation: item.propertyLocation || 'N/A',
+      price: item.price ? `₹${item.price}` : 'N/A',
+      status: item.status || 'pending',
+      createdAt: item.createdAt,
+      assignment: item.assignment || null,
+      notes: item.notes || '',
+      followUpDate: item.followUpDate || null
+    }));
+    
+    return {
+      success: true,
+      data: normalizedData,
+      count: normalizedData.length
+    };
+    
+  } catch (error) {
+    console.error('Error fetching manual enquiries:', error);
+    return {
+      success: false,
+      data: [],
+      message: 'Network error while fetching manual enquiries'
+    };
+  }
+};
+
+/**
+ * Create manual enquiry
+ */
+export const createManualEnquiry = async (enquiryData) => {
+  try {
+    console.log('Creating manual enquiry:', enquiryData);
+    
+    const response = await fetch(`${BASE_URL}/inquiry/create`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(enquiryData)
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok || !data.success) {
+      return {
+        success: false,
+        message: data.message || 'Failed to create manual enquiry'
+      };
+    }
+
+    return {
+      success: true,
+      data: data.data,
+      message: data.message || 'Manual enquiry created successfully'
+    };
+
+  } catch (error) {
+    console.error('Error creating manual enquiry:', error);
+    return {
+      success: false,
+      message: 'Network error while creating manual enquiry'
+    };
+  }
+};
+
+/**
+ * Update manual enquiry
+ */
+export const updateManualEnquiry = async (enquiryId, updateData) => {
+  try {
+    const response = await fetch(`${BASE_URL}/inquiry/update/${enquiryId}`, {
+      method: 'PUT',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(updateData)
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok || !data.success) {
+      return {
+        success: false,
+        message: data.message || 'Failed to update manual enquiry'
+      };
+    }
+
+    return {
+      success: true,
+      data: data.data,
+      message: data.message || 'Manual enquiry updated successfully'
+    };
+
+  } catch (error) {
+    console.error('Error updating manual enquiry:', error);
+    return {
+      success: false,
+      message: 'Network error while updating manual enquiry'
+    };
+  }
+};
+
+/**
+ * Delete enquiry
+ */
+export const deleteEnquiry = async (enquiryId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/inquiry/delete/${enquiryId}`, {
+      method: 'DELETE',
+      headers: await getAuthHeaders(),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'Failed to delete enquiry'
+      };
+    }
+
+    return {
+      success: true,
+      message: data.message || 'Enquiry deleted successfully'
+    };
+
+  } catch (error) {
+    console.error('Error deleting enquiry:', error);
+    return {
+      success: false,
+      message: 'Network error while deleting enquiry'
+    };
+  }
+};
