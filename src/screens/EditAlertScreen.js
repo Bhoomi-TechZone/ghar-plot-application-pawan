@@ -18,6 +18,7 @@ import {
   Modal,
 } from 'react-native';
 import { updateAlert, BASE_URL } from '../services/api';
+import { deleteAlert } from '../crm/services/crmAlertApi'; // 🔥 Import deleteAlert
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getFCMToken } from '../utils/fcmService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -444,6 +445,41 @@ const EditAlertScreen = ({ route, navigation }) => {
     );
   };
 
+  const handleDelete = () => {
+    CrossPlatformAlert.alert(
+      'Delete Alert',
+      'Are you sure you want to delete this alert? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const result = await deleteAlert(alertId);
+              
+              if (result.success || result.message?.includes('success')) {
+                CrossPlatformAlert.alert(
+                  'Success',
+                  'Alert deleted successfully',
+                  [{ text: 'OK', onPress: () => navigation.goBack() }]
+                );
+              } else {
+                throw new Error(result.message || 'Failed to delete alert');
+              }
+            } catch (error) {
+              console.error('❌ Delete error:', error);
+              CrossPlatformAlert.alert('Error', error.message || 'Failed to delete alert');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
@@ -537,6 +573,14 @@ const EditAlertScreen = ({ route, navigation }) => {
             disabled={loading}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.deleteButton, loading && styles.saveButtonDisabled]}
+            onPress={handleDelete}
+            disabled={loading}
+          >
+            <Text style={styles.deleteButtonText}>Delete Alert</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -828,6 +872,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#dc3545',
+  },
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#dc3545',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   saveButton: {
     flex: 1,

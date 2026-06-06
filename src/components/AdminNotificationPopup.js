@@ -2,8 +2,6 @@
  * Beautiful Admin Notification Popup
  * Specifically for Admin Reminders & Alerts
  */
-
-import React from 'react';
 import {
   Modal,
   View,
@@ -11,10 +9,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  ScrollView,
 } from 'react-native';
+
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-const { width } = Dimensions.get('window');
+//const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const AdminNotificationPopup = ({
   visible,
@@ -26,6 +27,7 @@ const AdminNotificationPopup = ({
   note = '',
   scheduledAt = '',
   nextScheduledAt = '',
+  createdAt = '', // 🔥 Add createdAt prop
   type = 'admin_reminder',
   onEdit,
 }) => {
@@ -56,6 +58,7 @@ const AdminNotificationPopup = ({
 
   const formattedScheduled = formatDateTime(scheduledAt);
   const formattedNext = formatDateTime(nextScheduledAt);
+  const formattedCreated = formatDateTime(createdAt); // 🔥 Format created date
 
   return (
     <Modal
@@ -73,9 +76,15 @@ const AdminNotificationPopup = ({
             </View>
             <Text style={styles.headerTitle}>{headerTitle}</Text>
           </View>
-
+         
           {/* Content */}
-          <View style={styles.content}>
+         <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* YAHAN APNA POORA EXISTING CONTENT SAME RAKHO */}
+          {/* Content */}      
             {/* Admin Badge */}
             <View style={styles.employeeBadge}>
               <View style={[styles.avatar, { backgroundColor: primaryColor + '20' }]}>
@@ -109,13 +118,18 @@ const AdminNotificationPopup = ({
                 </View>
               ) : null}
 
-              {/* Message / Reason / Note */}
-              {(note || reason) ? (
+             {/* Message / Reason / Note / Created At */}
+              {(note || reason || formattedCreated) ? (
                 <View style={[styles.detailRow, styles.noteRow]}>
                   <MaterialIcons name="notes" size={20} color={primaryColor} />
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>Details</Text>
-                    <Text style={styles.detailValue}>{note || reason}</Text>
+                    <Text style={styles.detailValue}>
+                      {note || reason}
+                      {createdAt
+                        ? `\n🗓️ Created On: ${formatDateTime(createdAt.replace('Z', ''))}`
+                        : ''}
+                    </Text>
                   </View>
                 </View>
               ) : null}
@@ -131,6 +145,17 @@ const AdminNotificationPopup = ({
                 </View>
               ) : null}
 
+              {/* Created Date/Time
+              {formattedCreated ? (
+                <View style={[styles.detailRow, styles.noteRow]}>
+                  <MaterialIcons name="event" size={20} color={primaryColor} />
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>Created On</Text>
+                    <Text style={styles.detailValue}>🗓️ {formattedCreated}</Text>
+                  </View>
+                </View>
+              ) : null} */}
+
               {/* Next Scheduled Notification */}
               {formattedNext ? (
                 <View style={[styles.detailRow, styles.noteRow]}>
@@ -142,7 +167,8 @@ const AdminNotificationPopup = ({
                 </View>
               ) : null}
             </View>
-          </View>
+          
+        </ScrollView> 
 
           {/* Action Buttons */}
           <View style={styles.buttonRow}>
@@ -179,17 +205,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  container: {
-    width: width * 0.85,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    overflow: 'hidden',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-  },
+container: {
+  width: width * 0.85,
+  maxHeight: height * 0.80,
+  backgroundColor: '#fff',
+  borderRadius: 20,
+  overflow: 'hidden',
+  elevation: 10,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 5 },
+  shadowOpacity: 0.3,
+  shadowRadius: 10,
+},
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -211,8 +238,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   content: {
-    padding: 20,
+    flexGrow: 0,
   },
+  scrollContent: {
+  padding: 20,
+  paddingBottom: 10,
+},
   employeeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -275,6 +306,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 0,
     gap: 12,
+    backgroundColor: '#fff',
   },
   actionButton: {
     flex: 1,

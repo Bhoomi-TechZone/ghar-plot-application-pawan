@@ -368,6 +368,15 @@ export const setupForegroundNotificationHandler = () => {
         // 2. TRIGGER THE PROFESSIONAL DIALOG (Indigo/Red popup)
         if (global.triggerProfessionalReminder) {
           console.log('🚀 Triggering professional popup from FCM:', popupType);
+          console.log('🚀 Popup data:', JSON.stringify({
+            title: data.title || title,
+            body: richBody || body,
+            type: popupType,
+            alertId: data.alertId,
+            reminderId: data.reminderId,
+            scheduledDateTime: data.scheduledDateTime,
+            nextScheduledAt: data.nextScheduledAt,
+          }, null, 2));
           global.triggerProfessionalReminder({
             ...data,
             title: data.title || title || (isIndigo ? 'Reminder' : 'Alert'),
@@ -375,6 +384,9 @@ export const setupForegroundNotificationHandler = () => {
             type: popupType,
             notificationType: popupType
           });
+          console.log('✅ Professional popup triggered successfully');
+        } else {
+          console.error('❌ global.triggerProfessionalReminder is NOT defined!');
         }
       }
       return;

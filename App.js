@@ -926,6 +926,7 @@ const AppMain = () => {
         note={adminPopupData?.note || ''}
         scheduledAt={adminPopupData?.scheduledAt || adminPopupData?.scheduledDateTime || adminPopupData?.reminderDateTime || ''}
         nextScheduledAt={adminPopupData?.nextScheduledAt || ''}
+        createdAt={adminPopupData?.createdAt || (adminPopupData?.date && adminPopupData?.time ? `${adminPopupData.date}T${adminPopupData.time}:00.000Z` : '')} // 🔥 Construct from date+time if createdAt missing
         type={adminPopupData?.type || adminPopupData?.notificationType || 'admin_reminder'}
         onEdit={adminPopupData?.onEdit}
         onClose={() => {

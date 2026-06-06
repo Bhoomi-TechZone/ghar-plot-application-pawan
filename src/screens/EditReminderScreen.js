@@ -416,6 +416,61 @@ const EditReminderScreen = ({ route, navigation }) => {
     );
   };
 
+  const handleDelete = () => {
+    CrossPlatformAlert.alert(
+      'Delete Reminder',
+      'Are you sure you want to delete this reminder? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const accessToken = await AsyncStorage.getItem('accessToken') ||
+                await AsyncStorage.getItem('employeeToken') ||
+                await AsyncStorage.getItem('adminToken') ||
+                await AsyncStorage.getItem('employee_auth_token') ||
+                await AsyncStorage.getItem('crm_auth_token') ||
+                await AsyncStorage.getItem('userToken');
+
+              if (!accessToken) {
+                CrossPlatformAlert.alert('Session Expired', 'Please login again');
+                return;
+              }
+
+              const response = await fetch(`${CRM_BASE_URL}/api/reminder/delete/${reminderId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${accessToken}`,
+                },
+              });
+
+              const result = await response.json();
+
+              if (response.ok && result.success) {
+                CrossPlatformAlert.alert(
+                  'Success',
+                  'Reminder deleted successfully',
+                  [{ text: 'OK', onPress: () => navigation.goBack() }]
+                );
+              } else {
+                throw new Error(result.message || 'Failed to delete reminder');
+              }
+            } catch (error) {
+              console.error('❌ Delete error:', error);
+              CrossPlatformAlert.alert('Error', error.message || 'Failed to delete reminder');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
@@ -522,6 +577,14 @@ const EditReminderScreen = ({ route, navigation }) => {
             disabled={loading}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.deleteButton, loading && styles.saveButtonDisabled]}
+            onPress={handleDelete}
+            disabled={loading}
+          >
+            <Text style={styles.deleteButtonText}>Delete Reminder</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -673,6 +736,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#dc3545',
+  },
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#dc3545',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   saveButton: {
     flex: 1,

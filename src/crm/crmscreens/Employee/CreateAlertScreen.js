@@ -122,30 +122,30 @@ const CreateAlertScreen = ({ navigation, route }) => {
         dateStr = formatDateLocal(formData.date);
         console.log('📅 One-time alert - using selected date:', dateStr);
       } else if (formData.repeatFrequency === 'daily') {
-        // Daily: ignore date, use current date, only time matters
-        dateStr = formatDateLocal(new Date());
-        console.log('🔄 Daily alert - using current date, time matters:', timeStr);
+        // 🔥 FIX: Use selected custom date, not current date - so first alert is on the custom date, then repeats daily
+        dateStr = formatDateLocal(formData.date);
+        console.log('🔄 Daily alert - starting from selected date at:', timeStr);
       } else if (formData.repeatFrequency === 'weekly') {
-        // Weekly: store day of week (0=Sunday, 1=Monday, etc)
+        // 🔥 FIX: Use selected custom date - store day of week (0=Sunday, 1=Monday, etc)
         const dayOfWeek = formData.date.getDay();
-        dateStr = formatDateLocal(new Date()); // Use current date
+        dateStr = formatDateLocal(formData.date); // Use selected custom date
         repeatMetadata.dayOfWeek = dayOfWeek;
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        console.log(`🔄 Weekly alert - every ${dayNames[dayOfWeek]} at ${timeStr}`);
+        console.log(`🔄 Weekly alert - starting from ${dateStr}, every ${dayNames[dayOfWeek]} at ${timeStr}`);
       } else if (formData.repeatFrequency === 'monthly') {
-        // Monthly: store day of month (1-31)
+        // 🔥 FIX: Use selected custom date - store day of month (1-31)
         const dayOfMonth = formData.date.getDate();
-        dateStr = formatDateLocal(new Date()); // Use current date
+        dateStr = formatDateLocal(formData.date); // Use selected custom date
         repeatMetadata.dayOfMonth = dayOfMonth;
-        console.log(`🔄 Monthly alert - every ${dayOfMonth} of month at ${timeStr}`);
+        console.log(`🔄 Monthly alert - starting from ${dateStr}, every ${dayOfMonth} of month at ${timeStr}`);
       } else if (formData.repeatFrequency === 'yearly') {
-        // Yearly: store month and day
+        // 🔥 FIX: Use selected custom date - store month and day
         const month = formData.date.getMonth() + 1; // 1-12
         const day = formData.date.getDate(); // 1-31
-        dateStr = new Date().toISOString().split('T')[0]; // Use current date
+        dateStr = formatDateLocal(formData.date); // Use selected custom date
         repeatMetadata.month = month;
         repeatMetadata.dayOfMonth = day;
-        console.log(`🔄 Yearly alert - every ${day}/${month} at ${timeStr}`);
+        console.log(`🔄 Yearly alert - starting from ${dateStr}, every ${day}/${month} at ${timeStr}`);
       } else if (formData.repeatFrequency === 'custom') {
         // Custom: use selected date (user can choose when to start)
         dateStr = formatDateLocal(formData.date); // 🔥 FIX: Use selected date instead of current date

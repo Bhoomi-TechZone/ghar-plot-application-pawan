@@ -19,6 +19,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 import { formatDateToIST, formatTimeToIST } from '../../../utils/timezoneHelper'; // 🔥 Import IST helpers
+import AdminNotificationPopup from '../../../components/AdminNotificationPopup';
 
 const AlertsScreen = ({ navigation, route }) => {
   const filterCategory = route?.params?.filterCategory || 'alert'; // 'alert' or 'reminder'
@@ -33,6 +34,8 @@ const AlertsScreen = ({ navigation, route }) => {
   const [pinnedIds, setPinnedIds] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [popupData, setPopupData] = useState(null);
 
   // Refresh list every time screen comes into focus (e.g. after creating a new alert)
   useFocusEffect(
@@ -211,6 +214,22 @@ const AlertsScreen = ({ navigation, route }) => {
     });
   };
 
+  const openNotificationPopup = (item) => {
+    setPopupData({
+      _id: item._id || item.id,
+      alertId: item._id || item.id,
+      id: item._id || item.id,
+      title: item.title || item.reason || 'Notification',
+      clientName: item.clientName || item.employee?.name || '',
+      reason: item.reason || item.note || '',
+      scheduledAt: item.scheduledDateTime || `${item.date}T${item.time}`,
+      nextScheduledAt: item.nextScheduledAt,
+      createdAt: item.createdAt || item.date,
+      type: filterCategory === 'reminder' ? 'admin_reminder' : 'alert',
+    });
+    setPopupVisible(true);
+  };
+
   const handleTogglePin = async (id) => {
     if (isSelectionMode) {
       handleSelect(id);
@@ -255,7 +274,7 @@ const AlertsScreen = ({ navigation, route }) => {
       <TouchableOpacity 
         activeOpacity={0.8}
         onLongPress={() => startSelection(itemId)}
-        onPress={() => isSelectionMode ? handleSelect(itemId) : null}
+        onPress={() => isSelectionMode ? handleSelect(itemId) : openNotificationPopup(item)}
         style={[
           styles.alertCard, 
           isPinned && styles.alertCardPinned,
@@ -428,6 +447,16 @@ const AlertsScreen = ({ navigation, route }) => {
       </View>
 
       {/* Filter */}
+      <AdminNotificationPopup
+        visible={popupVisible}
+        onClose={() => setPopupVisible(false)}
+        {...popupData}
+        onEdit={() => {
+          setPopupVisible(false);
+          if (!popupData) return;
+          handleEdit(popupData);
+        }}
+      />
       <View style={styles.filterCard}>
         <View style={styles.inputRow}>
           <View style={styles.inputCol}>
