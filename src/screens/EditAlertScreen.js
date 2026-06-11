@@ -508,7 +508,7 @@ const EditAlertScreen = ({ route, navigation }) => {
             placeholder="Enter alert message (e.g., Go to gym)"
             placeholderTextColor="#999"
             multiline
-            numberOfLines={4}
+            numberOfLines={12}
             textAlignVertical="top"
           />
         </View>
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: '#333',
-    minHeight: 100,
+    minHeight: 360,
   },
   dateButton: {
     backgroundColor: '#fff',

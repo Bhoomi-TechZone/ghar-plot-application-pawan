@@ -200,7 +200,7 @@ const AppNavigator = React.forwardRef((props, ref) => {
               headerShown: true,
               title: 'Edit Reminder',
               headerStyle: {
-                backgroundColor: '#28a745',
+                backgroundColor: '#3b82f6',
               },
               headerTintColor: '#fff',
               headerTitleStyle: {

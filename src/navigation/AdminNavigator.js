@@ -210,9 +210,9 @@ const AdminNavigator = ({ onLogout }) => {
       <Stack.Screen
         name="CreateAlert"
         component={CreateAlertScreen}
-        options={{
+        options={({ route }) => ({
           headerShown: true,
-          title: 'Create Reminder',
+          title: route.params?.forceCategory === 'reminder' ? 'Create Reminder' : 'Create Alert',
           headerStyle: {
             backgroundColor: '#007AFF',
           },
@@ -220,7 +220,7 @@ const AdminNavigator = ({ onLogout }) => {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-        }}
+        })}
       />
       <Stack.Screen
         name="BadAttendantAlerts"
@@ -413,7 +413,7 @@ const AdminNavigator = ({ onLogout }) => {
           headerShown: true,
           title: 'Edit Reminder',
           headerStyle: {
-            backgroundColor: '#28a745',
+            backgroundColor: '#3b82f6',
           },
           headerTintColor: '#fff',
           headerTitleStyle: {

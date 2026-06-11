@@ -548,10 +548,22 @@ class NotificationHandler {
     notifee.onBackgroundEvent(async ({ type, detail }) => {
       const now = new Date();
       console.log(`🌅 [${now.toLocaleTimeString()}] Background Event Type: ${type}`);
+      
+      // 🔥 Log event type for clarity
+      const eventTypeNames = {
+        1: 'PRESS (user tapped notification)',
+        2: 'ACTION_PRESS (user tapped action button)',
+        3: 'DELIVERED (notification arrived)',
+        4: 'DISMISSED (user swiped away)'
+      };
+      console.log(`🌅 Event: ${eventTypeNames[type] || 'UNKNOWN'}`);
+      
       const notifData = detail.notification?.data || {};
 
+      // 🔥 FIX: Only handle PRESS and ACTION_PRESS events
       if (type === 1 || type === 2) {
-        // Both PRESS and ACTION_PRESS in background need storage for resume
+        // ✅ USER EXPLICITLY TAPPED NOTIFICATION - OK to store and navigate
+        console.log('✅ User tapped notification in background - storing for navigation');
         await NotificationHandler.storeNotificationData(detail.notification, detail.pressAction?.id);
         
         // Mark as navigated to prevent duplicate when app opens
@@ -591,60 +603,15 @@ class NotificationHandler {
         // }
         console.log('📱 Local reschedule SKIPPED — relying on backend FCM only');
 
-        // Queue popup for resume
-        // 🔥 Refined Type Detection:
-        const nTitle = (detail.notification?.title || '').toLowerCase();
-        const nBody = (detail.notification?.body || '').toLowerCase();
-        const nTypeRaw = (notifData.type || notifData.notificationType || '').toLowerCase();
-        
-        // Is it a Red Alert (Urgent Alert)?
-        const isActuallyAlert = 
-          notifData.category === 'alert' || 
-          nTypeRaw === 'alert' ||
-          ((nTitle.includes('alert') || nBody.includes('alert') || nTitle.includes('urgent') || nTitle.includes('emergency')) 
-           && !nTitle.includes('reminder') && !nBody.includes('reminder'));
-        
-        const notifType = isActuallyAlert ? 'alert' : (notifData.alertId ? 'admin_reminder' : (nTypeRaw || 'reminder'));
-        
-        const isReminder = /reminder|follow/i.test(notifType) || 
-                           /reminder|follow|रिमाइंडर/i.test(nTitle) ||
-                           notifType === 'admin_reminder';
+        // ❌ DO NOT QUEUE POPUP FOR DELIVERED EVENTS
+        // This was causing automatic app opening when notification arrives in background
+        // Popups should ONLY be triggered when user explicitly taps notification (Event Type 1)
+        console.log('⏭️ Skipping popup queue for DELIVERED event - app should stay in background');
 
-        if (isReminder || notifData.alertId) {
-          // 🔥 DEDUP: Only queue if same ID hasn't been queued in last 30 seconds
-          const newId = notifData.alertId || notifData.reminderId || notifData._id;
-          let shouldQueue = true;
-
-          if (newId) {
-            try {
-              const existingRaw = await AsyncStorage.getItem('pendingNotificationData');
-              if (existingRaw) {
-                const existing = JSON.parse(existingRaw);
-                const existingId = existing?.data?.alertId || existing?.data?.reminderId || existing?.data?._id;
-                const ageMs = Date.now() - (existing?.timestamp || 0);
-                if (existingId === newId && ageMs < 30000) {
-                  console.log(`⏭️ Skipping duplicate background queue (NH): ${newId} (${Math.round(ageMs/1000)}s ago)`);
-                  shouldQueue = false;
-                }
-              }
-            } catch (_) {}
-          }
-
-          if (shouldQueue) {
-            const popupData = {
-              triggerReminderPopup: true,
-              data: {
-                ...notifData,
-                type: notifType,
-                title: detail.notification?.title || notifData.title || (isReminder ? 'Reminder' : 'Alert'),
-                note: detail.notification?.body || notifData.note || notifData.message || ''
-              },
-              timestamp: Date.now()
-            };
-            await AsyncStorage.setItem('pendingNotificationData', JSON.stringify(popupData));
-            console.log('💾 Popup data queued for app resume');
-          }
-        }
+      } else if (type === 4) {
+        // ❌ DISMISSED event - user swiped away notification
+        // DO NOT open app or trigger any action
+        console.log('👋 User dismissed notification - NOT opening app');
       }
     });
   }

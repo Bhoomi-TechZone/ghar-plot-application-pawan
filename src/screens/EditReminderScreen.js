@@ -15,8 +15,10 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
+  Modal,
 } from 'react-native';
 import { updateReminder } from '../services/api';
+import { updateAlert, deleteAlert } from '../crm/services/crmAlertApi'; // 🔥 Import alerts API
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendTokenToBackend, getFCMToken } from '../utils/fcmService';
@@ -55,6 +57,11 @@ const EditReminderScreen = ({ route, navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [repeatFrequency, setRepeatFrequency] = useState(isRepeating ? (repeatType || 'daily') : 'none');
+  const [customIntervalMinutes, setCustomIntervalMinutes] = useState(route.params?.customIntervalMinutes || '');
+  const [showRepeatModal, setShowRepeatModal] = useState(false);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [showCustomManualInput, setShowCustomManualInput] = useState(false);
+  const [manualMinutes, setManualMinutes] = useState('');
 
   useEffect(() => {
     if (!reminderId) {
@@ -135,6 +142,70 @@ const EditReminderScreen = ({ route, navigation }) => {
     return `${formatDate(date)} at ${formatTime(date)}`;
   };
 
+  const getRepeatLabel = () => {
+    if (repeatFrequency === 'custom') {
+      const mins = Number(customIntervalMinutes);
+      if (mins >= 60) {
+        const hours = Math.floor(mins / 60);
+        const remainingMins = mins % 60;
+        return remainingMins > 0 ? `Every ${hours}h ${remainingMins}m` : `Every ${hours} hour${hours > 1 ? 's' : ''}`;
+      }
+      return mins > 0 ? `Every ${mins} minute${mins > 1 ? 's' : ''}` : 'Custom';
+    }
+
+    const labels = {
+      none: 'Does not repeat',
+      daily: 'Daily',
+      weekly: 'Weekly',
+      monthly: 'Monthly',
+      yearly: 'Yearly',
+    };
+    return labels[repeatFrequency] || 'Does not repeat';
+  };
+
+  const handleRepeatSelect = (frequency) => {
+    setRepeatFrequency(frequency);
+    if (frequency === 'custom') {
+      setShowCustomInput(true);
+    } else {
+      setShowCustomInput(false);
+      setShowCustomManualInput(false);
+      setShowRepeatModal(false);
+    }
+  };
+
+  const customIntervalOptions = [
+    { label: '10 Minutes', value: 10 },
+    { label: '30 Minutes', value: 30 },
+    { label: '1 Hour', value: 60 },
+    { label: '2 Hours', value: 120 },
+    { label: '3 Hours', value: 180 },
+    { label: '4 Hours', value: 240 },
+    { label: '5 Hours', value: 300 },
+    { label: '6 Hours', value: 360 },
+    { label: '7 Hours', value: 420 },
+    { label: '8 Hours', value: 480 },
+    { label: '9 Hours', value: 540 },
+    { label: '10 Hours', value: 600 },
+    { label: '11 Hours', value: 660 },
+  ];
+
+  const handleCustomIntervalSelect = (minutes) => {
+    setCustomIntervalMinutes(minutes);
+    setShowCustomInput(false);
+    setShowCustomManualInput(false);
+    setShowRepeatModal(false);
+  };
+
+  const handleManualMinutesChange = (value) => {
+    setManualMinutes(value.replace(/[^0-9]/g, ''));
+  };
+
+  const confirmManualMinutes = () => {
+    const mins = parseInt(manualMinutes, 10) || 60;
+    handleCustomIntervalSelect(mins > 0 ? mins : 60);
+  };
+
   const handleSave = async () => {
     if (!message.trim()) {
       CrossPlatformAlert.alert('Validation Error', 'Please enter a message');
@@ -154,229 +225,47 @@ const EditReminderScreen = ({ route, navigation }) => {
     setLoading(true);
 
     try {
-      // Get auth token - try multiple keys
-      const accessToken = await AsyncStorage.getItem('accessToken') ||
-        await AsyncStorage.getItem('employeeToken') ||
-        await AsyncStorage.getItem('adminToken') ||
-        await AsyncStorage.getItem('employee_auth_token') ||
-        await AsyncStorage.getItem('crm_auth_token') ||
-        await AsyncStorage.getItem('userToken');
-
-      if (!accessToken) {
-        CrossPlatformAlert.alert('Session Expired', 'Please login again');
-        return;
-      }
-
-      // 🔥 Get employeeId for FCM notification
-      const employeeId = await AsyncStorage.getItem('employeeId') || await AsyncStorage.getItem('userId');
-      console.log('📱 Employee ID for reminder:', employeeId);
-
-      // 🔥 UPDATE existing reminder via backend API (not CREATE!)
+      // 🔥 UPDATE existing reminder via alerts API
       const reminderPayload = {
         title: clientName || 'Reminder',
-        comment: message.trim(),
-        note: message.trim(), // Backend accepts both
-        reminderDateTime: scheduledDate.toISOString(),
-        isRepeating: repeatFrequency !== 'none',
-        repeatType: repeatFrequency !== 'none' ? repeatFrequency : 'daily',
+        reason: message.trim(),
+        date: scheduledDate.toISOString().split('T')[0], // Format: YYYY-MM-DD
+        time: `${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}`, // Format: HH:mm
+        repeatFrequency: repeatFrequency !== 'none' ? repeatFrequency : 'daily',
+        repeatDaily: repeatFrequency === 'daily',
         isActive: true,
       };
 
-      // 🔥 Build repeatMetadata for weekly/monthly reminders
+      // 🔥 Build repeatMetadata for weekly/monthly/yearly reminders
       if (repeatFrequency === 'weekly') {
         reminderPayload.repeatMetadata = { dayOfWeek: scheduledDate.getDay() };
       } else if (repeatFrequency === 'monthly') {
         reminderPayload.repeatMetadata = { dayOfMonth: scheduledDate.getDate() };
+      } else if (repeatFrequency === 'yearly') {
+        reminderPayload.repeatMetadata = {
+          month: scheduledDate.getMonth() + 1,
+          dayOfMonth: scheduledDate.getDate(),
+        };
+      } else if (repeatFrequency === 'custom' && customIntervalMinutes) {
+        reminderPayload.repeatMetadata = { customIntervalMinutes };
+        reminderPayload.customRepeatMinutes = customIntervalMinutes;
       }
 
-      // Only add enquiryId if it's a valid MongoDB ObjectId (24 char hex)
-      if (enquiryId && /^[0-9a-fA-F]{24}$/.test(enquiryId)) {
-        reminderPayload.enquiryId = enquiryId;
-      }
-
-      console.log('📤 Updating reminder:', reminderPayload);
-      console.log('🔑 Token:', accessToken?.substring(0, 20) + '...');
+      console.log('📤 Updating reminder via alerts API:', reminderPayload);
       console.log('🆔 Reminder ID:', reminderId);
 
-      // 🔥 Check if this is OLD reminder (long format) or NEW reminder (MongoDB ID)
-      const isOldReminder = reminderId.startsWith('reminder_') && reminderId.includes('_', 9);
+      // 🔥 Use alerts API instead of reminder API
+      const response = await updateAlert(reminderId, reminderPayload);
 
-      let response;
-      if (isOldReminder) {
-        console.log('⚠️ OLD REMINDER detected - Creating new backend entry');
-        // OLD reminder - CREATE new backend entry
-        response = await fetch(`${CRM_BASE_URL}/api/reminder/create`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(reminderPayload),
-        });
-      } else {
-        console.log('✅ NEW REMINDER - Updating existing backend entry');
-        // NEW reminder - UPDATE existing
-        response = await fetch(`${CRM_BASE_URL}/api/reminder/update/${reminderId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(reminderPayload),
-        });
-      }
-
-      console.log('📥 Response status:', response.status);
-
-      const responseText = await response.text();
-      console.log('📥 Response:', responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error('JSON parse error:', e);
-        console.error('Response was:', responseText);
-        throw new Error(`Server returned invalid response: ${responseText.substring(0, 100)}`);
-      }
+      console.log('📥 API Response:', JSON.stringify(response, null, 2));
 
       // Check if update was successful
-      if (!response.ok) {
-        console.error('❌ API call failed:', data);
-        throw new Error(data.message || `API call failed with status ${response.status}: ${responseText.substring(0, 100)}`);
-      }
-
-      if (response.ok && data.success) {
-        console.log('✅ Reminder saved successfully in backend');
-
-        // For old reminders, get the NEW backend ID from CREATE response
-        const updatedReminderId = isOldReminder && data.data && data.data._id
-          ? data.data._id
-          : reminderId;
-
-        console.log('🆔 Using reminder ID for notifications:', updatedReminderId);
-
-        // 🔥 STEP 2: Schedule FCM Notification via Backend (PRIMARY)
-        try {
-          console.log('🔔 Scheduling FCM notification via backend...');
-          const fcmToken = await getFCMToken();
-
-          console.log('🔍 Debug - FCM Token:', fcmToken ? 'Available ✅' : 'Missing ❌');
-          console.log('🔍 Debug - Auth Token:', accessToken ? 'Available ✅' : 'Missing ❌');
-
-          if (fcmToken && accessToken) {
-            const requestBody = {
-              reminderId: updatedReminderId,
-              scheduledTime: scheduledDate.toISOString(),
-              title: clientName,
-              message: message.trim(),
-              fcmToken: fcmToken,
-              data: {
-                type: 'reminder',
-                reminderId: updatedReminderId,
-                clientName: clientName,
-                enquiryId: enquiryId,
-                employeeId: employeeId,
-                notificationType: 'reminder',
-              }
-            };
-
-            console.log('📤 Sending FCM request:', JSON.stringify(requestBody, null, 2));
-
-            const fcmResponse = await fetch(`${CRM_BASE_URL}/api/reminder/schedule-notification`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
-              },
-              body: JSON.stringify(requestBody),
-            });
-
-            console.log('📥 FCM Response Status:', fcmResponse.status);
-
-            const responseText = await fcmResponse.text();
-            console.log('📥 FCM Response Body:', responseText);
-
-            if (fcmResponse.ok) {
-              try {
-                const fcmResult = JSON.parse(responseText);
-                if (fcmResult.success) {
-                  console.log('✅ FCM notification scheduled successfully!');
-                } else {
-                  console.warn('⚠️ FCM scheduling failed:', fcmResult.message);
-                }
-              } catch (parseError) {
-                console.error('❌ Failed to parse FCM response:', parseError);
-              }
-            } else {
-              console.error('❌ FCM API returned error status:', fcmResponse.status);
-              console.error('❌ Error response:', responseText);
-            }
-          } else {
-            console.warn('⚠️ Cannot schedule FCM - Missing token(s)');
-          }
-        } catch (fcmError) {
-          console.error('❌ FCM scheduling error:', fcmError);
-          // Don't fail - continue to local backup
-        }
-
-        // 🔥 STEP 3: Schedule Local Notification as BACKUP
-        console.log('📱 Scheduling local backup notification...');
-        try {
-          const localNotificationResult = await ReminderNotificationService.scheduleReminder({
-            id: updatedReminderId,
-            clientName: clientName,
-            message: message.trim(),
-            scheduledDate: scheduledDate,
-            enquiryId: enquiryId,
-            enquiry: {
-              _id: enquiryId,
-              clientName: clientName,
-              phone: route.params?.phone || '',
-              email: route.params?.email || '',
-            },
-          });
-
-          if (localNotificationResult.success) {
-            console.log('✅ Local backup notification scheduled successfully!');
-          } else {
-            console.warn('⚠️ Local notification scheduling failed:', localNotificationResult.error);
-          }
-        } catch (localError) {
-          console.error('❌ Local notification error:', localError);
-        }
-
-        // Save to AsyncStorage for Enquiry Details
-        try {
-          const localRemindersJson = await AsyncStorage.getItem('localReminders');
-          const localReminders = localRemindersJson ? JSON.parse(localRemindersJson) : [];
-
-          const updatedLocalReminder = {
-            id: updatedReminderId,
-            clientName: clientName,
-            message: message.trim(),
-            scheduledDate: scheduledDate.toISOString(),
-            enquiryId: enquiryId,
-            createdAt: new Date().toISOString(),
-          };
-
-          localReminders.push(updatedLocalReminder);
-          await AsyncStorage.setItem('localReminders', JSON.stringify(localReminders));
-          console.log('✅ Reminder saved to local storage for Enquiry Details');
-
-          // Also save to app_reminders for popup
-          const appRemindersJson = await AsyncStorage.getItem('app_reminders');
-          const appReminders = appRemindersJson ? JSON.parse(appRemindersJson) : [];
-          appReminders.push(updatedLocalReminder);
-          await AsyncStorage.setItem('app_reminders', JSON.stringify(appReminders));
-          console.log('✅ Reminder saved to app_reminders for popup');
-        } catch (localError) {
-          console.warn('⚠️ Could not save to local storage:', localError);
-        }
+      if (response && response.success !== false) {
+        console.log('✅ Reminder updated successfully via alerts API');
 
         CrossPlatformAlert.alert(
           '✅ Success',
-          `Reminder updated successfully!\n\n📅 ${formatDateTime(scheduledDate)}\n\n🔔 You'll receive both FCM and local notifications.`,
+          `Reminder updated successfully!\n\n📅 ${formatDateTime(scheduledDate)}`,
           [
             {
               text: 'OK',
@@ -385,8 +274,8 @@ const EditReminderScreen = ({ route, navigation }) => {
           ]
         );
       } else {
-        console.error('API Error:', data);
-        throw new Error(data.message || `Server error: ${response.status} - ${responseText}`);
+        console.error('❌ API call failed:', response);
+        throw new Error(response?.message || 'Failed to update reminder');
       }
     } catch (error) {
       console.error('❌ Error saving reminder:', error);
@@ -398,7 +287,7 @@ const EditReminderScreen = ({ route, navigation }) => {
       });
       CrossPlatformAlert.alert(
         'Error',
-        `Failed to update reminder.\n\nDetails: ${error.message}\n\nReminder ID: ${reminderId}\n\nPlease check if this is a valid reminder.`
+        `Failed to update reminder.\n\nDetails: ${error.message}\n\nReminder ID: ${reminderId}`
       );
     } finally {
       setLoading(false);
@@ -428,36 +317,17 @@ const EditReminderScreen = ({ route, navigation }) => {
           onPress: async () => {
             setLoading(true);
             try {
-              const accessToken = await AsyncStorage.getItem('accessToken') ||
-                await AsyncStorage.getItem('employeeToken') ||
-                await AsyncStorage.getItem('adminToken') ||
-                await AsyncStorage.getItem('employee_auth_token') ||
-                await AsyncStorage.getItem('crm_auth_token') ||
-                await AsyncStorage.getItem('userToken');
+              // 🔥 Use alerts API for delete
+              const result = await deleteAlert(reminderId);
 
-              if (!accessToken) {
-                CrossPlatformAlert.alert('Session Expired', 'Please login again');
-                return;
-              }
-
-              const response = await fetch(`${CRM_BASE_URL}/api/reminder/delete/${reminderId}`, {
-                method: 'DELETE',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${accessToken}`,
-                },
-              });
-
-              const result = await response.json();
-
-              if (response.ok && result.success) {
+              if (result && result.success) {
                 CrossPlatformAlert.alert(
                   'Success',
                   'Reminder deleted successfully',
                   [{ text: 'OK', onPress: () => navigation.goBack() }]
                 );
               } else {
-                throw new Error(result.message || 'Failed to delete reminder');
+                throw new Error(result?.message || 'Failed to delete reminder');
               }
             } catch (error) {
               console.error('❌ Delete error:', error);
@@ -503,7 +373,7 @@ const EditReminderScreen = ({ route, navigation }) => {
             placeholder="Enter reminder message (e.g., Shivam is coming in 10 min)"
             placeholderTextColor="#999"
             multiline
-            numberOfLines={4}
+            numberOfLines={12}
             textAlignVertical="top"
           />
         </View>
@@ -539,25 +409,10 @@ const EditReminderScreen = ({ route, navigation }) => {
           <Text style={styles.label}>Repeat Frequency</Text>
           <TouchableOpacity
             style={[styles.inputField, styles.repeatSelector]}
-            onPress={() => {
-              CrossPlatformAlert.alert(
-                'Repeat Frequency',
-                'Choose how often this reminder should repeat',
-                [
-                  { text: '🚫 Does not repeat', onPress: () => setRepeatFrequency('none') },
-                  { text: '📅 Daily', onPress: () => setRepeatFrequency('daily') },
-                  { text: '📆 Weekly', onPress: () => setRepeatFrequency('weekly') },
-                  { text: '🗓️ Monthly', onPress: () => setRepeatFrequency('monthly') },
-                  { text: 'Cancel', style: 'cancel' },
-                ]
-              );
-            }}
+            onPress={() => setShowRepeatModal(true)}
           >
             <Text style={[styles.inputText, repeatFrequency !== 'none' && styles.repeatActiveText]}>
-              {repeatFrequency === 'none' ? '🚫 Does not repeat' :
-                repeatFrequency === 'daily' ? '📅 Repeats Daily' :
-                  repeatFrequency === 'weekly' ? '📆 Repeats Weekly' :
-                    repeatFrequency === 'monthly' ? '🗓️ Repeats Monthly' : '🚫 Does not repeat'}
+              {getRepeatLabel()}
             </Text>
             <Text style={styles.repeatArrow}>▼</Text>
           </TouchableOpacity>
@@ -566,7 +421,10 @@ const EditReminderScreen = ({ route, navigation }) => {
         {/* Scheduled For Display */}
         <View style={styles.infoBox}>
           <Text style={styles.infoLabel}>Reminder will be scheduled for:</Text>
-          <Text style={styles.infoValue}>{formatDateTime(scheduledDate)}</Text>
+          <Text style={styles.infoValue}>
+            {formatDateTime(scheduledDate)}
+            {repeatFrequency !== 'none' && `\n(${getRepeatLabel()})`}
+          </Text>
         </View>
 
         {/* Action Buttons */}
@@ -621,6 +479,148 @@ const EditReminderScreen = ({ route, navigation }) => {
             is24Hour={false}
           />
         )}
+
+        {/* Repeat Frequency Modal */}
+        <Modal
+          visible={showRepeatModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowRepeatModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => !showCustomInput && setShowRepeatModal(false)}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Repeat Frequency</Text>
+
+              <ScrollView
+                style={styles.repeatOptionsScroll}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+              >
+                <TouchableOpacity
+                  style={[styles.repeatOption, repeatFrequency === 'none' && styles.repeatOptionSelected]}
+                  onPress={() => handleRepeatSelect('none')}
+                >
+                  <Text style={[styles.repeatOptionText, repeatFrequency === 'none' && styles.repeatOptionTextSelected]}>
+                    Does not repeat
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.repeatOption, repeatFrequency === 'daily' && styles.repeatOptionSelected]}
+                  onPress={() => handleRepeatSelect('daily')}
+                >
+                  <Text style={[styles.repeatOptionText, repeatFrequency === 'daily' && styles.repeatOptionTextSelected]}>
+                    Daily
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.repeatOption, repeatFrequency === 'weekly' && styles.repeatOptionSelected]}
+                  onPress={() => handleRepeatSelect('weekly')}
+                >
+                  <Text style={[styles.repeatOptionText, repeatFrequency === 'weekly' && styles.repeatOptionTextSelected]}>
+                    Weekly
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.repeatOption, repeatFrequency === 'monthly' && styles.repeatOptionSelected]}
+                  onPress={() => handleRepeatSelect('monthly')}
+                >
+                  <Text style={[styles.repeatOptionText, repeatFrequency === 'monthly' && styles.repeatOptionTextSelected]}>
+                    Monthly
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.repeatOption, repeatFrequency === 'yearly' && styles.repeatOptionSelected]}
+                  onPress={() => handleRepeatSelect('yearly')}
+                >
+                  <Text style={[styles.repeatOptionText, repeatFrequency === 'yearly' && styles.repeatOptionTextSelected]}>
+                    Yearly
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.repeatOption, repeatFrequency === 'custom' && styles.repeatOptionSelected]}
+                  onPress={() => handleRepeatSelect('custom')}
+                >
+                  <Text style={[styles.repeatOptionText, repeatFrequency === 'custom' && styles.repeatOptionTextSelected]}>
+                    Custom
+                  </Text>
+                </TouchableOpacity>
+
+                {showCustomInput && (
+                  <View style={styles.customIntervalContainer}>
+                    <Text style={styles.customIntervalLabel}>Select interval:</Text>
+                    {customIntervalOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.customOptionItem,
+                          customIntervalMinutes === option.value && styles.customOptionItemSelected,
+                        ]}
+                        onPress={() => handleCustomIntervalSelect(option.value)}
+                      >
+                        <Text
+                          style={[
+                            styles.customOptionItemText,
+                            customIntervalMinutes === option.value && styles.customOptionItemTextSelected,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+
+                    <TouchableOpacity
+                      style={[styles.customOptionItem, styles.addCustomOption]}
+                      onPress={() => setShowCustomManualInput(!showCustomManualInput)}
+                    >
+                      <Text style={styles.addCustomOptionText}>+ Add Custom</Text>
+                    </TouchableOpacity>
+
+                    {showCustomManualInput && (
+                      <View style={styles.manualInputContainer}>
+                        <Text style={styles.manualInputLabel}>Enter minutes:</Text>
+                        <View style={styles.manualInputRow}>
+                          <TextInput
+                            style={styles.manualInput}
+                            keyboardType="numeric"
+                            value={manualMinutes}
+                            onChangeText={handleManualMinutesChange}
+                            placeholder="e.g. 45"
+                            placeholderTextColor="#9ca3af"
+                          />
+                          <Text style={styles.manualInputUnit}>min</Text>
+                          <TouchableOpacity
+                            style={styles.manualConfirmButton}
+                            onPress={confirmManualMinutes}
+                          >
+                            <Text style={styles.manualConfirmText}>OK</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </ScrollView>
+
+              {!showCustomInput && (
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowRepeatModal(false)}
+                >
+                  <Text style={styles.modalCloseText}>Close</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
     </ScrollView>
   );
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
     padding: 15,
     fontSize: 16,
     color: '#333',
-    minHeight: 120,
+    minHeight: 360,
   },
   inputField: {
     backgroundColor: '#fff',
@@ -764,6 +764,158 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 30,
+    maxHeight: '80%',
+  },
+  repeatOptionsScroll: {
+    maxHeight: 400,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  repeatOption: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  repeatOptionSelected: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#3b82f6',
+  },
+  repeatOptionText: {
+    fontSize: 15,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  repeatOptionTextSelected: {
+    color: '#1e40af',
+    fontWeight: '600',
+  },
+  modalCloseButton: {
+    backgroundColor: '#6b7280',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  modalCloseText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  customIntervalContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#0ea5e9',
+  },
+  customIntervalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0369a1',
+    marginBottom: 12,
+  },
+  customOptionItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 6,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  customOptionItemSelected: {
+    backgroundColor: '#e0f2fe',
+    borderColor: '#0ea5e9',
+  },
+  customOptionItemText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  customOptionItemTextSelected: {
+    color: '#0369a1',
+    fontWeight: '600',
+  },
+  addCustomOption: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#22c55e',
+    borderStyle: 'dashed',
+  },
+  addCustomOptionText: {
+    fontSize: 14,
+    color: '#16a34a',
+    fontWeight: '600',
+  },
+  manualInputContainer: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#22c55e',
+  },
+  manualInputLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  manualInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  manualInput: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  manualInputUnit: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  manualConfirmButton: {
+    backgroundColor: '#22c55e',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  manualConfirmText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
 

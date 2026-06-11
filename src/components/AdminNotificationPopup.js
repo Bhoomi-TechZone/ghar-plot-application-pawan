@@ -28,6 +28,8 @@ const AdminNotificationPopup = ({
   scheduledAt = '',
   nextScheduledAt = '',
   createdAt = '', // 🔥 Add createdAt prop
+  time = '', // 🔥 Add time prop for scheduled time display
+  date = '', // 🔥 Add date prop for fallback
   type = 'admin_reminder',
   onEdit,
 }) => {
@@ -56,9 +58,33 @@ const AdminNotificationPopup = ({
     } catch (_) { return null; }
   };
 
+  // Format time only (HH:mm)
+  const formatTime = (timeStr) => {
+    if (!timeStr) return null;
+    // If it's already in HH:mm format, return it
+    if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
+      return timeStr;
+    }
+    // Otherwise try to parse as ISO string
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return null;
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${min}`;
+    } catch (_) { return null; }
+  };
+
   const formattedScheduled = formatDateTime(scheduledAt);
   const formattedNext = formatDateTime(nextScheduledAt);
   const formattedCreated = formatDateTime(createdAt); // 🔥 Format created date
+  
+  // 🔥 Get scheduled time - try scheduledAt, then time prop, then date+time combo
+  const scheduledTimeDisplay = time 
+    ? (typeof time === 'object' 
+        ? `${String(time.hour || 0).padStart(2, '0')}:${String(time.minute || 0).padStart(2, '0')}`
+        : formatTime(time))
+    : (scheduledAt ? formatTime(scheduledAt) : null);
 
   return (
     <Modal
@@ -118,43 +144,28 @@ const AdminNotificationPopup = ({
                 </View>
               ) : null}
 
-             {/* Message / Reason / Note / Created At */}
-              {(note || reason || formattedCreated) ? (
+             {/* Message / Reason / Note / Scheduled Time / Created At */}
+              {(note || reason || scheduledTimeDisplay || formattedCreated) ? (
                 <View style={[styles.detailRow, styles.noteRow]}>
                   <MaterialIcons name="notes" size={20} color={primaryColor} />
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>Details</Text>
                     <Text style={styles.detailValue}>
                       {note || reason}
-                      {createdAt
-                        ? `\n🗓️ Created On: ${formatDateTime(createdAt.replace('Z', ''))}`
+                      {scheduledTimeDisplay
+                        ? `\n⏰ Scheduled: ${scheduledTimeDisplay}`
+                        : ''}
+                      {formattedCreated
+                        ? `\n🗓️ Created On: ${formattedCreated}`
                         : ''}
                     </Text>
                   </View>
                 </View>
               ) : null}
 
-              {/* Scheduled Date/Time */}
-              {formattedScheduled ? (
-                <View style={[styles.detailRow, styles.noteRow]}>
-                  <MaterialIcons name="schedule" size={20} color={primaryColor} />
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Scheduled At</Text>
-                    <Text style={styles.detailValue}>📅 {formattedScheduled}</Text>
-                  </View>
-                </View>
-              ) : null}
+              {/* Scheduled Date/Time - REMOVED (now merged into DETAILS section above) */}
 
-              {/* Created Date/Time
-              {formattedCreated ? (
-                <View style={[styles.detailRow, styles.noteRow]}>
-                  <MaterialIcons name="event" size={20} color={primaryColor} />
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Created On</Text>
-                    <Text style={styles.detailValue}>🗓️ {formattedCreated}</Text>
-                  </View>
-                </View>
-              ) : null} */}
+              {/* Created Date/Time - REMOVED (now merged into DETAILS section above) */}
 
               {/* Next Scheduled Notification */}
               {formattedNext ? (

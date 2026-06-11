@@ -524,60 +524,11 @@ export const backgroundMessageHandler = async (remoteMessage) => {
         data.category === 'reminder' ||
         !!data.alertId;
 
-      // 🎯 Professional Popup Queuing (Background -> Foreground)
-      if (isReminderNotif) {
-        try {
-          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-          const existingRaw = await AsyncStorage.getItem('pendingNotificationData');
-          const newId = data.alertId || data.reminderId || data._id;
-          let shouldQueue = true;
-
-          // Deduplication: Only queue if same ID hasn't been queued in last 30 seconds
-          if (existingRaw && newId) {
-            try {
-              const existing = JSON.parse(existingRaw);
-              const existingId = existing?.data?.alertId || existing?.data?.reminderId || existing?.data?._id;
-              const ageMs = Date.now() - (existing?.timestamp || 0);
-              if (existingId === newId && ageMs < 30000) {
-                console.log(`⏭️ Skipping duplicate background popup queue for ID: ${newId} (${Math.round(ageMs / 1000)}s ago)`);
-                shouldQueue = false;
-              }
-            } catch (_) { }
-          }
-
-          if (shouldQueue) {
-            // Determine popup type for background context
-            const isAlert = /alert|emergency|urgent/i.test(notificationType) || data.category === 'alert';
-            const isAdminRem = !isAlert && (
-              notificationType === 'admin_reminder' ||
-              notificationType === 'employee_reminder_to_admin' ||
-              data.category === 'reminder' ||
-              !!data.alertId
-            );
-            const bgPopupType = isAlert ? 'alert' : (isAdminRem ? 'admin_reminder' : 'reminder');
-
-            const popupData = {
-              triggerReminderPopup: true,
-              data: {
-                reminderId: data.reminderId || data._id || Date.now().toString(),
-                title: data.reminderTitle || data.title || title || 'Reminder',
-                clientName: data.clientName || '',
-                note: data.note || data.body || body || '',
-                name: data.clientName || '',
-                reminderDateTime: data.scheduledAt || data.scheduledDateTime || data.reminderTime || data.timestamp || new Date().toISOString(),
-                nextScheduledAt: data.nextScheduledAt || '',
-                scheduledAt: data.scheduledAt || data.scheduledDateTime || '',
-                // 🔥 Use the calculated popupType from earlier to ensure theme consistency
-                type: bgPopupType,
-                ...data
-              },
-              timestamp: Date.now()
-            };
-            await AsyncStorage.setItem('pendingNotificationData', JSON.stringify(popupData));
-            console.log(`✅ Registered background popup flag for ${notificationType}`);
-          }
-        } catch (e) { console.log('⚠️ Failed to store popup flag:', e.message); }
-      }
+      // ❌ DO NOT QUEUE POPUP IN BACKGROUND FOR FCM MESSAGES
+      // FCM background messages should only display notification in tray
+      // Popup should ONLY trigger when user taps the notification
+      // The NotificationHandler will handle the tap event and open popup then
+      console.log('⏭️ Skipping background popup queue for FCM - will only show if user taps notification');
 
       // 🎯 DEDUPLICATION (Background Displays): 
       // If the message contains a 'notification' object, Android shows it AUTOMATICALLY.

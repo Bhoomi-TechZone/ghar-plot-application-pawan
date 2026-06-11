@@ -48,8 +48,13 @@ export const getCRMAuthHeaders = async () => {
  */
 export const handleCRMResponse = async (response) => {
   try {
+    // Log the response status for debugging
+    console.log(`📡 API Response Status: ${response.status} ${response.statusText}`);
+    console.log(`📡 API URL: ${response.url}`);
+
     // Get response as text first
     const textResponse = await response.text();
+    console.log(`📥 Response preview: ${textResponse.substring(0, 200)}...`);
 
     // Check if response is HTML (error page)
     if (textResponse.trim().startsWith('<')) {
@@ -68,19 +73,24 @@ export const handleCRMResponse = async (response) => {
     let data;
     try {
       data = JSON.parse(textResponse);
+      console.log('✅ JSON parsed successfully');
     } catch (parseError) {
       console.error('❌ JSON parse error:', parseError);
+      console.error('❌ Response text:', textResponse);
       throw new Error('Invalid server response format.');
     }
 
     // Check HTTP status
     if (!response.ok) {
-      throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
+      const errorMsg = data.message || data.error || `HTTP error! status: ${response.status}`;
+      console.error('❌ API error:', errorMsg);
+      throw new Error(errorMsg);
     }
 
     return data;
   } catch (error) {
     // Re-throw with better error message
+    console.error('❌ handleCRMResponse error:', error);
     if (error.message) {
       throw error;
     }

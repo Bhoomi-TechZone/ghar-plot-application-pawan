@@ -60,9 +60,11 @@ const AlertsScreen = ({ navigation, route }) => {
   const fetchAlerts = async (params = {}) => {
     try {
       setLoading(true);
+      console.log('📡 Fetching alerts with params:', params);
       const response = await crmAlertApi.getSystemAlerts(params);
+      console.log('📥 Raw response:', response);
       const data = response?.alerts || response?.data || [];
-      console.log('Fetched alerts: ${data} :', data.length);
+      console.log('✅ Fetched alerts:', data.length);
       const allAlerts = Array.isArray(data) ? data : [];
 
       let filtered;
@@ -73,9 +75,13 @@ const AlertsScreen = ({ navigation, route }) => {
         // Alerts: show items tagged as 'alert' OR items with no category (old data)
         filtered = allAlerts.filter(item => !item.category || item.category === 'alert');
       }
+      console.log(`📊 Filtered ${filtered.length} items for category: ${filterCategory}`);
       setAlerts(filtered);
     } catch (e) {
-      CrossPlatformAlert.alert('Error', 'Failed to fetch alerts');
+      console.error('❌ Error fetching alerts:', e);
+      console.error('❌ Error message:', e.message);
+      console.error('❌ Error stack:', e.stack);
+      CrossPlatformAlert.alert('Error', `Failed to fetch alerts: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -83,20 +89,31 @@ const AlertsScreen = ({ navigation, route }) => {
 
   const formatDate = (iso) => {
     if (!iso) return '';
-    // 🔥 Use IST helper to convert UTC to IST
+    // 🔥 Use IST helper to convert UTC to IST for display
     return formatDateToIST(iso);
   };
 
   const formatTime = (iso) => {
     if (!iso) return '';
-    // 🔥 Use IST helper to convert UTC to IST
+    // 🔥 Use IST helper to convert UTC to IST for display
     return formatTimeToIST(iso);
+  };
+
+  // 🔥 NEW: Format Date object to YYYY-MM-DD for API
+  const formatDateForAPI = (dateObj) => {
+    if (!dateObj) return '';
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const handleFilter = () => {
     const params = {};
-    if (startDate) params.startDate = formatDate(startDate);
-    if (endDate) params.endDate = formatDate(endDate);
+    // 🔥 FIX: Use formatDateForAPI instead of formatDate for API params
+    if (startDate) params.startDate = formatDateForAPI(startDate);
+    if (endDate) params.endDate = formatDateForAPI(endDate);
+    console.log('🔍 Filter params:', params);
     fetchAlerts(params);
   };
 
@@ -189,8 +206,35 @@ const AlertsScreen = ({ navigation, route }) => {
     );
   };
 
+  const getItemCategory = (item) => item?.category || (filterCategory === 'reminder' ? 'reminder' : 'alert');
+
   const handleEdit = (alert) => {
-    console.log('📝 Editing alert:', alert._id);
+    const itemId = alert._id || alert.id || alert.alertId;
+    const itemCategory = getItemCategory(alert);
+    console.log('📝 Editing notification:', itemId, itemCategory);
+
+    if (itemCategory === 'reminder') {
+      navigation.navigate('EditReminder', {
+        reminderId: itemId,
+        clientName: alert.clientName || alert.title || 'Reminder',
+        originalMessage: alert.note || alert.reason || alert.message || '',
+        enquiryId: alert.enquiryId,
+        phone: alert.phone,
+        location: alert.location,
+        reminderTitle: alert.title,
+        isAdmin: true,
+        scheduledDateTime: alert.nextScheduledAt || alert.reminderDateTime || alert.scheduledDateTime || `${alert.date} ${alert.time}`,
+        isRepeating: !!(alert.isRepeating || alert.repeatDaily || (alert.repeatFrequency && alert.repeatFrequency !== 'none')),
+        repeatType: alert.repeatType || alert.repeatFrequency || (alert.repeatDaily ? 'daily' : 'none'),
+        customIntervalMinutes: alert.repeatMetadata?.customIntervalMinutes ||
+          alert.customIntervalMinutes ||
+          alert.customRepeatMinutes ||
+          alert.repeatInterval ||
+          '',
+      });
+      return;
+    }
+
     // 🔥 Extract customIntervalMinutes from all possible locations
     const customMins = alert.repeatMetadata?.customIntervalMinutes || 
                       alert.customIntervalMinutes || 
@@ -199,7 +243,7 @@ const AlertsScreen = ({ navigation, route }) => {
                       '';
     
     navigation.navigate('EditAlert', {
-      alertId: alert._id,
+      alertId: itemId,
       originalTitle: alert.title,
       originalReason: alert.reason,
       originalDate: alert.date,
@@ -219,12 +263,25 @@ const AlertsScreen = ({ navigation, route }) => {
       _id: item._id || item.id,
       alertId: item._id || item.id,
       id: item._id || item.id,
+      category: item.category || filterCategory,
       title: item.title || item.reason || 'Notification',
       clientName: item.clientName || item.employee?.name || '',
       reason: item.reason || item.note || '',
+      note: item.note,
+      message: item.message,
+      date: item.date,
+      time: item.time,
+      reminderDateTime: item.reminderDateTime,
+      scheduledDateTime: item.scheduledDateTime,
       scheduledAt: item.scheduledDateTime || `${item.date}T${item.time}`,
       nextScheduledAt: item.nextScheduledAt,
       createdAt: item.createdAt || item.date,
+      repeatDaily: item.repeatDaily,
+      repeatFrequency: item.repeatFrequency,
+      repeatType: item.repeatType,
+      isRepeating: item.isRepeating,
+      repeatMetadata: item.repeatMetadata,
+      customIntervalMinutes: item.customIntervalMinutes,
       type: filterCategory === 'reminder' ? 'admin_reminder' : 'alert',
     });
     setPopupVisible(true);
