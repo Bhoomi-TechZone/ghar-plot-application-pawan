@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -60,6 +60,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
 
   const [refreshing, setRefreshing] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [sitesMenuExpanded, setSitesMenuExpanded] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
   const fetchUnreadNotifCount = async () => {
@@ -733,6 +734,45 @@ const AdminDashboardScreen = ({ navigation, user }) => {
                   <Text style={styles.drawerItemText}>All Leads</Text>
                   <Icon name="chevron-forward" size={16} color="#9ca3af" />
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.drawerItem}
+                  onPress={() => setSitesMenuExpanded(!sitesMenuExpanded)}
+                >
+                  <Icon name="settings-outline" size={20} color="#0d9488" />
+                  <Text style={styles.drawerItemText}>Sites Management</Text>
+                  <Icon name={sitesMenuExpanded ? "chevron-down" : "chevron-forward"} size={16} color="#9ca3af" />
+                </TouchableOpacity>
+
+                {sitesMenuExpanded && (
+                  <View style={styles.subItemContainer}>
+                    {[
+                      { name: 'All Projects', viewType: 'all_projects' },
+                      { name: "Tomorrow's Action Plan Clients", viewType: 'tomorrow_clients' },
+                      { name: "Tomorrow's Action Plan Leads", viewType: 'tomorrow_leads' },
+                      { name: 'Add Cash Flow', viewType: 'add_cash_flow' },
+                      { name: 'Cash Flow', viewType: 'cash_flow' },
+                      { name: 'All Expenses', viewType: 'all_expenses' },
+                      { name: 'Add Expenses', viewType: 'add_expenses' },
+                      { name: 'Work Status', viewType: 'work_status' },
+                      { name: 'Add Work Status', viewType: 'add_work_status' },
+                      { name: 'Client Payments', viewType: 'client_payments' },
+                      { name: 'Add Client Payment', viewType: 'add_client_payment' },
+                    ].map((subItem) => (
+                      <TouchableOpacity
+                        key={subItem.viewType}
+                        style={styles.drawerSubItem}
+                        onPress={() => {
+                          setDrawerVisible(false);
+                          navigation.navigate('SitesManagement', { viewType: subItem.viewType });
+                        }}
+                      >
+                        <View style={styles.bulletDot} />
+                        <Text style={styles.drawerSubItemText}>{subItem.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
 
               {/* USP MANAGEMENT Section */}
@@ -1247,6 +1287,34 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     flex: 1,
     fontWeight: '500',
+  },
+  subItemContainer: {
+    paddingLeft: 16,
+    backgroundColor: '#f8fafc',
+    borderLeftWidth: 3,
+    borderLeftColor: '#0d9488',
+    marginLeft: 28,
+    marginVertical: 4,
+    borderRadius: 4,
+  },
+  drawerSubItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingRight: 12,
+  },
+  bulletDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#0d9488',
+    marginRight: 12,
+  },
+  drawerSubItemText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#475569',
+    flex: 1,
   },
 });
 

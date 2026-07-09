@@ -42,6 +42,7 @@ import AdminNotificationsInbox from '../crm/crmscreens/Admin/AdminNotificationsI
 // Property Management Screens
 import PropertyAnalytics from '../screens/CRM/PropertyManagement/PropertyAnalytics';
 import AllPropertiesScreen from '../screens/AllPropertiesScreen';
+import SitesManagementScreen from '../crm/crmscreens/Admin/SitesManagementScreen';
 
 const Stack = createStackNavigator();
 
@@ -450,6 +451,11 @@ const AdminNavigator = ({ onLogout }) => {
             fontWeight: 'bold',
           },
         }}
+      />
+      <Stack.Screen
+        name="SitesManagement"
+        component={SitesManagementScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

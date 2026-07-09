@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   StatusBar,
+  TextInput,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -36,6 +37,7 @@ const AlertsScreen = ({ navigation, route }) => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupData, setPopupData] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Refresh list every time screen comes into focus (e.g. after creating a new alert)
   useFocusEffect(
@@ -120,6 +122,7 @@ const AlertsScreen = ({ navigation, route }) => {
   const clearFilter = () => {
     setStartDate(null);
     setEndDate(null);
+    setSearchQuery('');
     fetchAlerts();
   };
 
@@ -515,6 +518,15 @@ const AlertsScreen = ({ navigation, route }) => {
         }}
       />
       <View style={styles.filterCard}>
+        <View style={{ marginBottom: 12 }}>
+          <Text style={styles.label}>Search</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by title..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
         <View style={styles.inputRow}>
           <View style={styles.inputCol}>
             <Text style={styles.label}>Start Date</Text>
@@ -577,7 +589,13 @@ const AlertsScreen = ({ navigation, route }) => {
         <ActivityIndicator style={{ marginTop: 30 }} />
       ) : (
         <FlatList
-          data={[...alerts].sort((a, b) => {
+          data={[...alerts]
+            .filter(item => {
+              if (!searchQuery) return true;
+              const title = item.title || item.reason || '';
+              return title.toLowerCase().includes(searchQuery.toLowerCase());
+            })
+            .sort((a, b) => {
             const isAPinned = pinnedIds.includes(a._id || a.id);
             const isBPinned = pinnedIds.includes(b._id || b.id);
             if (isAPinned && !isBPinned) return -1;
@@ -631,6 +649,15 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     elevation: 2,
+  },
+
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 6,
+    padding: 8,
+    backgroundColor: '#f9fafb',
+    color: '#000',
   },
 
   inputRow: { flexDirection: 'row' },

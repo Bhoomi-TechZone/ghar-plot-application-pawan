@@ -1,4 +1,5 @@
-﻿/**
+/* eslint-disable react-native/no-inline-styles */
+/**
  * EditReminderScreen.js
  * Screen for editing existing reminders from notifications
  * User can modify reminder message and reschedule it
@@ -17,22 +18,22 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import { updateReminder } from '../services/api';
+import { updateReminder, BASE_URL } from '../services/api';
 import { updateAlert, deleteAlert } from '../crm/services/crmAlertApi'; // 🔥 Import alerts API
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendTokenToBackend, getFCMToken } from '../utils/fcmService';
-import ReminderNotificationService from '../services/ReminderNotificationService';
+//import ReminderNotificationService from '../services/ReminderNotificationService';
 import CrossPlatformAlert from '../utils/crossPlatformAlert';
 
-const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+//const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const EditReminderScreen = ({ route, navigation }) => {
   const { 
     reminderId, 
     clientName, 
     originalMessage, 
-    enquiryId, 
+    //enquiryId, 
     fromNotification, 
     isRepeating, 
     repeatType,
@@ -40,10 +41,22 @@ const EditReminderScreen = ({ route, navigation }) => {
   } = route.params || {};
 
   const [loading, setLoading] = useState(false);
+  const [title, setTitle] = useState(clientName || '');
   const [message, setMessage] = useState(originalMessage || '');
   // 🔥 Initialize with the scheduled date from params, or current date as fallback
   const [scheduledDate, setScheduledDate] = useState(() => {
     if (scheduledDateTime) {
+      // Fix 5 hours offset bug: parse "YYYY-MM-DD HH:mm" explicitly as local time
+      if (typeof scheduledDateTime === 'string' && !scheduledDateTime.includes('T') && scheduledDateTime.includes(' ')) {
+        try {
+          const [datePart, timePart] = scheduledDateTime.split(' ');
+          const [year, month, day] = datePart.split('-').map(Number);
+          const [hours, minutes] = timePart.split(':').map(Number);
+          const date = new Date(year, month - 1, day, hours, minutes || 0);
+          if (!isNaN(date.getTime())) return date;
+        } catch (e) {}
+      }
+
       const date = new Date(scheduledDateTime);
       // Validate the date
       if (!isNaN(date.getTime())) {
@@ -91,7 +104,7 @@ const EditReminderScreen = ({ route, navigation }) => {
       }
     };
     syncFCMToken();
-  }, [reminderId, fromNotification]);
+  }, [reminderId, fromNotification, navigation, clientName, originalMessage]);
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -207,6 +220,10 @@ const EditReminderScreen = ({ route, navigation }) => {
   };
 
   const handleSave = async () => {
+    if (!title.trim()) {
+      CrossPlatformAlert.alert('Validation Error', 'Please enter a title');
+      return;
+    }
     if (!message.trim()) {
       CrossPlatformAlert.alert('Validation Error', 'Please enter a message');
       return;
@@ -225,14 +242,22 @@ const EditReminderScreen = ({ route, navigation }) => {
     setLoading(true);
 
     try {
+      // Format date and time for API using local time to prevent timezone shift issues
+      const year = scheduledDate.getFullYear();
+      const month = (scheduledDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = scheduledDate.getDate().toString().padStart(2, '0');
+      const hours = scheduledDate.getHours().toString().padStart(2, '0');
+      const minutes = scheduledDate.getMinutes().toString().padStart(2, '0');
+
       // 🔥 UPDATE existing reminder via alerts API
       const reminderPayload = {
-        title: clientName || 'Reminder',
+        title: title.trim() || 'Reminder',
         reason: message.trim(),
-        date: scheduledDate.toISOString().split('T')[0], // Format: YYYY-MM-DD
-        time: `${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}`, // Format: HH:mm
+        date: `${year}-${month}-${day}`, // Local date Format: YYYY-MM-DD
+        time: `${hours}:${minutes}`, // Local time Format: HH:mm
         repeatFrequency: repeatFrequency !== 'none' ? repeatFrequency : 'daily',
         repeatDaily: repeatFrequency === 'daily',
+        customRepeatMinutes: customIntervalMinutes || '',
         isActive: true,
       };
 
@@ -248,7 +273,6 @@ const EditReminderScreen = ({ route, navigation }) => {
         };
       } else if (repeatFrequency === 'custom' && customIntervalMinutes) {
         reminderPayload.repeatMetadata = { customIntervalMinutes };
-        reminderPayload.customRepeatMinutes = customIntervalMinutes;
       }
 
       console.log('📤 Updating reminder via alerts API:', reminderPayload);
@@ -262,6 +286,47 @@ const EditReminderScreen = ({ route, navigation }) => {
       // Check if update was successful
       if (response && response.success !== false) {
         console.log('✅ Reminder updated successfully via alerts API');
+
+        // 🔥 Schedule the notification on backend to ensure correct timezone and firing
+        try {
+          const fcmToken = await getFCMToken();
+          const scheduledDateTimeISO = scheduledDate.toISOString();
+          
+          const authToken = await AsyncStorage.getItem('adminToken') ||
+                           await AsyncStorage.getItem('crm_token') ||
+                           await AsyncStorage.getItem('admin_token') ||
+                           await AsyncStorage.getItem('authToken') ||
+                           await AsyncStorage.getItem('userToken');
+
+          if (authToken) {
+            const fcmResponse = await fetch(`${BASE_URL}/api/alerts/schedule-notification`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+              },
+              body: JSON.stringify({
+                alertId: reminderId,
+                title: reminderPayload.title,
+                reason: reminderPayload.reason,
+                date: reminderPayload.date,
+                time: reminderPayload.time,
+                scheduledDateTime: scheduledDateTimeISO,
+                customRepeatMinutes: customIntervalMinutes,
+                repeatDaily: reminderPayload.repeatDaily || repeatFrequency === 'custom',
+                type: 'admin_reminder',
+                notificationType: 'admin_reminder',
+                fcmToken: fcmToken,
+              }),
+            });
+            const contentType = fcmResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              await fcmResponse.json();
+            }
+          }
+        } catch (fcmErr) {
+          console.warn('Failed to schedule notification:', fcmErr);
+        }
 
         CrossPlatformAlert.alert(
           '✅ Success',
@@ -355,12 +420,16 @@ const EditReminderScreen = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* Client Name (Read-only) */}
+        {/* Title */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Client Name</Text>
-          <View style={styles.readOnlyField}>
-            <Text style={styles.readOnlyText}>{clientName}</Text>
-          </View>
+          <Text style={styles.label}>Title *</Text>
+          <TextInput
+            style={styles.inputField}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Enter title"
+            placeholderTextColor="#999"
+          />
         </View>
 
         {/* Message */}

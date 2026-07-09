@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Firebase Cloud Messaging (FCM) Service
  * Handles push notification setup, token management, and foreground notifications
  */
@@ -342,7 +342,6 @@ export const setupForegroundNotificationHandler = () => {
               android: {
                 channelId: chanId,
                 pressAction: { id: 'default' },
-                fullScreenAction: { id: 'default' },
                 importance: 4,
                 priority: 'high',
                 smallIcon: 'ic_launcher',
@@ -438,237 +437,236 @@ export const setupForegroundNotificationHandler = () => {
  * for killed-state delivery to work.
  */
 export const backgroundMessageHandler = async (remoteMessage) => {
-    console.log('📩 FCM: BACKGROUND/KILLED MESSAGE RECEIVED!', remoteMessage.messageId);
+  console.log('📩 FCM: BACKGROUND/KILLED MESSAGE RECEIVED!', remoteMessage.messageId);
 
-    // 🛡️ Gate: skip if this exact messageId was already handled (FG+BG race)
-    if (!shouldProcessMessage(remoteMessage.messageId)) return;
+  // 🛡️ Gate: skip if this exact messageId was already handled (FG+BG race)
+  if (!shouldProcessMessage(remoteMessage.messageId)) return;
 
-    console.log('📩 🔥 BACKGROUND MESSAGE detail:', JSON.stringify(remoteMessage, null, 2));
+  console.log('📩 🔥 BACKGROUND MESSAGE detail:', JSON.stringify(remoteMessage, null, 2));
 
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const notifee = require('@notifee/react-native').default;
+
+    // 🎯 Processing notificationType in background...
+    const data = remoteMessage.data || {};
+    const notification = remoteMessage.notification || {};
+
+    const title = notification.title || data.title || 'Notification';
+    const body = notification.body || data.body || data.message || '';
+    // 🎯 Deduplication handled by ID mapping
+
+
+    const notificationType = data.type || data.notificationType || 'system';
+
+    console.log(`🎯 Processing ${notificationType} in background...`);
+
+    // 🔥 FIXED: Robust Timestamp Check (Background)
+    const rawTimestamp = data.timestamp || remoteMessage.sentTime;
+    let msgTimestamp;
+
+    if (!rawTimestamp) {
+      msgTimestamp = Date.now();
+    } else if (typeof rawTimestamp === 'string' && rawTimestamp.includes('-')) {
+      msgTimestamp = new Date(rawTimestamp).getTime();
+    } else {
+      msgTimestamp = parseInt(rawTimestamp);
+    }
+
+    const ageMs = Date.now() - msgTimestamp;
+    const STALENESS_LIMIT_MS = 12 * 60 * 60 * 1000; // Increased to 12 hours for background too
+
+    // 🔥 Skip "Notification Scheduled" confirmation messages in background too
+    if (
+      title?.toLowerCase().includes('scheduled') ||
+      body?.toLowerCase().includes('scheduled')
+    ) {
+      console.log('⏭️ Skipping meta background notification (scheduled)');
+      return;
+    }
+
+    if (ageMs > STALENESS_LIMIT_MS) {
+      console.log(`⏭️ Ignoring STALE background notification (${(ageMs / 1000 / 60).toFixed(1)} mins old): ${title}`);
+      return;
+    }
+
+    // 🎯 Deduplication handled by ID mapping
+
+
+    // 1️⃣ Save to local storage for "Notifications" screen (Inbox)
     try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      const notifee = require('@notifee/react-native').default;
+      const { addNotification } = await import('./notificationManager');
+      const storageNotification = {
+        id: remoteMessage.messageId || (Date.now() + Math.random().toString(36).substr(2, 9)),
+        type: notificationType,
+        title: title,
+        message: body,
+        body: body,
+        data: data,
+        timestamp: new Date().toISOString(),
+        read: false,
+        image: data.image
+      };
+      await addNotification(storageNotification);
+      console.log('✅ Background notification saved to local storage');
+    } catch (saveError) {
+      console.error('❌ Failed to save background notification:', saveError);
+    }
 
-      // 🎯 Processing notificationType in background...
-      const data = remoteMessage.data || {};
-      const notification = remoteMessage.notification || {};
+    // 🎯 Type Identification
+    const isDataOnly = !remoteMessage.notification;
+    const isReminderNotif =
+      notificationType === 'admin_reminder' ||
+      notificationType === 'employee_due_reminder' ||
+      notificationType === 'employee_reminder_to_admin' ||
+      notificationType === 'reminder' ||
+      data.category === 'reminder' ||
+      !!data.alertId;
 
-      const title = notification.title || data.title || 'Notification';
-      const body = notification.body || data.body || data.message || '';
-      // 🎯 Deduplication handled by ID mapping
+    // ❌ DO NOT QUEUE POPUP IN BACKGROUND FOR FCM MESSAGES
+    // FCM background messages should only display notification in tray
+    // Popup should ONLY trigger when user taps the notification
+    // The NotificationHandler will handle the tap event and open popup then
+    console.log('⏭️ Skipping background popup queue for FCM - will only show if user taps notification');
 
+    // 🎯 DEDUPLICATION (Background Displays): 
+    // If the message contains a 'notification' object, Android shows it AUTOMATICALLY.
+    // Calling displayNotification() now would create a DUPLICATE in the tray.
+    // We only call it if it's data-only OR if it's a critical reminder where we want to 
+    // attempt to replace the system one with our RICH formatted version.
+    // HOWEVER, if the user sees "2-2", it's safer to skip manual display for notification-block messages.
+    if ((isReminderNotif || (isDataOnly && (data.title || data.body || data.message))) && isDataOnly) {
+      const isAlert = /alert|emergency|urgent/i.test(title) || /alert|emergency|urgent/i.test(notificationType) || /alert/i.test(data.category);
+      const isAdminRem = !isAlert && (notificationType === 'admin_reminder' || notificationType === 'reminder' || data.category === 'reminder' || !!data.alertId);
 
-      const notificationType = data.type || data.notificationType || 'system';
-
-      console.log(`🎯 Processing ${notificationType} in background...`);
-
-      // 🔥 FIXED: Robust Timestamp Check (Background)
-      const rawTimestamp = data.timestamp || remoteMessage.sentTime;
-      let msgTimestamp;
-
-      if (!rawTimestamp) {
-        msgTimestamp = Date.now();
-      } else if (typeof rawTimestamp === 'string' && rawTimestamp.includes('-')) {
-        msgTimestamp = new Date(rawTimestamp).getTime();
-      } else {
-        msgTimestamp = parseInt(rawTimestamp);
+      // 🎯 Determine Channel
+      let channelId = 'gharplot_alerts';
+      let channelName = 'Gharplot Alerts';
+      if (notificationType === 'employee_due_reminder') {
+        channelId = 'enquiry_reminders';
+        channelName = 'Reminders';
+      } else if (isAdminRem) {
+        channelId = 'admin_reminders';
+        channelName = 'Admin Reminders';
       }
 
-      const ageMs = Date.now() - msgTimestamp;
-      const STALENESS_LIMIT_MS = 12 * 60 * 60 * 1000; // Increased to 12 hours for background too
+      await notifee.createChannel({
+        id: channelId,
+        name: channelName,
+        importance: 4,
+        sound: 'default',
+        vibration: true,
+      });
 
-      // 🔥 Skip "Notification Scheduled" confirmation messages in background too
-      if (
-        title?.toLowerCase().includes('scheduled') ||
-        body?.toLowerCase().includes('scheduled')
-      ) {
-        console.log('⏭️ Skipping meta background notification (scheduled)');
-        return;
-      }
+      let notifTitle = title;
+      let notifBody = body || 'You have a reminder';
 
-      if (ageMs > STALENESS_LIMIT_MS) {
-        console.log(`⏭️ Ignoring STALE background notification (${(ageMs / 1000 / 60).toFixed(1)} mins old): ${title}`);
-        return;
-      }
+      // Apply specific formatting
+      if (notificationType === 'employee_due_reminder') {
+        notifTitle = (title === 'Notification') ? `⏰ Reminder Due` : `⏰ ${title}`;
+        notifBody = body || data.body || 'Your scheduled reminder is due';
+      } else if (notificationType === 'admin_reminder' || notificationType === 'employee_reminder_to_admin' || notificationType === 'reminder' || data.reminderTitle) {
+        const employeeName = data.employeeName || '';
+        const reminderTitle = data.reminderTitle || title || 'Reminder';
+        const clientName = data.clientName || '';
 
-      // 🎯 Deduplication handled by ID mapping
-
-
-      // 1️⃣ Save to local storage for "Notifications" screen (Inbox)
-      try {
-        const { addNotification } = await import('./notificationManager');
-        const storageNotification = {
-          id: remoteMessage.messageId || (Date.now() + Math.random().toString(36).substr(2, 9)),
-          type: notificationType,
-          title: title,
-          message: body,
-          body: body,
-          data: data,
-          timestamp: new Date().toISOString(),
-          read: false,
-          image: data.image
-        };
-        await addNotification(storageNotification);
-        console.log('✅ Background notification saved to local storage');
-      } catch (saveError) {
-        console.error('❌ Failed to save background notification:', saveError);
-      }
-
-      // 🎯 Type Identification
-      const isDataOnly = !remoteMessage.notification;
-      const isReminderNotif =
-        notificationType === 'admin_reminder' ||
-        notificationType === 'employee_due_reminder' ||
-        notificationType === 'employee_reminder_to_admin' ||
-        notificationType === 'reminder' ||
-        data.category === 'reminder' ||
-        !!data.alertId;
-
-      // ❌ DO NOT QUEUE POPUP IN BACKGROUND FOR FCM MESSAGES
-      // FCM background messages should only display notification in tray
-      // Popup should ONLY trigger when user taps the notification
-      // The NotificationHandler will handle the tap event and open popup then
-      console.log('⏭️ Skipping background popup queue for FCM - will only show if user taps notification');
-
-      // 🎯 DEDUPLICATION (Background Displays): 
-      // If the message contains a 'notification' object, Android shows it AUTOMATICALLY.
-      // Calling displayNotification() now would create a DUPLICATE in the tray.
-      // We only call it if it's data-only OR if it's a critical reminder where we want to 
-      // attempt to replace the system one with our RICH formatted version.
-      // HOWEVER, if the user sees "2-2", it's safer to skip manual display for notification-block messages.
-      if ((isReminderNotif || (isDataOnly && (data.title || data.body || data.message))) && isDataOnly) {
-        const isAlert = /alert|emergency|urgent/i.test(title) || /alert|emergency|urgent/i.test(notificationType) || /alert/i.test(data.category);
-        const isAdminRem = !isAlert && (notificationType === 'admin_reminder' || notificationType === 'reminder' || data.category === 'reminder' || !!data.alertId);
-
-        // 🎯 Determine Channel
-        let channelId = 'gharplot_alerts';
-        let channelName = 'Gharplot Alerts';
-        if (notificationType === 'employee_due_reminder') {
-          channelId = 'enquiry_reminders';
-          channelName = 'Reminders';
-        } else if (isAdminRem) {
-          channelId = 'admin_reminders';
-          channelName = 'Admin Reminders';
+        if (employeeName && employeeName !== 'Employee' && employeeName !== 'System') {
+          notifTitle = `🔔 ${employeeName} - Reminder`;
+        } else {
+          notifTitle = (title === 'Notification') ? `🔔 Reminder` : `🔔 ${title}`;
         }
+        notifBody = reminderTitle + (clientName && clientName !== 'Client' ? ` | ${clientName}` : '');
+      }
 
-        await notifee.createChannel({
-          id: channelId,
-          name: channelName,
+      const prefix = isAlert ? 'alert_' : (isAdminRem ? 'reminder_' : 'notif_');
+      const rawId = data.reminderId || data._id || data.alertId;
+      // 🔥 CHANGED: Add timestamp to make each notification unique so they don't replace each other
+      const uniqueTimestamp = Date.now();
+      const unifiedId = rawId ? `${prefix}${rawId}_${uniqueTimestamp}` : (remoteMessage.messageId || `${uniqueTimestamp}`);
+
+      // 🔥 RICH FORMATTING: Add scheduled time & next scheduled time at bottom
+      let richBody = notifBody;
+
+      // Format time as h:mm AM/PM
+      const _fmtTimeBg = (isoStr) => {
+        try {
+          const d = new Date(isoStr);
+          if (isNaN(d.getTime())) return null;
+          let h = d.getHours();
+          const m = String(d.getMinutes()).padStart(2, '0');
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          h = h % 12;
+          if (h === 0) h = 12;
+          return `${h}:${m} ${ampm}`;
+        } catch (_) { return null; }
+      };
+
+      // Scheduled time (clock icon)
+      const _scheduledIsoBg = data.scheduledAt || data.scheduledDateTime;
+      if (_scheduledIsoBg) {
+        const formatted = _fmtTimeBg(_scheduledIsoBg);
+        if (formatted) richBody = `${richBody}\n⏰ Scheduled: ${formatted}`;
+      } else if (data.date && data.time) {
+        try {
+          let timeStr = typeof data.time === 'object'
+            ? `${String(data.time.hour || 0).padStart(2, '0')}:${String(data.time.minute || 0).padStart(2, '0')}`
+            : String(data.time);
+          richBody = `${richBody}\n⏰ Scheduled: ${timeStr}`;
+        } catch (e) { }
+      }
+
+      // Next scheduled (repeat icon)
+      if (data.nextScheduledAt) {
+        try {
+          const nextFormatted = _fmtTimeBg(data.nextScheduledAt);
+          if (nextFormatted) richBody = `${richBody}\n🔁 Next: ${nextFormatted}`;
+        } catch (e) { }
+      }
+
+      // Period (hourglass icon)
+      if (data.period) {
+        richBody = `${richBody}\n⏳ In ${data.period}`;
+      }
+
+      // 🛡️ DEDUPLICATION (Background Admin Alert Only): 
+      // Prevent duplicate tray alerts from dual FCM receipt or FCM+Local race.
+      const cleanAlertId = data.alertId ? String(data.alertId).replace(/^(alert_|notif_)/, '') : null;
+      if (cleanAlertId && !shouldShowAlert(cleanAlertId)) {
+        console.log(`🛡️ [DE-DUP] Skipping background tray notification for duplicate alert: ${cleanAlertId}`);
+        return;
+      }
+
+      console.log(`📩 [BG] FCM received for alert: ${cleanAlertId || 'no-alertId'}`);
+
+      await notifee.displayNotification({
+        id: unifiedId,
+        title: notifTitle,
+        body: richBody,
+        android: {
+          channelId: channelId,
+          pressAction: { id: 'default' },
           importance: 4,
           sound: 'default',
-          vibration: true,
-        });
-
-        let notifTitle = title;
-        let notifBody = body || 'You have a reminder';
-
-        // Apply specific formatting
-        if (notificationType === 'employee_due_reminder') {
-          notifTitle = (title === 'Notification') ? `⏰ Reminder Due` : `⏰ ${title}`;
-          notifBody = body || data.body || 'Your scheduled reminder is due';
-        } else if (notificationType === 'admin_reminder' || notificationType === 'employee_reminder_to_admin' || notificationType === 'reminder' || data.reminderTitle) {
-          const employeeName = data.employeeName || '';
-          const reminderTitle = data.reminderTitle || title || 'Reminder';
-          const clientName = data.clientName || '';
-
-          if (employeeName && employeeName !== 'Employee' && employeeName !== 'System') {
-            notifTitle = `🔔 ${employeeName} - Reminder`;
-          } else {
-            notifTitle = (title === 'Notification') ? `🔔 Reminder` : `🔔 ${title}`;
-          }
-          notifBody = reminderTitle + (clientName && clientName !== 'Client' ? ` | ${clientName}` : '');
-        }
-
-        const prefix = isAlert ? 'alert_' : (isAdminRem ? 'reminder_' : 'notif_');
-        const rawId = data.reminderId || data._id || data.alertId;
-        // 🔥 CHANGED: Add timestamp to make each notification unique so they don't replace each other
-        const uniqueTimestamp = Date.now();
-        const unifiedId = rawId ? `${prefix}${rawId}_${uniqueTimestamp}` : (remoteMessage.messageId || `${uniqueTimestamp}`);
-
-        // 🔥 RICH FORMATTING: Add scheduled time & next scheduled time at bottom
-        let richBody = notifBody;
-
-        // Format time as h:mm AM/PM
-        const _fmtTimeBg = (isoStr) => {
-          try {
-            const d = new Date(isoStr);
-            if (isNaN(d.getTime())) return null;
-            let h = d.getHours();
-            const m = String(d.getMinutes()).padStart(2, '0');
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            h = h % 12;
-            if (h === 0) h = 12;
-            return `${h}:${m} ${ampm}`;
-          } catch (_) { return null; }
-        };
-
-        // Scheduled time (clock icon)
-        const _scheduledIsoBg = data.scheduledAt || data.scheduledDateTime;
-        if (_scheduledIsoBg) {
-          const formatted = _fmtTimeBg(_scheduledIsoBg);
-          if (formatted) richBody = `${richBody}\n⏰ Scheduled: ${formatted}`;
-        } else if (data.date && data.time) {
-          try {
-            let timeStr = typeof data.time === 'object'
-              ? `${String(data.time.hour || 0).padStart(2, '0')}:${String(data.time.minute || 0).padStart(2, '0')}`
-              : String(data.time);
-            richBody = `${richBody}\n⏰ Scheduled: ${timeStr}`;
-          } catch (e) { }
-        }
-
-        // Next scheduled (repeat icon)
-        if (data.nextScheduledAt) {
-          try {
-            const nextFormatted = _fmtTimeBg(data.nextScheduledAt);
-            if (nextFormatted) richBody = `${richBody}\n🔁 Next: ${nextFormatted}`;
-          } catch (e) { }
-        }
-
-        // Period (hourglass icon)
-        if (data.period) {
-          richBody = `${richBody}\n⏳ In ${data.period}`;
-        }
-
-        // 🛡️ DEDUPLICATION (Background Admin Alert Only): 
-        // Prevent duplicate tray alerts from dual FCM receipt or FCM+Local race.
-        const cleanAlertId = data.alertId ? String(data.alertId).replace(/^(alert_|notif_)/, '') : null;
-        if (cleanAlertId && !shouldShowAlert(cleanAlertId)) {
-          console.log(`🛡️ [DE-DUP] Skipping background tray notification for duplicate alert: ${cleanAlertId}`);
-          return;
-        }
-
-        console.log(`📩 [BG] FCM received for alert: ${cleanAlertId || 'no-alertId'}`);
-
-        await notifee.displayNotification({
-          id: unifiedId,
-          title: notifTitle,
-          body: richBody,
-          android: {
-            channelId: channelId,
-            pressAction: { id: 'default' },
-            fullScreenAction: { id: 'default' },
-            importance: 4,
-            sound: 'default',
-            vibrationPattern: [300, 500],
-            onlyAlertOnce: false, // 🔥 CHANGED: Allow sound/vibration for each notification
-            showWhen: true, // 🔥 ADDED: Show timestamp
-            autoCancel: true, // 🔥 ADDED: Auto-dismiss when tapped
-            // timeoutAfter: 10000, // 🔥 REMOVED: Notification will stay until user dismisses manually
-            style: {
-              type: 1, // AndroidStyle.BIGTEXT
-              text: richBody,
-            },
+          vibrationPattern: [300, 500],
+          onlyAlertOnce: false, // 🔥 CHANGED: Allow sound/vibration for each notification
+          showWhen: true, // 🔥 ADDED: Show timestamp
+          autoCancel: true, // 🔥 ADDED: Auto-dismiss when tapped
+          // timeoutAfter: 10000, // 🔥 REMOVED: Notification will stay until user dismisses manually
+          style: {
+            type: 1, // AndroidStyle.BIGTEXT
+            text: richBody,
           },
-          data: { type: notificationType, ...data },
-        });
-        console.log(`✅ [BG] Notification ${unifiedId} displayed (stays until user dismisses)`);
-      } else {
-        console.log(`⏭️ Skipping manual Notifee display in background (isDataOnly: ${isDataOnly}, isReminder: ${isReminderNotif}). System either handles it or no display logic matched.`);
-      }
-
-    } catch (error) {
-      console.error('❌ Error in background message handler:', error);
+        },
+        data: { type: notificationType, ...data },
+      });
+      console.log(`✅ [BG] Notification ${unifiedId} displayed (stays until user dismisses)`);
+    } else {
+      console.log(`⏭️ Skipping manual Notifee display in background (isDataOnly: ${isDataOnly}, isReminder: ${isReminderNotif}). System either handles it or no display logic matched.`);
     }
+
+  } catch (error) {
+    console.error('❌ Error in background message handler:', error);
+  }
 };
 
 /**

@@ -268,6 +268,7 @@ const EditPropertyScreen = ({ navigation, route }) => {
     );
   };
 
+  // eslint-disable-next-line react/no-unstable-nested-components
   const InputField = ({ label, value, onChangeText, keyboardType = 'default', multiline = false }) => (
     <View style={styles.inputGroup}>
       <Text style={styles.inputLabel}>{label}</Text>
