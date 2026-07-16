@@ -11,6 +11,7 @@ import {
   Platform,
   StatusBar,
   TextInput,
+  RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -38,6 +39,13 @@ const AlertsScreen = ({ navigation, route }) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupData, setPopupData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchAlerts({}, true);
+    setRefreshing(false);
+  };
 
   // Refresh list every time screen comes into focus (e.g. after creating a new alert)
   useFocusEffect(
@@ -59,9 +67,9 @@ const AlertsScreen = ({ navigation, route }) => {
     }, [filterCategory])
   );
 
-  const fetchAlerts = async (params = {}) => {
+  const fetchAlerts = async (params = {}, isRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isRefresh) setLoading(true);
       console.log('📡 Fetching alerts with params:', params);
       const response = await crmAlertApi.getSystemAlerts(params);
       console.log('📥 Raw response:', response);
@@ -85,7 +93,7 @@ const AlertsScreen = ({ navigation, route }) => {
       console.error('❌ Error stack:', e.stack);
       CrossPlatformAlert.alert('Error', `Failed to fetch alerts: ${e.message}`);
     } finally {
-      setLoading(false);
+      if (!isRefresh) setLoading(false);
     }
   };
 
@@ -147,7 +155,7 @@ const AlertsScreen = ({ navigation, route }) => {
 
   const handleDeleteSelected = () => {
     if (selectedIds.length === 0) return;
-    
+
     CrossPlatformAlert.alert(
       'Delete Selected',
       `Are you sure you want to delete ${selectedIds.length} items?`,
@@ -160,12 +168,12 @@ const AlertsScreen = ({ navigation, route }) => {
             try {
               setLoading(true);
               await crmAlertApi.deleteMultipleAlerts(selectedIds);
-              
+
               // Cancel local notifications for each selected item
               for (const id of selectedIds) {
-                try { await AlertNotificationService.cancelAlert(id); } catch(_) {}
+                try { await AlertNotificationService.cancelAlert(id); } catch (_) { }
               }
-              
+
               setIsSelectionMode(false);
               setSelectedIds([]);
               fetchAlerts();
@@ -193,10 +201,10 @@ const AlertsScreen = ({ navigation, route }) => {
             try {
               setLoading(true);
               await crmAlertApi.deleteAllAlerts(filterCategory);
-              
+
               // Cancel all local alerts from service
-              try { await AlertNotificationService.cancelAllAlerts(); } catch(_) {}
-              
+              try { await AlertNotificationService.cancelAllAlerts(); } catch (_) { }
+
               fetchAlerts();
             } catch (error) {
               CrossPlatformAlert.alert('Error', 'Failed to delete all alerts');
@@ -239,12 +247,12 @@ const AlertsScreen = ({ navigation, route }) => {
     }
 
     // 🔥 Extract customIntervalMinutes from all possible locations
-    const customMins = alert.repeatMetadata?.customIntervalMinutes || 
-                      alert.customIntervalMinutes || 
-                      alert.customRepeatMinutes || 
-                      alert.repeatInterval || 
-                      '';
-    
+    const customMins = alert.repeatMetadata?.customIntervalMinutes ||
+      alert.customIntervalMinutes ||
+      alert.customRepeatMinutes ||
+      alert.repeatInterval ||
+      '';
+
     navigation.navigate('EditAlert', {
       alertId: itemId,
       originalTitle: alert.title,
@@ -295,7 +303,7 @@ const AlertsScreen = ({ navigation, route }) => {
       handleSelect(id);
       return;
     }
-    
+
     let newPinned;
     if (pinnedIds.includes(id)) {
       newPinned = pinnedIds.filter(pid => pid !== id);
@@ -305,7 +313,7 @@ const AlertsScreen = ({ navigation, route }) => {
     setPinnedIds(newPinned);
     try {
       await AsyncStorage.setItem(`pinned_alerts_${filterCategory}`, JSON.stringify(newPinned));
-    } catch(e) { console.error('Error saving pins', e); }
+    } catch (e) { console.error('Error saving pins', e); }
   };
 
   const handleSelect = (id) => {
@@ -331,12 +339,12 @@ const AlertsScreen = ({ navigation, route }) => {
     const isSelected = selectedIds.includes(itemId);
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         activeOpacity={0.8}
         onLongPress={() => startSelection(itemId)}
         onPress={() => isSelectionMode ? handleSelect(itemId) : openNotificationPopup(item)}
         style={[
-          styles.alertCard, 
+          styles.alertCard,
           isPinned && styles.alertCardPinned,
           isSelected && styles.alertCardSelected
         ]}
@@ -344,10 +352,10 @@ const AlertsScreen = ({ navigation, route }) => {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {isSelectionMode && (
-              <Icon 
-                name={isSelected ? "checkbox" : "square-outline"} 
-                size={20} 
-                color={isSelected ? "#2563eb" : "#94a3b8"} 
+              <Icon
+                name={isSelected ? "checkbox" : "square-outline"}
+                size={20}
+                color={isSelected ? "#2563eb" : "#94a3b8"}
                 style={{ marginRight: 10 }}
               />
             )}
@@ -374,7 +382,7 @@ const AlertsScreen = ({ navigation, route }) => {
         <Text style={styles.cardTitle} numberOfLines={1}>
           {item.title || item.reason}
         </Text>
-        
+
         {item.title && (
           <Text style={styles.cardReason} numberOfLines={2}>
             {item.reason}
@@ -392,11 +400,11 @@ const AlertsScreen = ({ navigation, route }) => {
               {(() => {
                 const prefix = 'REPEAT: ';
                 // Check all possible minute fields including nested repeatMetadata
-                const mins = item.repeatMetadata?.customIntervalMinutes || 
-                            item.customIntervalMinutes || 
-                            item.repeatInterval || 
-                            item.customRepeatMinutes;
-                
+                const mins = item.repeatMetadata?.customIntervalMinutes ||
+                  item.customIntervalMinutes ||
+                  item.repeatInterval ||
+                  item.customRepeatMinutes;
+
                 if (item.repeatFrequency && item.repeatFrequency !== 'none') {
                   const freq = item.repeatFrequency.toLowerCase();
                   if (freq === 'custom' || !!mins) {
@@ -404,19 +412,19 @@ const AlertsScreen = ({ navigation, route }) => {
                   }
                   return `${prefix}${freq.toUpperCase()}`;
                 }
-                
+
                 if (item.repeatDaily) return `${prefix}DAILY`;
                 if (mins) return `${prefix}${mins} MINS`;
-                
+
                 return `${prefix}NO`;
               })()}
             </Text>
           </View>
 
           {item.time && (
-             <View style={[styles.badge, { backgroundColor: '#e0f2fe' }]}>
-                <Text style={styles.badgeText}>SCHEDULED: {formatTime(item.scheduledDateTime || `${item.date}T${item.time}`)}</Text>
-             </View>
+            <View style={[styles.badge, { backgroundColor: '#e0f2fe' }]}>
+              <Text style={styles.badgeText}>SCHEDULED: {formatTime(item.scheduledDateTime || `${item.date}T${item.time}`)}</Text>
+            </View>
           )}
 
         </View>
@@ -470,13 +478,13 @@ const AlertsScreen = ({ navigation, route }) => {
           <View>
             <Text style={styles.title}>{isSelectionMode ? `${selectedIds.length} Selected` : screenTitle}</Text>
             {isSelectionMode && (
-               <TouchableOpacity onPress={() => { setIsSelectionMode(false); setSelectedIds([]); }}>
-                  <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '700', marginTop: 2 }}>Cancel Selection</Text>
-               </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setIsSelectionMode(false); setSelectedIds([]); }}>
+                <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '700', marginTop: 2 }}>Cancel Selection</Text>
+              </TouchableOpacity>
             )}
           </View>
         </View>
-        
+
         <View style={{ flexDirection: 'row' }}>
           {isSelectionMode ? (
             <TouchableOpacity
@@ -589,20 +597,15 @@ const AlertsScreen = ({ navigation, route }) => {
         <ActivityIndicator style={{ marginTop: 30 }} />
       ) : (
         <FlatList
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
           data={[...alerts]
             .filter(item => {
               if (!searchQuery) return true;
               const title = item.title || item.reason || '';
               return title.toLowerCase().includes(searchQuery.toLowerCase());
-            })
-            .sort((a, b) => {
-            const isAPinned = pinnedIds.includes(a._id || a.id);
-            const isBPinned = pinnedIds.includes(b._id || b.id);
-            if (isAPinned && !isBPinned) return -1;
-            if (!isAPinned && isBPinned) return 1;
-            // Fallback: mostly recent first
-            return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date);
-          })}
+            })}
           renderItem={renderRow}
           keyExtractor={(i) => i._id || i.id}
           contentContainerStyle={{ padding: 16 }}
