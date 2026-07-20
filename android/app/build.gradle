@@ -37,8 +37,8 @@ android {
         applicationId "com.bhoomitechzone.gharplot"
         minSdkVersion 24
         targetSdkVersion 35
-        versionCode 8
-        versionName "1.0.4"
+        versionCode 9
+        versionName "1.0.5"
 
         // Needed for new Gradle plugin
         multiDexEnabled true
