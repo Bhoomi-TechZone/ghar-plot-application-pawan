@@ -28,7 +28,19 @@ class NotificationHandler {
       // Type 1 = PRESS, Type 2 = ACTION_PRESS
       if (type === 1 || type === 2) {
         const actionId = detail.pressAction?.id;
-        
+
+        // 🔥 FIX: If the background handler already processed this tap and queued
+        // a popup (triggerReminderPopup), skip foreground navigation to prevent
+        // the popup from being auto-dismissed by a competing navigation.
+        try {
+          const alreadyHandled = await AsyncStorage.getItem('notificationNavigationDone');
+          if (alreadyHandled === 'true') {
+            await AsyncStorage.removeItem('notificationNavigationDone');
+            console.log('⏭️ Skipping foreground navigation — background handler already processed this tap');
+            return;
+          }
+        } catch (_) {}
+
         if (this.isNavigating || (now - this.lastNavigationTime) < this.NAVIGATION_COOLDOWN) {
           console.log('⚠️ Navigation locked (foreground), skipping');
           return;

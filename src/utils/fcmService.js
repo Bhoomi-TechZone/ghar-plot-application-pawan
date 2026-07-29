@@ -252,12 +252,10 @@ export const setupForegroundNotificationHandler = () => {
       const uniqueTimestamp = Date.now();
       const unifiedId = `${prefix}${cleanId}_${uniqueTimestamp}`;
 
-      // Update global ID tracking for debugging, but don't block the popup path yet.
-      // The actual lockout should happen when the popup is about to be displayed.
-      const now = Date.now();
-      if (cleanId && !cleanId.includes(now.toString())) {
-        global.lastGlobalReminderTime = now;
-      }
+      // NOTE: Do NOT update global.lastGlobalReminderTime here.
+      // That global is only updated by App.js AFTER a popup is successfully shown.
+      // Updating it here (before the popup guard) was causing the 10s dedup window
+      // to always appear "fresh", blocking every recurring notification after the first.
 
       {
         // 1. Show Status Bar Notification (Heads-up)

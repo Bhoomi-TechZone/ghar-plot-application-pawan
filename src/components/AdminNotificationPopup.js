@@ -2,6 +2,7 @@
  * Beautiful Admin Notification Popup
  * Specifically for Admin Reminders & Alerts
  */
+import React from 'react';
 import {
   Modal,
   View,

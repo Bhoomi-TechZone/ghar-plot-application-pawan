@@ -286,6 +286,14 @@ const AppMain = () => {
             const rawId = reminder.reminderId || reminder._id || reminder.id || reminder.alertId;
             const remId = normalizeId(rawId) || `rem_${now}`;
 
+            // 🔥 Build a composite key that is UNIQUE PER OCCURRENCE.
+            // Same alertId repeats every minute for recurring reminders, so we add
+            // the scheduledDateTime (rounded to the minute) to distinguish occurrences.
+            const scheduledMin = reminder.scheduledDateTime
+              ? new Date(reminder.scheduledDateTime).toISOString().slice(0, 16) // "2026-07-29T14:41"
+              : (reminder.scheduledAt ? new Date(reminder.scheduledAt).toISOString().slice(0, 16) : '');
+            const occurrenceKey = scheduledMin ? `${remId}_${scheduledMin}` : remId;
+
             // 🔥 Identify Type FIRST (Priority: Alert > Admin > Standard)
             const nType = String(reminder.type || reminder.notificationType || reminder.category || '').toLowerCase();
             const rAll = (
@@ -302,27 +310,28 @@ const AppMain = () => {
             // - Indigo Admin: Specifically tagged OR has Admin keywords (and NOT a red alert)
             const isActuallyAdmin = !isActuallyAlert && (rAll.includes('admin') || nType === 'admin_reminder' || !!reminder.alertId);
 
-            // 🛑 DUAL-PATH BRIDGE CHECK: Only block if it's a REMINDER (to prevent dual popups).
+            // 🛑 DUAL-PATH BRIDGE CHECK: Only block if same OCCURRENCE is already showing.
+            // Uses occurrenceKey (alertId + scheduledMinute) so recurring reminders are NOT blocked.
             // ALERTS (Red) always bypass the bridge to guarantee visibility.
-            if (!isActuallyAlert && remId && !remId.startsWith('rem_') && global.lastGlobalReminderId === remId && (now - global.lastGlobalReminderTime < 10000)) {
-              console.log('🛑 Blocking dual-popup (Large Path): Already showing popup for ID:', remId);
+            if (!isActuallyAlert && occurrenceKey && !occurrenceKey.startsWith('rem_') && global.lastGlobalReminderId === occurrenceKey && (now - global.lastGlobalReminderTime < 10000)) {
+              console.log('🛑 Blocking dual-popup (Large Path): Already showing popup for occurrence:', occurrenceKey);
               return;
             }
 
             // 🛑 LOCAL RAPID-TRIGGER LOCK: Skip only if it's a duplicate REMINDER.
             // (Standard alerts should almost always fire if they are fresh)
-            if (!isActuallyAlert && remId && remId === lastTriggeredId && (now - lastTriggeredTime < 5000)) {
-              console.log('🚨🚨🚨 [DEBUG APP] ⏭️ Skipping local duplicate REMINDER for ID:', remId);
+            if (!isActuallyAlert && occurrenceKey && occurrenceKey === lastTriggeredId && (now - lastTriggeredTime < 5000)) {
+              console.log('🚨🚨🚨 [DEBUG APP] ⏭️ Skipping local duplicate REMINDER for occurrence:', occurrenceKey);
               return;
             }
 
-            // Global Lockout Bridge Update - Inform other components
-            if (remId && !remId.startsWith('rem_')) {
-              global.lastGlobalReminderId = remId;
+            // Global Lockout Bridge Update - use occurrenceKey so next minute's recurrence is NOT blocked
+            if (occurrenceKey && !occurrenceKey.startsWith('rem_')) {
+              global.lastGlobalReminderId = occurrenceKey;
               global.lastGlobalReminderTime = now;
             }
 
-            lastTriggeredId = remId;
+            lastTriggeredId = occurrenceKey;
             lastTriggeredTime = now;
 
             // Prepare normalized data for display
