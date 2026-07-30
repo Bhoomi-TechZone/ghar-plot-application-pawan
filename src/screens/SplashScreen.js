@@ -75,7 +75,21 @@ const SplashScreen = ({ navigation }) => {
           console.log('📬 App opened from notification (killed state):', JSON.stringify(remoteMessage.data, null, 2));
           
           const notificationData = remoteMessage.data || {};
-          const notificationType = notificationData.type || notificationData.notificationType;
+          const notificationType = String(
+            notificationData.type || notificationData.notificationType || ''
+          ).toLowerCase();
+
+          // These notifications show the in-app reminder dialog when tapped
+          // from the background.  Queue the exact same dialog for a cold start
+          // as well, because onNotificationOpenedApp is not called when the
+          // app was fully closed.
+          const opensReminderPopup = [
+            'reminder',
+            'enquiry_reminder',
+            'admin_reminder',
+            'employee_reminder_to_admin',
+            'employee_due_reminder',
+          ].includes(notificationType) || !!notificationData.alertId;
           
           // Check if user is logged in
           const adminToken = await AsyncStorage.getItem('adminToken');
@@ -95,11 +109,17 @@ const SplashScreen = ({ navigation }) => {
               clearTimeout(safetyTimeout);
               navigation.replace('EditAlert', params);
               shouldDoAutoLogin = false;
-            } else if (notificationType === 'reminder' || notificationType === 'enquiry_reminder' || notificationData.alertId) {
-              // Store for App.js to handle via AppState once navigationRef is ready
+            } else if (opensReminderPopup) {
+              // Store for App.js to show the dialog after navigation and popup
+              // callbacks are ready. This also covers an app opened from a
+              // fully closed state by an admin FCM notification.
               await AsyncStorage.setItem('pendingNotificationData', JSON.stringify({
                 triggerReminderPopup: true,
-                data: notificationData,
+                data: {
+                  ...notificationData,
+                  title: notificationData.title || remoteMessage.notification?.title,
+                  note: notificationData.note || notificationData.body || notificationData.message || remoteMessage.notification?.body,
+                },
                 timestamp: Date.now()
               }));
               shouldDoAutoLogin = true; 

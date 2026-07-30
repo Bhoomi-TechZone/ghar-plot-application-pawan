@@ -399,10 +399,12 @@ class NotificationHandler {
           console.log('🚀 App opened from killed state by notification');
           console.log('📱 Initial Notification:', initialNotification.notification);
 
-          // Small delay to ensure navigation is ready
-          setTimeout(() => {
-            this.handleNotificationPress(initialNotification.notification, navigationRef);
-          }, 1000);
+          // Treat cold start tap EXACTLY like background tap
+          // This ensures the popup dialog opens instead of bypassing directly to Edit page
+          const actionId = initialNotification.pressAction?.id;
+          this.storeNotificationData(initialNotification.notification, actionId);
+          
+          AsyncStorage.setItem('notificationNavigationDone', 'true').catch(() => {});
         }
       })
       .catch((error) => {
@@ -418,12 +420,21 @@ class NotificationHandler {
    */
   static async storeNotificationData(notification, actionId = null) {
     try {
-      // 🔥 Prevent overwriting if already queued properly
+      // Avoid duplicate handling of the *same* notification tap, but never let
+      // an old pending item block a newer notification. A stale popup used to
+      // make all later cold-start notification taps get ignored.
+      const sourceNotificationId = String(
+        notification?.id || notification?.messageId || notification?.data?.messageId || ''
+      );
       const existingRaw = await AsyncStorage.getItem('pendingNotificationData');
       if (existingRaw) {
         try {
           const existing = JSON.parse(existingRaw);
-          if (existing.triggerReminderPopup) {
+          if (
+            existing.triggerReminderPopup &&
+            sourceNotificationId &&
+            existing.sourceNotificationId === sourceNotificationId
+          ) {
             console.log('⏭️ Skipping tap storage - popup already queued for this notification');
             return;
           }
@@ -439,6 +450,7 @@ class NotificationHandler {
       if (isReminder) {
          const popupData = {
            triggerReminderPopup: true,
+           sourceNotificationId,
            data: {
              ...notifData,
              type: notifType,
@@ -479,8 +491,16 @@ class NotificationHandler {
     try {
       const data = await AsyncStorage.getItem('pendingNotificationData');
       if (data) {
-        await AsyncStorage.removeItem('pendingNotificationData');
         const parsedData = JSON.parse(data);
+        
+        // 🔥 FIX: If it's a popup trigger, DO NOT delete it here! 
+        // App.js handles popup triggers locally. 
+        if (parsedData.triggerReminderPopup) {
+           console.log('⏭️ Skipping deletion in NotificationHandler: popup data should be handled by App.js');
+           return null; // Return null so NotificationHandler skips processing it
+        }
+
+        await AsyncStorage.removeItem('pendingNotificationData');
         console.log('📨 Retrieved pending notification data:', parsedData);
         return parsedData;
       }

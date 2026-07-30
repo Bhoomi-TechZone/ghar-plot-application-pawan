@@ -871,8 +871,34 @@ const AppMain = () => {
           console.warn('⚠️ Retry notification navigation failed');
         }
       }
+
+      // 🔥 FIX: Check for pending popup triggers (Cold Start handling)
+      const pendingData = await AsyncStorage.getItem('pendingNotificationData');
+      if (pendingData) {
+        const parsedData = JSON.parse(pendingData);
+        if (parsedData.triggerReminderPopup) {
+          console.log('🚀 TRIGGER POPUP (Cold Start) - Processing now!');
+          let attempts = 0;
+          const waitAndTrigger = async () => {
+            const callbackReady = !!global.triggerProfessionalReminder;
+            if (callbackReady) {
+              await AsyncStorage.removeItem('pendingNotificationData');
+              console.log('✅ App ready, triggering popup for ID:', parsedData.data?.alertId || parsedData.data?.reminderId);
+              setTimeout(() => {
+                global.triggerProfessionalReminder(parsedData.data || parsedData);
+              }, 0);
+            } else if (attempts < 20) {
+              attempts++;
+              setTimeout(waitAndTrigger, 500);
+            } else {
+              console.warn('❌ Failed to trigger popup after max attempts (Cold Start)');
+            }
+          };
+          waitAndTrigger();
+        }
+      }
     } catch (error) {
-      console.warn('⚠️ Error processing retry notifications:', error.message);
+      console.warn('⚠️ Error processing retry/popup notifications:', error.message);
     }
   };
 

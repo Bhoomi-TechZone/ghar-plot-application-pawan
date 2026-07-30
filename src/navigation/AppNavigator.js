@@ -117,7 +117,7 @@ const AppNavigator = React.forwardRef((props, ref) => {
 
   return (
     <PermissionProvider>
-      <NavigationContainer ref={ref}>
+      <NavigationContainer ref={ref} onReady={props.onReady}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {/* Onboarding + Auth Flow */}
           <Stack.Screen
