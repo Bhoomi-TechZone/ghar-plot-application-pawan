@@ -603,8 +603,10 @@ const AlertsScreen = ({ navigation, route }) => {
           data={[...alerts]
             .filter(item => {
               if (!searchQuery) return true;
-              const title = item.title || item.reason || '';
-              return title.toLowerCase().includes(searchQuery.toLowerCase());
+              const searchLower = searchQuery.toLowerCase();
+              const title = (item.title || '').toLowerCase();
+              const description = (item.reason || item.note || item.message || item.description || '').toLowerCase();
+              return title.includes(searchLower) || description.includes(searchLower);
             })}
           renderItem={renderRow}
           keyExtractor={(i) => i._id || i.id}
