@@ -29,6 +29,18 @@ class NotificationHandler {
       if (type === 1 || type === 2) {
         const actionId = detail.pressAction?.id;
 
+        // 🔥 CRITICAL FIX: Cancel ONLY the tapped notification, not all notifications
+        // This prevents clearing other pending notifications from the tray
+        const tappedNotificationId = detail.notification?.id;
+        if (tappedNotificationId) {
+          try {
+            await notifee.cancelNotification(tappedNotificationId);
+            console.log(`✅ Cancelled only tapped notification: ${tappedNotificationId}`);
+          } catch (cancelError) {
+            console.warn('⚠️ Failed to cancel tapped notification:', cancelError.message);
+          }
+        }
+
         // 🔥 FIX: If the background handler already processed this tap and queued
         // a popup (triggerReminderPopup), skip foreground navigation to prevent
         // the popup from being auto-dismissed by a competing navigation.
@@ -394,10 +406,22 @@ class NotificationHandler {
   static checkInitialNotification(navigationRef) {
     notifee
       .getInitialNotification()
-      .then((initialNotification) => {
+      .then(async (initialNotification) => {
         if (initialNotification) {
           console.log('🚀 App opened from killed state by notification');
           console.log('📱 Initial Notification:', initialNotification.notification);
+
+          // 🔥 CRITICAL FIX: Cancel ONLY the tapped notification, not all notifications
+          // This prevents clearing other pending notifications from the tray
+          const tappedNotificationId = initialNotification.notification?.id;
+          if (tappedNotificationId) {
+            try {
+              await notifee.cancelNotification(tappedNotificationId);
+              console.log(`✅ Cancelled only tapped notification: ${tappedNotificationId}`);
+            } catch (cancelError) {
+              console.warn('⚠️ Failed to cancel tapped notification:', cancelError.message);
+            }
+          }
 
           // Treat cold start tap EXACTLY like background tap
           // This ensures the popup dialog opens instead of bypassing directly to Edit page
@@ -596,6 +620,19 @@ class NotificationHandler {
       if (type === 1 || type === 2) {
         // ✅ USER EXPLICITLY TAPPED NOTIFICATION - OK to store and navigate
         console.log('✅ User tapped notification in background - storing for navigation');
+        
+        // 🔥 CRITICAL FIX: Cancel ONLY the tapped notification, not all notifications
+        // This prevents clearing other pending notifications from the tray
+        const tappedNotificationId = detail.notification?.id;
+        if (tappedNotificationId) {
+          try {
+            await notifee.cancelNotification(tappedNotificationId);
+            console.log(`✅ Cancelled only tapped notification: ${tappedNotificationId}`);
+          } catch (cancelError) {
+            console.warn('⚠️ Failed to cancel tapped notification:', cancelError.message);
+          }
+        }
+        
         await NotificationHandler.storeNotificationData(detail.notification, detail.pressAction?.id);
         
         // Mark as navigated to prevent duplicate when app opens

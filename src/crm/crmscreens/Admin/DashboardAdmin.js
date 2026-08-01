@@ -94,16 +94,12 @@ const AdminDashboardScreen = ({ navigation, user }) => {
     (async () => {
       try {
         const notifee = require('@notifee/react-native').default;
-        // Always recreate channels with high importance + sound
-        await notifee.deleteChannel('default_notification_channel').catch(() => { });
-        await notifee.deleteChannel('enquiry_reminders').catch(() => { });
-        await notifee.deleteChannel('gharplot_alerts').catch(() => { });
-        await notifee.deleteChannel('admin_reminders').catch(() => { });
+        // Ensure notification channels exist (idempotent — preserves displayed notifications)
         await notifee.createChannel({ id: 'default_notification_channel', name: 'Notifications', importance: 4, sound: 'default', vibration: true, vibrationPattern: [300, 500] });
         await notifee.createChannel({ id: 'enquiry_reminders', name: 'Reminders', importance: 4, sound: 'default', vibration: true, vibrationPattern: [300, 500] });
         await notifee.createChannel({ id: 'gharplot_alerts', name: 'Gharplot Alerts', importance: 4, sound: 'default', vibration: true, vibrationPattern: [300, 500] });
         await notifee.createChannel({ id: 'admin_reminders', name: 'Admin Reminders', importance: 4, sound: 'default', vibration: true, vibrationPattern: [300, 500] }); // ✅ required for background reminder delivery
-        console.log('✅ Admin notification channels recreated with sound');
+        console.log('✅ Admin notification channels ensured with sound');
 
         // 🔔 Check if Android notification importance is HIGH — if not, guide admin to fix it
         // Android permanently stores app-level importance. channelId delete+recreate doesn't reset it.

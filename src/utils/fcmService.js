@@ -345,7 +345,7 @@ export const setupForegroundNotificationHandler = () => {
                 smallIcon: 'ic_launcher',
                 onlyAlertOnce: false, // 🔥 CHANGED: Allow sound/vibration for each notification
                 showWhen: true, // 🔥 ADDED: Show timestamp
-                autoCancel: true, // 🔥 ADDED: Auto-dismiss when tapped
+                autoCancel: false, // 🔥 CRITICAL FIX: Prevent Android from clearing all notifications on killed-state launch
                 // timeoutAfter: 10000, // 🔥 REMOVED: Notification will stay until user dismisses manually
                 style: {
                   type: 1, // AndroidStyle.BIGTEXT
@@ -648,7 +648,7 @@ export const backgroundMessageHandler = async (remoteMessage) => {
           vibrationPattern: [300, 500],
           onlyAlertOnce: false, // 🔥 CHANGED: Allow sound/vibration for each notification
           showWhen: true, // 🔥 ADDED: Show timestamp
-          autoCancel: true, // 🔥 ADDED: Auto-dismiss when tapped
+          autoCancel: false, // 🔥 CRITICAL FIX: Prevent Android from clearing all notifications on killed-state launch
           // timeoutAfter: 10000, // 🔥 REMOVED: Notification will stay until user dismisses manually
           style: {
             type: 1, // AndroidStyle.BIGTEXT
@@ -956,28 +956,17 @@ export const initializeFCM = async (onTokenRefresh, onNotificationOpened) => {
   console.log('🚀 Initializing FCM Service with reminder support...');
 
   try {
-    // Clear old displayed (stale) tray notifications on startup.
-    // Delay to give user time to see notifications that arrived while app was killed.
-    setTimeout(async () => {
+    // Preserving displayed tray notifications and trigger notifications on startup
+    // Commented out to prevent deleting all existing pending reminders/notifications
+    /* setTimeout(async () => {
       try {
         const notifee = require('@notifee/react-native').default;
-        const displayed = await notifee.getDisplayedNotifications();
-        const now = Date.now();
-        // Only cancel notifications older than 5 minutes (stale ones)
-        for (const n of displayed) {
-          const nTimestamp = n.notification?.data?.timestamp
-            ? new Date(n.notification.data.timestamp).getTime()
-            : 0;
-          if (nTimestamp && (now - nTimestamp) > 5 * 60 * 1000) {
-            await notifee.cancelNotification(n.id);
-          }
-        }
-        await notifee.cancelTriggerNotifications(); // Clean up any leftover local triggers
-        console.log('🧹 Cleared stale tray notifications and leftover local triggers.');
+        // await notifee.cancelTriggerNotifications(); // Clean up any leftover local triggers
+        // console.log('🧹 Cleared leftover local trigger notifications.');
       } catch (err) {
-        console.log('⚠️ Could not cancel previous notifications:', err.message);
+        console.log('⚠️ Could not cancel previous trigger notifications:', err.message);
       }
-    }, 3000);
+    }, 3000); */
 
     // First check if FCM is properly configured
     const configCheck = await checkFCMConfiguration();

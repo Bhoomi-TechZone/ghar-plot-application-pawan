@@ -208,11 +208,8 @@ const AppMain = () => {
         // 🔔 Create notification channels + request permission at startup
         try {
           await notifee.requestPermission();
-          // Delete old channels (might have been created without sound) and recreate with sound
-          await notifee.deleteChannel('default_notification_channel').catch(() => { });
-          await notifee.deleteChannel('enquiry_reminders').catch(() => { });
-          await notifee.deleteChannel('gharplot_alerts').catch(() => { });
-          await notifee.createChannel({
+           // Ensure notification channels exist (idempotent — preserves displayed notifications)
+           await notifee.createChannel({
             id: 'default_notification_channel',
             name: 'Notifications',
             importance: 4, // IMPORTANCE_HIGH
