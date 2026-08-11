@@ -869,31 +869,58 @@ const AppMain = () => {
         }
       }
 
-      // 🔥 FIX: Check for pending popup triggers (Cold Start handling)
-      const pendingData = await AsyncStorage.getItem('pendingNotificationData');
-      if (pendingData) {
-        const parsedData = JSON.parse(pendingData);
-        if (parsedData.triggerReminderPopup) {
-          console.log('🚀 TRIGGER POPUP (Cold Start) - Processing now!');
-          let attempts = 0;
-          const waitAndTrigger = async () => {
-            const callbackReady = !!global.triggerProfessionalReminder;
-            if (callbackReady) {
-              await AsyncStorage.removeItem('pendingNotificationData');
-              console.log('✅ App ready, triggering popup for ID:', parsedData.data?.alertId || parsedData.data?.reminderId);
-              setTimeout(() => {
-                global.triggerProfessionalReminder(parsedData.data || parsedData);
-              }, 0);
-            } else if (attempts < 20) {
-              attempts++;
-              setTimeout(waitAndTrigger, 500);
+      // 🔥 KEY FIX (Killed/Cold Start): In the killed state, NotificationHandler.checkInitialNotification()
+      // is async — it stores 'pendingNotificationData' AFTER onNavigationReady fires.
+      // So we must poll continuously for a window of time (up to 8 seconds) rather than
+      // checking just once. This is safe — if data is already present (background case)
+      // it fires immediately on the first iteration.
+      let coldStartAttempts = 0;
+      const maxColdStartAttempts = 16; // 8 seconds total (16 × 500ms)
+      let coldStartDone = false;
+
+      const checkAndTriggerPopup = async () => {
+        if (coldStartDone) return; // Prevent re-entry
+
+        try {
+          const pendingData = await AsyncStorage.getItem('pendingNotificationData');
+          if (pendingData) {
+            const parsedData = JSON.parse(pendingData);
+            if (parsedData.triggerReminderPopup) {
+              console.log('🚀 TRIGGER POPUP (Cold/Killed Start) - Found pending popup data!');
+              const callbackReady = !!global.triggerProfessionalReminder;
+              if (callbackReady) {
+                coldStartDone = true;
+                await AsyncStorage.removeItem('pendingNotificationData');
+                console.log('✅ Triggering popup for ID:', parsedData.data?.alertId || parsedData.data?.reminderId);
+                setTimeout(() => {
+                  global.triggerProfessionalReminder(parsedData.data || parsedData);
+                }, 300); // Small delay to let UI settle after navigation
+                return; // Done
+              } else {
+                console.log(`⏳ Popup callback not ready yet. Attempt ${coldStartAttempts + 1}`);
+              }
             } else {
-              console.warn('❌ Failed to trigger popup after max attempts (Cold Start)');
+              // Not a popup trigger (navigation-type), stop polling
+              coldStartDone = true;
+              return;
             }
-          };
-          waitAndTrigger();
+          }
+        } catch (err) {
+          console.warn('⚠️ Error in checkAndTriggerPopup:', err.message);
         }
-      }
+
+        // Continue polling until max attempts
+        if (coldStartAttempts < maxColdStartAttempts) {
+          coldStartAttempts++;
+          setTimeout(checkAndTriggerPopup, 500);
+        } else {
+          console.warn('❌ No popup data found after 8 seconds of polling (Cold/Killed Start)');
+        }
+      };
+
+      // Start polling — handles both already-stored data and async-stored killed-state data
+      checkAndTriggerPopup();
+
     } catch (error) {
       console.warn('⚠️ Error processing retry/popup notifications:', error.message);
     }
