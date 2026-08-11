@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -832,7 +832,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     color: '#374151',
-    minHeight: 100,
+    minHeight: 360,
   },
   checkboxContainer: {
     flexDirection: 'row',

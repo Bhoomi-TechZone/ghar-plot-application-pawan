@@ -1,4 +1,4 @@
-﻿/**
+/**
  * EditAlertScreen.js
  * Screen for editing existing alerts from notifications
  * User can modify alert reason/message and reschedule it
@@ -42,33 +42,78 @@ const EditAlertScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState(originalTitle || '');
   const [reason, setReason] = useState(originalReason || '');
-  // 🔥 Initialize with scheduledDateTime if available, otherwise parse originalDate/Time
+  // 🔥 KEY FIX: Initialize scheduledDate correctly to avoid timezone double-conversion.
+  // The backend stores `time` as the user's IST time string (e.g. '13:27').
+  // `scheduledDateTime` / `nextScheduledAt` is a UTC ISO string used only for the DATE part.
+  // We must NOT use scheduledDateTime for the time portion since that would apply UTC→IST
+  // conversion on top of an already-IST time, showing the wrong hour.
   const [scheduledDate, setScheduledDate] = useState(() => {
-    // Try scheduledDateTime first (this is the NEXT occurrence for repeating alerts)
-    if (scheduledDateTime) {
-      const date = new Date(scheduledDateTime);
-      if (!isNaN(date.getTime())) {
-        console.log('📅 Loaded scheduled date from scheduledDateTime:', date.toISOString());
-        return date;
-      }
-    }
-    
-    // Fallback to parsing originalDate and originalTime
-    if (originalDate && originalTime) {
+    // Parse the time from originalTime (already IST, e.g. '13:27')
+    // This is the source of truth for what the user set.
+    const parseTimeFromString = (timeStr) => {
+      if (!timeStr) return null;
+      const parts = timeStr.split(':');
+      if (parts.length < 2) return null;
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      if (isNaN(hours) || isNaN(minutes)) return null;
+      return { hours, minutes };
+    };
+
+    // Parse the date from scheduledDateTime / nextScheduledAt (UTC ISO string)
+    // Only extract the local DATE portion (year, month, day) from this.
+    const parseDateFromISO = (isoStr) => {
+      if (!isoStr) return null;
       try {
-        const [year, month, day] = originalDate.split('-').map(Number);
-        const [hours, minutes] = originalTime.split(':').map(Number);
-        const date = new Date(year, month - 1, day, hours, minutes);
-        if (!isNaN(date.getTime())) {
-          console.log('📅 Loaded scheduled date from originalDate/Time:', date.toISOString());
-          return date;
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return null;
+        // Return date components in local timezone (IST on device)
+        return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() };
+      } catch (_) { return null; }
+    };
+
+    // Parse the date from originalDate (YYYY-MM-DD or ISO string, no timezone shift needed)
+    const parseDateFromString = (dateStr) => {
+      if (!dateStr) return null;
+      try {
+        // Handle both 'YYYY-MM-DD' and ISO strings
+        // For 'YYYY-MM-DD', construct without timezone to get local midnight
+        const parts = String(dateStr).split('T')[0].split('-');
+        if (parts.length === 3) {
+          const year = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          const day = parseInt(parts[2], 10);
+          if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+            return { year, month, day };
+          }
         }
-      } catch (error) {
-        console.error('Error parsing date/time:', error);
+        return null;
+      } catch (_) { return null; }
+    };
+
+    // 1. Get time from originalTime (most reliable — stored as IST by backend)
+    const timeParts = parseTimeFromString(originalTime);
+
+    // 2. Get date: prefer scheduledDateTime/nextScheduledAt for correct future date,
+    //    fall back to originalDate
+    const dateParts = parseDateFromISO(scheduledDateTime) || parseDateFromString(originalDate);
+
+    if (timeParts && dateParts) {
+      const result = new Date(dateParts.year, dateParts.month, dateParts.day, timeParts.hours, timeParts.minutes, 0, 0);
+      console.log('📅 EditAlert: Initialized from originalTime + scheduledDateTime date part:', result.toLocaleString());
+      return result;
+    }
+
+    // Fallback: use scheduledDateTime as-is (device will display in local IST automatically)
+    if (scheduledDateTime) {
+      const d = new Date(scheduledDateTime);
+      if (!isNaN(d.getTime())) {
+        console.log('📅 EditAlert: Fallback - using scheduledDateTime directly:', d.toLocaleString());
+        return d;
       }
     }
-    
-    console.log('⚠️ No valid date found, using current date');
+
+    console.log('⚠️ EditAlert: No valid date found, using current date');
     return new Date();
   });
   const [repeatFrequency, setRepeatFrequency] = useState(origRepeatFreq || (repeatDaily === 'true' || repeatDaily === true ? 'daily' : 'none'));

@@ -45,12 +45,39 @@ class NotificationHandler {
         // a popup (triggerReminderPopup), skip foreground navigation to prevent
         // the popup from being auto-dismissed by a competing navigation.
         try {
-          const alreadyHandled = await AsyncStorage.getItem('notificationNavigationDone');
-          if (alreadyHandled === 'true') {
+          const handledNotifId = await AsyncStorage.getItem('notificationNavigationDone');
+          const currentNotifId = detail.notification?.id;
+          
+          if (handledNotifId) {
+            // Always clear it to prevent stale flags blocking future taps
             await AsyncStorage.removeItem('notificationNavigationDone');
-            console.log('⏭️ Skipping foreground navigation — background handler already processed this tap');
+            
+            // If it matches the current notification, or if it was the legacy 'true' string (for backward compatibility), 
+            // skip foreground navigation because the background handler just did it.
+            if (handledNotifId === currentNotifId || handledNotifId === 'true') {
+              console.log('⏭️ Skipping foreground navigation — background handler already processed this tap');
+
+            // 🔥 FIX (Issue 1): Immediately process pending popup data here.
+            // The AppState handler uses a guard flag that may already be set, so it
+            // won't re-run for this AppState transition — we must trigger the popup
+            // directly instead of waiting for the next AppState change.
+            try {
+              const pendingRaw = await AsyncStorage.getItem('pendingNotificationData');
+              if (pendingRaw) {
+                const pending = JSON.parse(pendingRaw);
+                if (pending.triggerReminderPopup && pending.data && global.triggerProfessionalReminder) {
+                  await AsyncStorage.removeItem('pendingNotificationData');
+                  console.log('🔔 [FG SKIP] Triggering popup directly from pending data (background tap)');
+                  setTimeout(() => {
+                    global.triggerProfessionalReminder(pending.data);
+                  }, 300);
+                }
+              }
+            } catch (_) {}
+
             return;
-          }
+            } // Close if (handledNotifId === currentNotifId || handledNotifId === 'true')
+          } // Close if (handledNotifId)
         } catch (_) {}
 
         if (this.isNavigating || (now - this.lastNavigationTime) < this.NAVIGATION_COOLDOWN) {
@@ -71,6 +98,28 @@ class NotificationHandler {
            this.handleEditAction(detail.notification, navigationRef, 'edit_alert');
            setTimeout(() => { this.isNavigating = false; }, this.NAVIGATION_COOLDOWN);
            return;
+        }
+
+        // 🔥 FIX (Issue 2): When the app is in foreground and user taps an admin/alert
+        // notification, show the popup dialog instead of navigating to EditAlert.
+        // This handles the case where the background handler did NOT run
+        // (i.e., notifee fired onForegroundEvent directly because app was active).
+        const tappedData = detail.notification?.data || {};
+        const tappedType = String(tappedData.type || tappedData.notificationType || tappedData.category || '').toLowerCase();
+        const isAdminOrAlert = tappedType === 'admin_reminder' || tappedType === 'alert' ||
+                               tappedType === 'system_alert' || tappedType === 'employee_alert_to_admin' ||
+                               !!tappedData.alertId;
+
+        if (isAdminOrAlert && global.triggerProfessionalReminder) {
+          console.log('🔔 [FG TAP] Admin/Alert notification tapped while app in foreground — showing popup dialog');
+          global.triggerProfessionalReminder({
+            ...tappedData,
+            type: tappedData.alertId ? 'admin_reminder' : (tappedType || 'admin_reminder'),
+            title: detail.notification?.title || tappedData.title || 'Reminder',
+            note: detail.notification?.body || tappedData.note || tappedData.reason || tappedData.body || '',
+          });
+          setTimeout(() => { this.isNavigating = false; }, this.NAVIGATION_COOLDOWN);
+          return;
         }
 
         this.isNavigating = true;
@@ -427,8 +476,6 @@ class NotificationHandler {
           // This ensures the popup dialog opens instead of bypassing directly to Edit page
           const actionId = initialNotification.pressAction?.id;
           this.storeNotificationData(initialNotification.notification, actionId);
-          
-          AsyncStorage.setItem('notificationNavigationDone', 'true').catch(() => {});
         }
       })
       .catch((error) => {
@@ -635,8 +682,9 @@ class NotificationHandler {
         
         await NotificationHandler.storeNotificationData(detail.notification, detail.pressAction?.id);
         
-        // Mark as navigated to prevent duplicate when app opens
-        await AsyncStorage.setItem('notificationNavigationDone', 'true');
+        // Mark as navigated to prevent duplicate when app opens, using specific ID
+        const notifId = detail.notification?.id || 'true';
+        await AsyncStorage.setItem('notificationNavigationDone', notifId);
 
       } else if (type === 3) {
         // 🔥 Event Type 3 = DELIVERED (Background)

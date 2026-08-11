@@ -234,7 +234,10 @@ const AlertsScreen = ({ navigation, route }) => {
         location: alert.location,
         reminderTitle: alert.title,
         isAdmin: true,
-        scheduledDateTime: alert.nextScheduledAt || alert.reminderDateTime || alert.scheduledDateTime || `${alert.date} ${alert.time}`,
+        // 🔥 KEY FIX: pass originalTime (IST string from backend) so EditReminderScreen
+        // uses it directly for the time picker — avoids UTC→IST double-conversion.
+        originalTime: alert.time,
+        scheduledDateTime: alert.nextScheduledAt || alert.scheduledDateTime || `${alert.date}T${alert.time}`,
         isRepeating: !!(alert.isRepeating || alert.repeatDaily || (alert.repeatFrequency && alert.repeatFrequency !== 'none')),
         repeatType: alert.repeatType || alert.repeatFrequency || (alert.repeatDaily ? 'daily' : 'none'),
         customIntervalMinutes: alert.repeatMetadata?.customIntervalMinutes ||
@@ -258,10 +261,13 @@ const AlertsScreen = ({ navigation, route }) => {
       originalTitle: alert.title,
       originalReason: alert.reason,
       originalDate: alert.date,
+      // 🔥 KEY FIX: Pass item.time (already IST, e.g. '13:27') so EditAlert uses it
+      // directly for the time picker without UTC→IST double-conversion.
       originalTime: alert.time,
       repeatDaily: alert.repeatDaily,
-      // 🔥 Pass the next scheduled date so EditAlert shows the correct upcoming date
-      scheduledDateTime: alert.nextScheduledAt || alert.reminderDateTime || `${alert.date} ${alert.time}`,
+      // 🔥 Pass scheduledDateTime only for DATE part (used to get correct future date)
+      // EditAlertScreen will extract date from nextScheduledAt and time from originalTime
+      scheduledDateTime: alert.nextScheduledAt || alert.scheduledDateTime || `${alert.date}T${alert.time}`,
       repeatFrequency: alert.repeatFrequency || (alert.repeatDaily ? 'daily' : 'none'),
       // 🔥 FIX: Pass existing repeat configuration to preserve it
       customIntervalMinutes: customMins,
@@ -359,9 +365,19 @@ const AlertsScreen = ({ navigation, route }) => {
                 style={{ marginRight: 10 }}
               />
             )}
-            <Text style={[styles.cardDate, { marginBottom: 0 }]}>
-              {formatDate(created)} • {formatTime(created)}
-            </Text>
+            {item.nextScheduledAt || ((item.repeatFrequency && item.repeatFrequency !== 'none') || item.repeatDaily || item.repeatMetadata?.customIntervalMinutes || item.customIntervalMinutes || item.repeatInterval || item.customRepeatMinutes) ? (
+              <View style={[styles.badge, { backgroundColor: '#fef3c7', marginBottom: 0 }]}>
+                <Text style={styles.badgeText}>
+                  NEXT: {formatDate(item.nextScheduledAt || item.scheduledDateTime || created)} • {item.time}
+                </Text>
+              </View>
+            ) : (
+              item.time && (
+                <View style={[styles.badge, { backgroundColor: '#e0f2fe', marginBottom: 0 }]}>
+                  <Text style={styles.badgeText}>SCHEDULED: {item.time}</Text>
+                </View>
+              )
+            )}
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {isPinned && <Icon name="pin" size={16} color="#f59e0b" style={{ marginRight: 8 }} />}
@@ -420,24 +436,15 @@ const AlertsScreen = ({ navigation, route }) => {
               })()}
             </Text>
           </View>
-
-          {item.time && (
-            <View style={[styles.badge, { backgroundColor: '#e0f2fe' }]}>
-              <Text style={styles.badgeText}>SCHEDULED: {formatTime(item.scheduledDateTime || `${item.date}T${item.time}`)}</Text>
-            </View>
-          )}
-
         </View>
 
-        {item.nextScheduledAt && (
-          <View style={[styles.badgeRow, { marginBottom: 10 }]}>
-            <View style={[styles.badge, { backgroundColor: '#fef3c7' }]}>
-              <Text style={styles.badgeText}>
-                NEXT: {formatDate(item.nextScheduledAt)} • {formatTime(item.nextScheduledAt)}
-              </Text>
-            </View>
+        <View style={[styles.badgeRow, { marginBottom: 10 }]}>
+          <View style={[styles.badge, { backgroundColor: '#a7f3d0' }]}>
+            <Text style={styles.badgeText}>
+              PLACED ON: {formatDate(created)} • {formatTime(created)}
+            </Text>
           </View>
-        )}
+        </View>
 
         {!isSelectionMode && (
           <View style={styles.cardActions}>

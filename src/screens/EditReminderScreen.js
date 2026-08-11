@@ -43,8 +43,43 @@ const EditReminderScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState(clientName || '');
   const [message, setMessage] = useState(originalMessage || '');
-  // 🔥 Initialize with the scheduled date from params, or current date as fallback
+  // 🔥 KEY FIX: Initialize scheduledDate correctly to avoid timezone double-conversion.
+  // originalTime is already stored as IST by the backend (e.g. '13:27').
+  // scheduledDateTime / nextScheduledAt is a UTC ISO — use it only for the DATE part.
   const [scheduledDate, setScheduledDate] = useState(() => {
+    const originalTime = route.params?.originalTime; // IST time string e.g. '13:27'
+
+    // Parse time from IST string
+    const parseTimeFromString = (timeStr) => {
+      if (!timeStr) return null;
+      const parts = String(timeStr).split(':');
+      if (parts.length < 2) return null;
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      return (isNaN(hours) || isNaN(minutes)) ? null : { hours, minutes };
+    };
+
+    // Extract local date parts from UTC ISO string
+    const parseDateFromISO = (isoStr) => {
+      if (!isoStr) return null;
+      try {
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return null;
+        return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() };
+      } catch (_) { return null; }
+    };
+
+    // If we have originalTime (IST string), use it for time + scheduledDateTime for date
+    const timeParts = parseTimeFromString(originalTime);
+    if (timeParts && scheduledDateTime) {
+      const dateParts = parseDateFromISO(scheduledDateTime);
+      if (dateParts) {
+        const result = new Date(dateParts.year, dateParts.month, dateParts.day, timeParts.hours, timeParts.minutes, 0, 0);
+        console.log('📅 EditReminder: Initialized from originalTime + scheduledDateTime date:', result.toLocaleString());
+        return result;
+      }
+    }
+
     if (scheduledDateTime) {
       // Fix 5 hours offset bug: parse "YYYY-MM-DD HH:mm" explicitly as local time
       if (typeof scheduledDateTime === 'string' && !scheduledDateTime.includes('T') && scheduledDateTime.includes(' ')) {
@@ -58,13 +93,12 @@ const EditReminderScreen = ({ route, navigation }) => {
       }
 
       const date = new Date(scheduledDateTime);
-      // Validate the date
       if (!isNaN(date.getTime())) {
-        console.log('📅 Loaded scheduled date from params:', date.toISOString());
+        console.log('📅 EditReminder: Fallback - using scheduledDateTime directly:', date.toLocaleString());
         return date;
       }
     }
-    console.log('⚠️ No valid scheduled date in params, using current date');
+    console.log('⚠️ EditReminder: No valid scheduled date in params, using current date');
     return new Date();
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
