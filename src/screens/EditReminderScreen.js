@@ -59,15 +59,28 @@ const EditReminderScreen = ({ route, navigation }) => {
       return (isNaN(hours) || isNaN(minutes)) ? null : { hours, minutes };
     };
 
-    // Extract local date parts from UTC ISO string
+    // Extract local date parts from ISO string or Date object
     const parseDateFromISO = (isoStr) => {
-      if (!isoStr) return null;
-      try {
-        const d = new Date(isoStr);
-        if (isNaN(d.getTime())) return null;
-        return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() };
-      } catch (_) { return null; }
-    };
+  if (!isoStr) return null;
+
+  try {
+    // Extract calendar date directly from ISO string.
+    // Do NOT convert UTC -> local timezone here.
+    const match = String(isoStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (match) {
+      return {
+        year: Number(match[1]),
+        month: Number(match[2]) - 1,
+        day: Number(match[3]),
+      };
+    }
+
+    return null;
+  } catch (_) {
+    return null;
+  }
+};
 
     // If we have originalTime (IST string), use it for time + scheduledDateTime for date
     const timeParts = parseTimeFromString(originalTime);
@@ -92,6 +105,7 @@ const EditReminderScreen = ({ route, navigation }) => {
         } catch (e) {}
       }
 
+      // If scheduledDateTime is an ISO string, it's UTC. Let's parse it to local device timezone
       const date = new Date(scheduledDateTime);
       if (!isNaN(date.getTime())) {
         console.log('📅 EditReminder: Fallback - using scheduledDateTime directly:', date.toLocaleString());
@@ -170,24 +184,41 @@ const EditReminderScreen = ({ route, navigation }) => {
     }
   };
 
-  const formatDate = (date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+const formatDate = (date) => {
+  if (!date) return '';
 
-  const formatTime = (date) => {
-    let hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12 || 12;
-    return `${hours}:${minutes} ${ampm}`;
-  };
+  const d = new Date(date);
 
-  const formatDateTime = (date) => {
-    return `${formatDate(date)} at ${formatTime(date)}`;
-  };
+  if (isNaN(d.getTime())) return '';
+
+  return d.toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
+const formatTime = (date) => {
+  if (!date) return '';
+
+  const d = new Date(date);
+
+  if (isNaN(d.getTime())) return '';
+
+  return d.toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+const formatDateTime = (date) => {
+  if (!date) return '';
+
+  return `${formatDate(date)} at ${formatTime(date)}`;
+};
 
   const getRepeatLabel = () => {
     if (repeatFrequency === 'custom') {

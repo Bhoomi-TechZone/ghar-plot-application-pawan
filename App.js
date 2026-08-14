@@ -987,8 +987,13 @@ const AppMain = () => {
         nextScheduledAt={adminPopupData?.nextScheduledAt || ''}
         time={adminPopupData?.time || ''} // 🔥 Pass time for scheduled display
         date={adminPopupData?.date || ''} // 🔥 Pass date as fallback
-        createdAt={adminPopupData?.createdAt || (adminPopupData?.date && adminPopupData?.time ? `${adminPopupData.date}T${adminPopupData.time}:00.000Z` : '')} // 🔥 Construct from date+time if createdAt missing
+        createdAt={adminPopupData?.createdAt || (adminPopupData?.date && adminPopupData?.time ? (() => { try { const [y,mo,d] = adminPopupData.date.split('-').map(Number); const [h,min] = adminPopupData.time.split(':').map(Number); return new Date(Date.UTC(y, mo-1, d, h, min, 0) - 5.5*3600*1000).toISOString(); } catch(_){ return ''; } })() : '')} // 🔥 IST-aware construction (avoids UTC date shift)
         type={adminPopupData?.type || adminPopupData?.notificationType || 'admin_reminder'}
+        repeatFrequency={adminPopupData?.repeatFrequency || (adminPopupData?.repeatDaily ? 'daily' : '')} // 🔥 Pass for Next Scheduled calc
+        repeatDaily={adminPopupData?.repeatDaily === true || adminPopupData?.repeatDaily === 'true'} // 🔥 Pass for Next Scheduled calc
+        repeatMetadata={adminPopupData?.repeatMetadata || {}} // 🔥 Pass for minutes/custom repeat calc
+        customRepeatMinutes={parseInt(adminPopupData?.customRepeatMinutes || adminPopupData?.customIntervalMinutes || 0)} // 🔥 Direct minutes field
+        customIntervalMinutes={parseInt(adminPopupData?.customIntervalMinutes || adminPopupData?.customRepeatMinutes || 0)} // 🔥 Alternate minutes field
         onEdit={adminPopupData?.onEdit}
         onClose={() => {
           setAdminPopupVisible(false);

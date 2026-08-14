@@ -20,7 +20,7 @@ import AlertNotificationService from '../../../services/AlertNotificationService
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
-import { formatDateToIST, formatTimeToIST } from '../../../utils/timezoneHelper'; // 🔥 Import IST helpers
+import { formatDateToIST, formatTimeToIST } from '../../../utils/timezoneHelper'; // Import IST helpers
 import AdminNotificationPopup from '../../../components/AdminNotificationPopup';
 
 const AlertsScreen = ({ navigation, route }) => {
@@ -70,11 +70,11 @@ const AlertsScreen = ({ navigation, route }) => {
   const fetchAlerts = async (params = {}, isRefresh = false) => {
     try {
       if (!isRefresh) setLoading(true);
-      console.log('📡 Fetching alerts with params:', params);
+      console.log('Fetching alerts with params:', params);
       const response = await crmAlertApi.getSystemAlerts(params);
-      console.log('📥 Raw response:', response);
+      console.log('Raw response:', response);
       const data = response?.alerts || response?.data || [];
-      console.log('✅ Fetched alerts:', data.length);
+      console.log('Fetched alerts:', data.length);
       const allAlerts = Array.isArray(data) ? data : [];
 
       let filtered;
@@ -85,31 +85,179 @@ const AlertsScreen = ({ navigation, route }) => {
         // Alerts: show items tagged as 'alert' OR items with no category (old data)
         filtered = allAlerts.filter(item => !item.category || item.category === 'alert');
       }
-      console.log(`📊 Filtered ${filtered.length} items for category: ${filterCategory}`);
+      console.log(`Filtered ${filtered.length} items for category: ${filterCategory}`);
       setAlerts(filtered);
     } catch (e) {
-      console.error('❌ Error fetching alerts:', e);
-      console.error('❌ Error message:', e.message);
-      console.error('❌ Error stack:', e.stack);
+      console.error('Error fetching alerts:', e);
+      console.error('Error message:', e.message);
+      console.error('Error stack:', e.stack);
       CrossPlatformAlert.alert('Error', `Failed to fetch alerts: ${e.message}`);
     } finally {
       if (!isRefresh) setLoading(false);
     }
   };
 
-  const formatDate = (iso) => {
-    if (!iso) return '';
-    // 🔥 Use IST helper to convert UTC to IST for display
-    return formatDateToIST(iso);
-  };
+  // const formatDate = (iso) => {
+  //   if (!iso) return '';
+  //   // Use IST helper to convert UTC to IST for display
+  //   return formatDateToIST(iso);
+  // };
+
+  // const formatTime = (iso) => {
+  //   if (!iso) return '';
+  //   // Use IST helper to convert UTC to IST for display
+  //   return formatTimeToIST(iso);
+  // };
 
   const formatTime = (iso) => {
-    if (!iso) return '';
-    // 🔥 Use IST helper to convert UTC to IST for display
-    return formatTimeToIST(iso);
-  };
+  if (!iso) return '';
 
-  // 🔥 NEW: Format Date object to YYYY-MM-DD for API
+  const date = new Date(iso);
+
+  if (isNaN(date.getTime())) return '';
+
+  return date.toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+const formatDate = (iso) => {
+  if (!iso) return '';
+
+  const date = new Date(iso);
+
+  if (isNaN(date.getTime())) return '';
+
+  return date.toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};  
+
+
+// Calculate next scheduled datetime for display on card badge
+// Handles: daily (move to tomorrow if passed), custom/minutes (next future occurrence)
+const getNextScheduledDisplay = (item) => {
+  try {
+    const dateStr = item.date;
+    const timeStr = item.time;
+    if (!dateStr || !timeStr) return null;
+
+    const datePart = String(dateStr).split('T')[0];
+    const dateMatch = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!dateMatch) return null;
+
+    let year = Number(dateMatch[1]);
+    let month = Number(dateMatch[2]);
+    let day = Number(dateMatch[3]);
+
+    const timeMatch = String(timeStr).match(/^(\d{1,2}):(\d{2})$/);
+    if (!timeMatch) return null;
+
+    const hours = Number(timeMatch[1]);
+    const minutes = Number(timeMatch[2]);
+
+    // Get current IST time using Intl (avoids device timezone issues)
+    const istParts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(new Date());
+    const ist = {};
+    istParts.forEach(p => { if (p.type !== 'literal') ist[p.type] = Number(p.value); });
+
+    const candidateValue = year * 100000000 + month * 1000000 + day * 10000 + hours * 100 + minutes;
+    const nowValue = ist.year * 100000000 + ist.month * 1000000 + ist.day * 10000 + ist.hour * 100 + ist.minute;
+
+    // Check repeat type
+    const repeatFrequency = item.repeatFrequency || (item.repeatDaily ? 'daily' : 'none');
+    const customMins = parseInt(
+      item.repeatMetadata?.customIntervalMinutes ||
+      item.customIntervalMinutes ||
+      item.customRepeatMinutes ||
+      item.repeatInterval ||
+      0
+    );
+
+    if (repeatFrequency === 'daily' || item.repeatDaily) {
+      // Daily: if today's time has already passed, show tomorrow
+      if (candidateValue <= nowValue) {
+        const nextDay = new Date(Date.UTC(year, month - 1, day));
+        nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+        year = nextDay.getUTCFullYear();
+        month = nextDay.getUTCMonth() + 1;
+        day = nextDay.getUTCDate();
+      }
+    } else if ((repeatFrequency === 'custom' || customMins > 0) && customMins > 0) {
+      // Minutes/custom repeat: find next future occurrence
+      // Build a JS Date for the base scheduled time (treated as IST local)
+      let base = new Date(year, month - 1, day, hours, minutes, 0, 0);
+      const now = new Date();
+      // Convert IST base to UTC: IST = UTC+5:30
+      const istOffsetMs = 5.5 * 60 * 60 * 1000;
+      // Shift base: we stored it as local but it represents IST
+      // To get UTC-equivalent: subtract IST offset
+      const baseUTC = new Date(base.getTime() - istOffsetMs + (new Date().getTimezoneOffset() * 60 * 1000));
+      const intervalMs = customMins * 60 * 1000;
+      let nextOccurrence = new Date(baseUTC.getTime());
+      while (nextOccurrence <= now) {
+        nextOccurrence = new Date(nextOccurrence.getTime() + intervalMs);
+      }
+      // Convert back to IST for display
+      const nextISTStr = nextOccurrence.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true,
+      });
+      return nextISTStr.replace(',', ' •');
+    }
+
+    const h = hours;
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    const formattedDate =
+      `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+    return `${formattedDate} • ${String(hour12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
+  } catch (e) {
+    return null;
+  }
+};
+
+const formatDateTime = (iso, reminderTime = null) => {
+  if (!iso && !reminderTime) return '';
+
+  if (reminderTime) {
+    const [hours, minutes] = reminderTime.split(':');
+
+    const date = new Date(iso);
+
+    if (!isNaN(date.getTime())) {
+      const h = parseInt(hours, 10);
+      const m = parseInt(minutes, 10);
+
+      const period = h >= 12 ? 'PM' : 'AM';
+      const hour12 = h % 12 || 12;
+
+      return `${formatDate(date)} • ${String(hour12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+    }
+  }
+
+  return '';
+};
+
+  // const formatDateTime = (iso) => {
+  //   if (!iso) return '';
+  //   const date = formatDate(iso);
+  //   const time = formatTime(iso);
+  //   return [date, time].filter(Boolean).join(' • ');
+  // };
+
+  // NEW: Format Date object to YYYY-MM-DD for API
   const formatDateForAPI = (dateObj) => {
     if (!dateObj) return '';
     const year = dateObj.getFullYear();
@@ -120,10 +268,10 @@ const AlertsScreen = ({ navigation, route }) => {
 
   const handleFilter = () => {
     const params = {};
-    // 🔥 FIX: Use formatDateForAPI instead of formatDate for API params
+    // FIX: Use formatDateForAPI instead of formatDate for API params
     if (startDate) params.startDate = formatDateForAPI(startDate);
     if (endDate) params.endDate = formatDateForAPI(endDate);
-    console.log('🔍 Filter params:', params);
+    console.log('ðŸ” Filter params:', params);
     fetchAlerts(params);
   };
 
@@ -222,7 +370,7 @@ const AlertsScreen = ({ navigation, route }) => {
   const handleEdit = (alert) => {
     const itemId = alert._id || alert.id || alert.alertId;
     const itemCategory = getItemCategory(alert);
-    console.log('📝 Editing notification:', itemId, itemCategory);
+    console.log('ðŸ“ Editing notification:', itemId, itemCategory);
 
     if (itemCategory === 'reminder') {
       navigation.navigate('EditReminder', {
@@ -234,8 +382,8 @@ const AlertsScreen = ({ navigation, route }) => {
         location: alert.location,
         reminderTitle: alert.title,
         isAdmin: true,
-        // 🔥 KEY FIX: pass originalTime (IST string from backend) so EditReminderScreen
-        // uses it directly for the time picker — avoids UTC→IST double-conversion.
+        // KEY FIX: pass originalTime (IST string from backend) so EditReminderScreen
+        // uses it directly for the time picker â€” avoids UTCâ†’IST double-conversion.
         originalTime: alert.time,
         scheduledDateTime: alert.nextScheduledAt || alert.scheduledDateTime || `${alert.date}T${alert.time}`,
         isRepeating: !!(alert.isRepeating || alert.repeatDaily || (alert.repeatFrequency && alert.repeatFrequency !== 'none')),
@@ -249,7 +397,7 @@ const AlertsScreen = ({ navigation, route }) => {
       return;
     }
 
-    // 🔥 Extract customIntervalMinutes from all possible locations
+    // Extract customIntervalMinutes from all possible locations
     const customMins = alert.repeatMetadata?.customIntervalMinutes ||
       alert.customIntervalMinutes ||
       alert.customRepeatMinutes ||
@@ -261,15 +409,15 @@ const AlertsScreen = ({ navigation, route }) => {
       originalTitle: alert.title,
       originalReason: alert.reason,
       originalDate: alert.date,
-      // 🔥 KEY FIX: Pass item.time (already IST, e.g. '13:27') so EditAlert uses it
-      // directly for the time picker without UTC→IST double-conversion.
+      // KEY FIX: Pass item.time (already IST, e.g. '13:27') so EditAlert uses it
+      // directly for the time picker without UTCâ†’IST double-conversion.
       originalTime: alert.time,
       repeatDaily: alert.repeatDaily,
-      // 🔥 Pass scheduledDateTime only for DATE part (used to get correct future date)
+      // Pass scheduledDateTime only for DATE part (used to get correct future date)
       // EditAlertScreen will extract date from nextScheduledAt and time from originalTime
       scheduledDateTime: alert.nextScheduledAt || alert.scheduledDateTime || `${alert.date}T${alert.time}`,
       repeatFrequency: alert.repeatFrequency || (alert.repeatDaily ? 'daily' : 'none'),
-      // 🔥 FIX: Pass existing repeat configuration to preserve it
+      // FIX: Pass existing repeat configuration to preserve it
       customIntervalMinutes: customMins,
       repeatMetadata: alert.repeatMetadata, // Pass complete repeatMetadata object
     });
@@ -365,10 +513,10 @@ const AlertsScreen = ({ navigation, route }) => {
                 style={{ marginRight: 10 }}
               />
             )}
-            {item.nextScheduledAt || ((item.repeatFrequency && item.repeatFrequency !== 'none') || item.repeatDaily || item.repeatMetadata?.customIntervalMinutes || item.customIntervalMinutes || item.repeatInterval || item.customRepeatMinutes) ? (
+            {((item.repeatFrequency && item.repeatFrequency !== 'none') || item.repeatDaily || item.repeatMetadata?.customIntervalMinutes || item.customIntervalMinutes || item.repeatInterval || item.customRepeatMinutes) ? (
               <View style={[styles.badge, { backgroundColor: '#fef3c7', marginBottom: 0 }]}>
                 <Text style={styles.badgeText}>
-                  NEXT: {formatDate(item.nextScheduledAt || item.scheduledDateTime || created)} • {item.time}
+                  NEXT: {getNextScheduledDisplay(item) || formatDateTime(item.date, item.time)}
                 </Text>
               </View>
             ) : (
@@ -441,7 +589,7 @@ const AlertsScreen = ({ navigation, route }) => {
         <View style={[styles.badgeRow, { marginBottom: 10 }]}>
           <View style={[styles.badge, { backgroundColor: '#a7f3d0' }]}>
             <Text style={styles.badgeText}>
-              PLACED ON: {formatDate(created)} • {formatTime(created)}
+              PLACED ON: {formatDate(created)} {formatTime(created)}
             </Text>
           </View>
         </View>
@@ -786,3 +934,5 @@ const styles = StyleSheet.create({
 
   actionText: { color: '#fff', fontWeight: '700' },
 });
+
+

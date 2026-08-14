@@ -1,7 +1,229 @@
+// /**
+//  * Beautiful Admin Notification Popup
+//  * Specifically for Admin Reminders & Alerts
+//  */
+// import React from 'react';
+// import {
+//   Modal,
+//   View,
+//   Text,
+//   TouchableOpacity,
+//   StyleSheet,
+//   Dimensions,
+//   ScrollView,
+// } from 'react-native';
+
+// import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+
+// //const { width } = Dimensions.get('window');
+// const { width, height } = Dimensions.get('window');
+
+// const AdminNotificationPopup = ({
+//   visible,
+//   onClose,
+//   employeeName = 'Admin',
+//   title = 'Admin Notification',
+//   clientName = '',
+//   reason = '',
+//   note = '',
+//   scheduledAt = '',
+//   nextScheduledAt = '',
+//   createdAt = '', // 🔥 Add createdAt prop
+//   time = '', // 🔥 Add time prop for scheduled time display
+//   date = '', // 🔥 Add date prop for fallback
+//   type = 'admin_reminder',
+//   onEdit,
+// }) => {
+//   // Always use Indigo theme for Admin
+//   const primaryColor = '#4F46E5';
+//   const secondaryColor = '#64748b';
+//   const bgColor = '#EEF2FF';
+//   const iconName = 'notifications-active';
+  
+//   const isAlert = String(type).toLowerCase().includes('alert') || String(title).toLowerCase().includes('alert');
+//   const headerTitle = isAlert ? 'Admin Alert' : 'Admin Reminder';
+//   const actionText = isAlert ? 'admin created an alert' : 'admin created a reminder';
+
+//   // Format ISO date to readable string in IST
+//   const formatDateTime = (isoStr) => {
+//     if (!isoStr) return null;
+//     try {
+//       const d = new Date(isoStr);
+//       if (isNaN(d.getTime())) return null;
+//       return d.toLocaleString('en-IN', {
+//         timeZone: 'Asia/Kolkata',
+//         day: '2-digit',
+//         month: '2-digit',
+//         year: 'numeric',
+//         hour: '2-digit',
+//         minute: '2-digit',
+//         hour12: false,
+//       }).replace(',', ' •');
+//     } catch (_) { return null; }
+//   };
+
+
+  
+//   // Format time only (HH:mm) in IST
+//   const formatTime = (timeStr) => {
+//     if (!timeStr) return null;
+//     // If it's already in HH:mm format, return it
+//     if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
+//       return timeStr;
+//     }
+//     // Otherwise try to parse as ISO string and convert to IST time
+//     try {
+//       const d = new Date(timeStr);
+//       if (isNaN(d.getTime())) return null;
+//       return d.toLocaleTimeString('en-IN', {
+//         timeZone: 'Asia/Kolkata',
+//         hour: '2-digit',
+//         minute: '2-digit',
+//         hour12: false,
+//       });
+//     } catch (_) { return null; }
+//   };
+
+//   const formattedScheduled = formatDateTime(scheduledAt);
+//   const formattedNext = formatDateTime(nextScheduledAt);
+//   const formattedCreated = formatDateTime(createdAt); // 🔥 Format created date
+  
+//   // 🔥 Get scheduled time - try scheduledAt, then time prop, then date+time combo
+//   const scheduledTimeDisplay = time 
+//     ? (typeof time === 'object' 
+//         ? `${String(time.hour || 0).padStart(2, '0')}:${String(time.minute || 0).padStart(2, '0')}`
+//         : formatTime(time))
+//     : (scheduledAt ? formatTime(scheduledAt) : null);
+
+//   return (
+//     <Modal
+//       visible={visible}
+//       transparent
+//       animationType="fade"
+//       onRequestClose={onClose}
+//     >
+//       <View style={styles.overlay}>
+//         <View style={styles.container}>
+//           {/* Header */}
+//           <View style={[styles.header, { backgroundColor: primaryColor }]}>
+//             <View style={styles.headerIcon}>
+//               <MaterialIcons name={iconName} size={28} color="#fff" />
+//             </View>
+//             <Text style={styles.headerTitle}>{headerTitle}</Text>
+//           </View>
+         
+//           {/* Content */}
+//          <ScrollView
+//           style={styles.content}
+//           contentContainerStyle={styles.scrollContent}
+//           showsVerticalScrollIndicator={false}
+//         >
+//           {/* YAHAN APNA POORA EXISTING CONTENT SAME RAKHO */}
+//           {/* Content */}      
+//             {/* Admin Badge */}
+//             <View style={styles.employeeBadge}>
+//               <View style={[styles.avatar, { backgroundColor: primaryColor + '20' }]}>
+//                 <MaterialIcons name="security" size={24} color={primaryColor} />
+//               </View>
+//               <View style={styles.employeeInfo}>
+//                 <Text style={styles.employeeName}>{employeeName === 'Employee' ? 'Admin' : employeeName}</Text>
+//                 <Text style={styles.employeeAction}>{actionText}</Text>
+//               </View>
+//             </View>
+
+//             {/* Details Card */}
+//             <View style={[styles.detailsCard, { backgroundColor: bgColor }]}>
+//               {/* Reminder Title */}
+//               <View style={styles.detailRow}>
+//                 <MaterialIcons name="event-note" size={20} color={primaryColor} />
+//                 <View style={styles.detailContent}>
+//                   <Text style={styles.detailLabel}>Reminder</Text>
+//                   <Text style={styles.detailValue}>{title || 'N/A'}</Text>
+//                 </View>
+//               </View>
+
+//               {/* Client Name */}
+//               {clientName ? (
+//                 <View style={styles.detailRow}>
+//                   <MaterialIcons name="person-outline" size={20} color={primaryColor} />
+//                   <View style={styles.detailContent}>
+//                     <Text style={styles.detailLabel}>Client</Text>
+//                     <Text style={styles.detailValue}>{clientName}</Text>
+//                   </View>
+//                 </View>
+//               ) : null}
+
+//              {/* Message / Reason / Note / Scheduled Time / Created At */}
+//               {(note || reason || scheduledTimeDisplay || formattedCreated) ? (
+//                 <View style={[styles.detailRow, styles.noteRow]}>
+//                   <MaterialIcons name="notes" size={20} color={primaryColor} />
+//                   <View style={styles.detailContent}>
+//                     <Text style={styles.detailLabel}>Details</Text>
+//                     <Text style={styles.detailValue}>
+//                       {note || reason}
+//                       {scheduledTimeDisplay
+//                         ? `\n⏰ Scheduled: ${scheduledTimeDisplay}`
+//                         : ''}
+//                       {formattedCreated
+//                         ? `\n🗓️ Created On: ${formattedCreated}`
+//                         : ''}
+//                     </Text>
+//                   </View>
+//                 </View>
+//               ) : null}
+
+//               {/* Scheduled Date/Time - REMOVED (now merged into DETAILS section above) */}
+
+//               {/* Created Date/Time - REMOVED (now merged into DETAILS section above) */}
+
+//               {/* Next Scheduled Notification */}
+//               {formattedNext ? (
+//                 <View style={[styles.detailRow, styles.noteRow]}>
+//                   <MaterialIcons name="update" size={20} color={primaryColor} />
+//                   <View style={styles.detailContent}>
+//                     <Text style={styles.detailLabel}>Next Scheduled</Text>
+//                     <Text style={styles.detailValue}>⏭️ {formattedNext}</Text>
+//                   </View>
+//                 </View>
+//               ) : null}
+//             </View>
+          
+//         </ScrollView> 
+
+//           {/* Action Buttons */}
+//           <View style={styles.buttonRow}>
+//             <TouchableOpacity
+//               style={[styles.actionButton, { backgroundColor: secondaryColor }]}
+//               onPress={onClose}
+//               activeOpacity={0.8}
+//             >
+//               <Text style={styles.buttonText}>OK</Text>
+//             </TouchableOpacity>
+
+//             <TouchableOpacity
+//               style={[styles.actionButton, { backgroundColor: primaryColor }]}
+//               onPress={() => {
+//                 onClose();
+//                 if (onEdit) onEdit();
+//               }}
+//               activeOpacity={0.8}
+//             >
+//               <MaterialIcons name="edit" size={18} color="#fff" style={{ marginRight: 8 }} />
+//               <Text style={styles.buttonText}>Edit</Text>
+//             </TouchableOpacity>
+//           </View>
+//         </View>
+//       </View>
+//     </Modal>
+//   );
+// };
+
+
 /**
  * Beautiful Admin Notification Popup
  * Specifically for Admin Reminders & Alerts
  */
+
 import React from 'react';
 import {
   Modal,
@@ -15,7 +237,6 @@ import {
 
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-//const { width } = Dimensions.get('window');
 const { width, height } = Dimensions.get('window');
 
 const AdminNotificationPopup = ({
@@ -28,64 +249,371 @@ const AdminNotificationPopup = ({
   note = '',
   scheduledAt = '',
   nextScheduledAt = '',
-  createdAt = '', // 🔥 Add createdAt prop
-  time = '', // 🔥 Add time prop for scheduled time display
-  date = '', // 🔥 Add date prop for fallback
+  createdAt = '',
+  time = '',
+  date = '',
   type = 'admin_reminder',
   onEdit,
+
+  // Repeat configuration props
+  repeatFrequency = '',
+  repeatDaily = false,
+  repeatMetadata = {},           // 🔥 object or JSON string
+  customRepeatMinutes = 0,       // 🔥 direct minutes field
+  customIntervalMinutes = 0,     // 🔥 alternate minutes field
 }) => {
   // Always use Indigo theme for Admin
   const primaryColor = '#4F46E5';
   const secondaryColor = '#64748b';
   const bgColor = '#EEF2FF';
   const iconName = 'notifications-active';
-  
-  const isAlert = String(type).toLowerCase().includes('alert') || String(title).toLowerCase().includes('alert');
-  const headerTitle = isAlert ? 'Admin Alert' : 'Admin Reminder';
-  const actionText = isAlert ? 'admin created an alert' : 'admin created a reminder';
 
-  // Format ISO date to readable string
+  const isAlert =
+    String(type).toLowerCase().includes('alert') ||
+    String(title).toLowerCase().includes('alert');
+
+  const headerTitle = isAlert ? 'Admin Alert' : 'Admin Reminder';
+
+  const actionText = isAlert
+    ? 'admin created an alert'
+    : 'admin created a reminder';
+
+  // ============================================================
+  // FORMAT ISO DATE/TIME -> IST
+  // Used for Created At only
+  // ============================================================
+
   const formatDateTime = (isoStr) => {
     if (!isoStr) return null;
+
     try {
       const d = new Date(isoStr);
+
       if (isNaN(d.getTime())) return null;
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      const hh = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      return `${dd}/${mm}/${yyyy} \u2022 ${hh}:${min}`;
-    } catch (_) { return null; }
+
+      return d
+        .toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        })
+        .replace(',', ' •');
+    } catch (_) {
+      return null;
+    }
   };
 
-  // Format time only (HH:mm)
+  // ============================================================
+  // FORMAT REMINDER TIME
+  // Example: 20:55 -> 20:55
+  // ============================================================
+
   const formatTime = (timeStr) => {
     if (!timeStr) return null;
-    // If it's already in HH:mm format, return it
-    if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
-      return timeStr;
+
+    // Already HH:mm
+    if (/^\d{1,2}:\d{2}$/.test(String(timeStr))) {
+      const [hours, minutes] = String(timeStr)
+        .split(':')
+        .map(Number);
+
+      return `${String(hours).padStart(2, '0')}:${String(
+        minutes
+      ).padStart(2, '0')}`;
     }
-    // Otherwise try to parse as ISO string
+
+    // If ISO timestamp was supplied
     try {
       const d = new Date(timeStr);
+
       if (isNaN(d.getTime())) return null;
-      const hh = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      return `${hh}:${min}`;
-    } catch (_) { return null; }
+
+      return d.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+    } catch (_) {
+      return null;
+    }
   };
 
-  const formattedScheduled = formatDateTime(scheduledAt);
-  const formattedNext = formatDateTime(nextScheduledAt);
-  const formattedCreated = formatDateTime(createdAt); // 🔥 Format created date
-  
-  // 🔥 Get scheduled time - try scheduledAt, then time prop, then date+time combo
-  const scheduledTimeDisplay = time 
-    ? (typeof time === 'object' 
-        ? `${String(time.hour || 0).padStart(2, '0')}:${String(time.minute || 0).padStart(2, '0')}`
-        : formatTime(time))
-    : (scheduledAt ? formatTime(scheduledAt) : null);
+  // ============================================================
+  // GET CURRENT IST DATE/TIME
+  // This avoids device timezone problems.
+  // ============================================================
+
+  const getCurrentIST = () => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date());
+
+    const result = {};
+
+    parts.forEach((part) => {
+      if (part.type !== 'literal') {
+        result[part.type] = part.value;
+      }
+    });
+
+    return {
+      year: Number(result.year),
+      month: Number(result.month),
+      day: Number(result.day),
+      hour: Number(result.hour),
+      minute: Number(result.minute),
+    };
+  };
+
+  // ============================================================
+  // NEXT SCHEDULED
+  //
+  // IMPORTANT:
+  // Do NOT use nextScheduledAt here.
+  //
+  // We use:
+  // date = 2026-08-12
+  // time = 20:55
+  //
+  // Daily:
+  // 12/08/2026 20:55
+  //        ↓ passed
+  // 13/08/2026 20:55
+  // ============================================================
+
+  const getNextScheduledDisplay = () => {
+    if (!date || !time) {
+      return null;
+    }
+
+    try {
+      // Remove time part if date is ISO
+      const datePart = String(date).split('T')[0];
+
+      const match = datePart.match(
+        /^(\d{4})-(\d{2})-(\d{2})$/
+      );
+
+      if (!match) {
+        console.warn(
+          'Invalid reminder date:',
+          date
+        );
+        return null;
+      }
+
+      let year = Number(match[1]);
+      let month = Number(match[2]);
+      let day = Number(match[3]);
+
+      const timeString = String(time);
+
+      const timeMatch = timeString.match(
+        /^(\d{1,2}):(\d{2})$/
+      );
+
+      if (!timeMatch) {
+        console.warn(
+          'Invalid reminder time:',
+          time
+        );
+        return null;
+      }
+
+      const hours = Number(timeMatch[1]);
+      const minutes = Number(timeMatch[2]);
+
+      if (
+        hours < 0 ||
+        hours > 23 ||
+        minutes < 0 ||
+        minutes > 59
+      ) {
+        return null;
+      }
+
+      const now = getCurrentIST();
+
+      // ========================================================
+      // Check whether reminder is DAILY
+      // ========================================================
+
+      const isDaily =
+        repeatDaily === true ||
+        String(repeatFrequency).toLowerCase() === 'daily';
+
+      // ========================================================
+      // Check whether reminder is CUSTOM/MINUTES repeat
+      // ========================================================
+      const customMins = parseInt(
+        // Check all possible sources for the interval value
+        (typeof repeatMetadata === 'object' && repeatMetadata !== null
+          ? repeatMetadata.customIntervalMinutes || repeatMetadata.customRepeatMinutes
+          : null) ||
+        (typeof repeatMetadata === 'string' && repeatMetadata
+          ? (() => { try { const p = JSON.parse(repeatMetadata); return p.customIntervalMinutes || p.customRepeatMinutes; } catch (_) { return null; } })()
+          : null) ||
+        customRepeatMinutes ||
+        customIntervalMinutes ||
+        0
+      );
+      const isCustomMinutes =
+        (String(repeatFrequency).toLowerCase() === 'custom' || customMins > 0) &&
+        customMins > 0;
+
+      // ========================================================
+      // Compare calendar date/time without converting through
+      // UTC. This prevents the 5:30 hour/date shift.
+      // ========================================================
+
+      const candidateValue =
+        year * 100000000 +
+        month * 1000000 +
+        day * 10000 +
+        hours * 100 +
+        minutes;
+
+      const nowValue =
+        now.year * 100000000 +
+        now.month * 1000000 +
+        now.day * 10000 +
+        now.hour * 100 +
+        now.minute;
+
+      // ========================================================
+      // CUSTOM/MINUTES REPEAT — calculate next future occurrence
+      // ========================================================
+      if (isCustomMinutes) {
+        // Build base Date in IST (treat date+time as IST local wall clock)
+        // Use UTC constructor with IST offset correction
+        const istOffsetMs = 5.5 * 60 * 60 * 1000;
+        // date+time as UTC would be wrong; shift by IST offset to get correct UTC equivalent
+        const baseUTC = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
+        const intervalMs = customMins * 60 * 1000;
+        const nowMs = Date.now();
+        let nextMs = baseUTC;
+        // Advance by intervals until we are in the future
+        while (nextMs <= nowMs) {
+          nextMs += intervalMs;
+        }
+        const nextDate = new Date(nextMs);
+        // Format in IST
+        const nextISTStr = nextDate.toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+        return nextISTStr.replace(',', ' •');
+      }
+
+      // ========================================================
+      // DAILY REMINDER
+      // ========================================================
+
+      if (isDaily) {
+        // If today's scheduled time has already passed,
+        // move to next day.
+        if (candidateValue <= nowValue) {
+          const nextDay = new Date(
+            Date.UTC(year, month - 1, day)
+          );
+
+          nextDay.setUTCDate(
+            nextDay.getUTCDate() + 1
+          );
+
+          year = nextDay.getUTCFullYear();
+          month = nextDay.getUTCMonth() + 1;
+          day = nextDay.getUTCDate();
+        }
+      }
+
+      // ========================================================
+      // FORMAT FINAL DATE
+      // ========================================================
+
+      const formattedDate =
+        `${String(day).padStart(2, '0')}/` +
+        `${String(month).padStart(2, '0')}/` +
+        `${year}`;
+
+      const formattedTime =
+        `${String(hours).padStart(2, '0')}:` +
+        `${String(minutes).padStart(2, '0')}`;
+
+      return `${formattedDate} • ${formattedTime}`;
+    } catch (error) {
+      console.warn(
+        'Error calculating next scheduled:',
+        error
+      );
+
+      return null;
+    }
+  };
+
+  // ============================================================
+  // FINAL DISPLAY VALUES
+  // ============================================================
+
+  // Scheduled time should come from original reminder time
+  const scheduledTimeDisplay =
+    time
+      ? typeof time === 'object'
+        ? `${String(time.hour || 0).padStart(
+            2,
+            '0'
+          )}:${String(time.minute || 0).padStart(
+            2,
+            '0'
+          )}`
+        : formatTime(time)
+      : scheduledAt
+        ? formatTime(scheduledAt)
+        : null;
+
+  // Created At can safely be converted from UTC to IST
+  const formattedCreated = formatDateTime(createdAt);
+
+  // ============================================================
+  // NEXT SCHEDULED:
+  //
+  // Priority 1: Use nextScheduledAt from FCM/backend data if present.
+  //             The backend already sends the correct next occurrence time.
+  //             Format it from ISO → IST display.
+  //
+  // Priority 2: Calculate from date + time + repeat info (fallback).
+  // ============================================================
+
+  let formattedNext = null;
+
+  // Try nextScheduledAt prop first (comes from FCM data.nextScheduledAt)
+  if (nextScheduledAt) {
+    const parsed = formatDateTime(nextScheduledAt);
+    if (parsed) {
+      formattedNext = parsed;
+    }
+  }
+
+  // Fallback: calculate from date + time
+  if (!formattedNext) {
+    formattedNext = getNextScheduledDisplay();
+  }
 
   return (
     <Modal
@@ -96,66 +624,144 @@ const AdminNotificationPopup = ({
     >
       <View style={styles.overlay}>
         <View style={styles.container}>
+
           {/* Header */}
-          <View style={[styles.header, { backgroundColor: primaryColor }]}>
+          <View
+            style={[
+              styles.header,
+              { backgroundColor: primaryColor },
+            ]}
+          >
             <View style={styles.headerIcon}>
-              <MaterialIcons name={iconName} size={28} color="#fff" />
+              <MaterialIcons
+                name={iconName}
+                size={28}
+                color="#fff"
+              />
             </View>
-            <Text style={styles.headerTitle}>{headerTitle}</Text>
+
+            <Text style={styles.headerTitle}>
+              {headerTitle}
+            </Text>
           </View>
-         
+
           {/* Content */}
-         <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* YAHAN APNA POORA EXISTING CONTENT SAME RAKHO */}
-          {/* Content */}      
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+
             {/* Admin Badge */}
             <View style={styles.employeeBadge}>
-              <View style={[styles.avatar, { backgroundColor: primaryColor + '20' }]}>
-                <MaterialIcons name="security" size={24} color={primaryColor} />
+              <View
+                style={[
+                  styles.avatar,
+                  {
+                    backgroundColor:
+                      primaryColor + '20',
+                  },
+                ]}
+              >
+                <MaterialIcons
+                  name="security"
+                  size={24}
+                  color={primaryColor}
+                />
               </View>
+
               <View style={styles.employeeInfo}>
-                <Text style={styles.employeeName}>{employeeName === 'Employee' ? 'Admin' : employeeName}</Text>
-                <Text style={styles.employeeAction}>{actionText}</Text>
+                <Text style={styles.employeeName}>
+                  {employeeName === 'Employee'
+                    ? 'Admin'
+                    : employeeName}
+                </Text>
+
+                <Text style={styles.employeeAction}>
+                  {actionText}
+                </Text>
               </View>
             </View>
 
             {/* Details Card */}
-            <View style={[styles.detailsCard, { backgroundColor: bgColor }]}>
+            <View
+              style={[
+                styles.detailsCard,
+                { backgroundColor: bgColor },
+              ]}
+            >
+
               {/* Reminder Title */}
               <View style={styles.detailRow}>
-                <MaterialIcons name="event-note" size={20} color={primaryColor} />
+                <MaterialIcons
+                  name="event-note"
+                  size={20}
+                  color={primaryColor}
+                />
+
                 <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Reminder</Text>
-                  <Text style={styles.detailValue}>{title || 'N/A'}</Text>
+                  <Text style={styles.detailLabel}>
+                    Reminder
+                  </Text>
+
+                  <Text style={styles.detailValue}>
+                    {title || 'N/A'}
+                  </Text>
                 </View>
               </View>
 
               {/* Client Name */}
               {clientName ? (
                 <View style={styles.detailRow}>
-                  <MaterialIcons name="person-outline" size={20} color={primaryColor} />
+                  <MaterialIcons
+                    name="person-outline"
+                    size={20}
+                    color={primaryColor}
+                  />
+
                   <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Client</Text>
-                    <Text style={styles.detailValue}>{clientName}</Text>
+                    <Text style={styles.detailLabel}>
+                      Client
+                    </Text>
+
+                    <Text style={styles.detailValue}>
+                      {clientName}
+                    </Text>
                   </View>
                 </View>
               ) : null}
 
-             {/* Message / Reason / Note / Scheduled Time / Created At */}
-              {(note || reason || scheduledTimeDisplay || formattedCreated) ? (
-                <View style={[styles.detailRow, styles.noteRow]}>
-                  <MaterialIcons name="notes" size={20} color={primaryColor} />
+              {/* Details */}
+              {(
+                note ||
+                reason ||
+                scheduledTimeDisplay ||
+                formattedCreated
+              ) ? (
+                <View
+                  style={[
+                    styles.detailRow,
+                    styles.noteRow,
+                  ]}
+                >
+                  <MaterialIcons
+                    name="notes"
+                    size={20}
+                    color={primaryColor}
+                  />
+
                   <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Details</Text>
+                    <Text style={styles.detailLabel}>
+                      Details
+                    </Text>
+
                     <Text style={styles.detailValue}>
                       {note || reason}
+
                       {scheduledTimeDisplay
                         ? `\n⏰ Scheduled: ${scheduledTimeDisplay}`
                         : ''}
+
                       {formattedCreated
                         ? `\n🗓️ Created On: ${formattedCreated}`
                         : ''}
@@ -164,46 +770,83 @@ const AdminNotificationPopup = ({
                 </View>
               ) : null}
 
-              {/* Scheduled Date/Time - REMOVED (now merged into DETAILS section above) */}
-
-              {/* Created Date/Time - REMOVED (now merged into DETAILS section above) */}
-
               {/* Next Scheduled Notification */}
               {formattedNext ? (
-                <View style={[styles.detailRow, styles.noteRow]}>
-                  <MaterialIcons name="update" size={20} color={primaryColor} />
+                <View
+                  style={[
+                    styles.detailRow,
+                    styles.noteRow,
+                  ]}
+                >
+                  <MaterialIcons
+                    name="update"
+                    size={20}
+                    color={primaryColor}
+                  />
+
                   <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Next Scheduled</Text>
-                    <Text style={styles.detailValue}>⏭️ {formattedNext}</Text>
+                    <Text style={styles.detailLabel}>
+                      Next Scheduled
+                    </Text>
+
+                    <Text style={styles.detailValue}>
+                      ⏭️ {formattedNext}
+                    </Text>
                   </View>
                 </View>
               ) : null}
+
             </View>
-          
-        </ScrollView> 
+          </ScrollView>
 
           {/* Action Buttons */}
           <View style={styles.buttonRow}>
+
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: secondaryColor }]}
+              style={[
+                styles.actionButton,
+                {
+                  backgroundColor: secondaryColor,
+                },
+              ]}
               onPress={onClose}
               activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>OK</Text>
+              <Text style={styles.buttonText}>
+                OK
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: primaryColor }]}
+              style={[
+                styles.actionButton,
+                {
+                  backgroundColor: primaryColor,
+                },
+              ]}
               onPress={() => {
                 onClose();
-                if (onEdit) onEdit();
+
+                if (onEdit) {
+                  onEdit();
+                }
               }}
               activeOpacity={0.8}
             >
-              <MaterialIcons name="edit" size={18} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.buttonText}>Edit</Text>
+              <MaterialIcons
+                name="edit"
+                size={18}
+                color="#fff"
+                style={{ marginRight: 8 }}
+              />
+
+              <Text style={styles.buttonText}>
+                Edit
+              </Text>
             </TouchableOpacity>
+
           </View>
+
         </View>
       </View>
     </Modal>

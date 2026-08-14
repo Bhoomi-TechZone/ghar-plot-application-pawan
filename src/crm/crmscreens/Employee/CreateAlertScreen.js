@@ -89,6 +89,17 @@ const CreateAlertScreen = ({ navigation, route }) => {
     return `${hours}:${minutes}`;
   };
 
+  const formatTimeForDisplay = (date) => {
+    const d = new Date(date);
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    const strHours = String(hours).padStart(2, '0');
+    return `${strHours}:${minutes} ${ampm}`;
+  };
+
   const handleSubmit = async () => {
     // Validate required fields
     if (!formData.title.trim()) {
@@ -548,7 +559,7 @@ const CreateAlertScreen = ({ navigation, route }) => {
               style={styles.inputContainer}
               onPress={() => setShowTimePicker(true)}
             >
-              <Text style={styles.dateTimeText}>{formatTime(formData.time)}</Text>
+              <Text style={styles.dateTimeText}>{formatTimeForDisplay(formData.time)}</Text>
               <Icon name="time-outline" size={20} color="#6b7280" style={styles.inputIcon} />
             </TouchableOpacity>
           </View>
@@ -559,7 +570,7 @@ const CreateAlertScreen = ({ navigation, route }) => {
               mode="time"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={handleTimeChange}
-              is24Hour={true}
+              is24Hour={false}
             />
           )}
 
