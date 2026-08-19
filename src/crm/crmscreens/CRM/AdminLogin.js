@@ -213,6 +213,14 @@ const AdminLogin = () => {
     navigation.navigate("EmployeeLogin");
   };
 
+  const goToUserHome = () => {
+    // Reset the stack so the user cannot go back to Admin Login or Admin Dashboard
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
+  };
+
   if (checkingAuth) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -333,6 +341,12 @@ const AdminLogin = () => {
             {/* Forgot Password */}
             <TouchableOpacity style={styles.forgotPasswordButton}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+
+            {/* Back to User Home */}
+            <TouchableOpacity style={styles.backToHomeButton} onPress={goToUserHome}>
+              <Icon name="arrow-back" size={20} color="#1E90FF" />
+              <Text style={styles.backToHomeText}>Back to User Home</Text>
             </TouchableOpacity>
           </Animated.View>
         </ScrollView>
@@ -475,6 +489,23 @@ const styles = StyleSheet.create({
     color: "#1E90FF",
     fontSize: 15,
     fontWeight: "600",
+  },
+  backToHomeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    backgroundColor: "#f8f9fa",
+  },
+  backToHomeText: {
+    color: "#1E90FF",
+    fontSize: 15,
+    fontWeight: "600",
+    marginLeft: 8,
   },
 });
 

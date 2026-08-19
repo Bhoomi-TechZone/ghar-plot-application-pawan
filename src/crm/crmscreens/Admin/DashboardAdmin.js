@@ -166,6 +166,14 @@ const AdminDashboardScreen = ({ navigation, user }) => {
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  const goToUserHome = () => {
+    // Reset the stack so the user cannot go back to Admin Dashboard
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
+  };
+
   const handleLogout = () => {
     CrossPlatformAlert.alert(
       'Logout',
@@ -367,6 +375,11 @@ const AdminDashboardScreen = ({ navigation, user }) => {
             <Text style={styles.headerSubtitle}>Welcome, {user?.name || 'Admin'}</Text>
           </View>
 
+          {/* Back to User Home */}
+          <TouchableOpacity style={styles.backToHomeButton} onPress={goToUserHome}>
+            <Icon name="home-outline" size={22} color="#fff" />
+          </TouchableOpacity>
+
           {/* 🔔 Notification Bell */}
           <TouchableOpacity
             onPress={() => navigation.navigate('AdminNotificationsInbox')}
@@ -394,6 +407,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
           <Icon name="alarm-outline" size={16} color="#fff" />
           <Text style={styles.createAlertText}>PLACE A REMINDER</Text>
         </TouchableOpacity>
+
       </LinearGradient>
 
       {/* BODY */}
@@ -633,7 +647,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
             <ScrollView style={styles.drawerContent} showsVerticalScrollIndicator={false}>
               {/* MANAGEMENT Section */}
               <View style={styles.drawerSection}>
-                <Text style={styles.sectionTitle}>MANAGEMENT</Text>
+                <Text style={styles.drawerSectionTitle}>MANAGEMENT</Text>
 
                 <TouchableOpacity
                   style={styles.drawerItem}
@@ -773,7 +787,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
 
               {/* USP MANAGEMENT Section */}
               <View style={styles.drawerSection}>
-                <Text style={styles.sectionTitle}>USP MANAGEMENT</Text>
+                <Text style={styles.drawerSectionTitle}>USP MANAGEMENT</Text>
 
                 <TouchableOpacity
                   style={styles.drawerItem}
@@ -790,7 +804,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
 
               {/* MY ASSIGNMENTS Section */}
               <View style={styles.drawerSection}>
-                <Text style={styles.sectionTitle}>MY ASSIGNMENTS</Text>
+                <Text style={styles.drawerSectionTitle}>MY ASSIGNMENTS</Text>
 
                 <TouchableOpacity
                   style={styles.drawerItem}
@@ -871,6 +885,12 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  backToHomeButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    marginRight: 6,
   },
   headerCenter: {
     flex: 1,
@@ -1261,7 +1281,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
-  sectionTitle: {
+  drawerSectionTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#6b7280',
