@@ -11,7 +11,6 @@ import {
   Dimensions 
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import LinearGradient from 'react-native-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -96,12 +95,7 @@ const PropertyManagementScreen = ({ navigation }) => {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Gradient Header */}
-      <LinearGradient
-        colors={['#8B5CF6', '#3B82F6']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.gradientHeader}
-      >
+      <View style={styles.gradientHeader}>
         <View style={styles.headerContent}>
           <View style={styles.headerTop}>
             <View>
@@ -129,7 +123,7 @@ const PropertyManagementScreen = ({ navigation }) => {
             </View>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Filter Section */}
       <View style={styles.filterSection}>
@@ -208,6 +202,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 40,
     paddingBottom: 20,
+    backgroundColor: '#1e293b',
   },
   headerContent: {
     flex: 1,

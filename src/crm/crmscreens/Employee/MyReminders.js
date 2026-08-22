@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const MyReminders = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [typeFilter, setTypeFilter] = useState('All Types');
@@ -836,6 +837,14 @@ const MyReminders = ({ navigation }) => {
           />
         </View>
 
+        {/* Notification Test Button (Hidden but usable in dev) */}
+        <TouchableOpacity 
+          style={[styles.testButton, { bottom: 20 + (insets.bottom > 0 ? insets.bottom + 60 : 70) }]}
+          onPress={() => {}}
+        >
+          <Text style={styles.testButtonText}>Test</Text>
+        </TouchableOpacity>
+
         <View style={styles.filterRow}>
           <TouchableOpacity
             style={styles.dropdownBox}
@@ -1055,7 +1064,6 @@ const styles = StyleSheet.create({
   testButton: {
     position: 'absolute',
     right: 20,
-    bottom: 20,
     backgroundColor: '#F97316',
     paddingHorizontal: 16,
     paddingVertical: 8,

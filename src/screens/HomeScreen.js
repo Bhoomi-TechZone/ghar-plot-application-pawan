@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
     View,
     Text,
@@ -130,6 +130,10 @@ const ChatButton = ({ onPress, theme, hasUnreadMessages }) => (
 // Location geocoding functionality removed
 
 const Homescreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
+    const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
+    const bottomInset = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 0);
+    // theme state removed to use the global theme object
 
     // Debug function to check login status (for testing)
     const checkLoginStatus = async () => {
@@ -182,7 +186,7 @@ const Homescreen = ({ navigation }) => {
     const [authModalMessage, setAuthModalMessage] = useState('');
     
     // Safe Area Insets for proper spacing
-    const insets = useSafeAreaInsets();
+    //const insets = useSafeAreaInsets();
 
     // Location states removed - no longer using location-based filtering
 
@@ -1304,7 +1308,7 @@ const Homescreen = ({ navigation }) => {
                 />
 
                 {/* Header Row */}
-                <View style={[styles.headerRow, { top: insets.top + 10 }]}>
+                <View style={[styles.headerRow, { top: statusBarTop + 10 }]}>
                     <View style={styles.headerLeftContainer}>
                         {/* Logo */}
                         <TouchableOpacity
@@ -1458,11 +1462,13 @@ const Homescreen = ({ navigation }) => {
             </KeyboardAvoidingView>
 
             {/* Floating Chat Button */}
-            <ChatButton
-                onPress={handleChatPress}
-                theme={theme}
-                hasUnreadMessages={hasUnreadMessages}
-            />
+            <View style={[styles.floatingChatButton, { bottom: 70 + bottomInset + 10 }]} pointerEvents="box-none">
+                <ChatButton
+                    onPress={handleChatPress}
+                    theme={theme}
+                    hasUnreadMessages={hasUnreadMessages}
+                />
+            </View>
             
             {/* Authentication Modal */}
             <AuthModal
@@ -2021,7 +2027,6 @@ const styles = StyleSheet.create({
     },
     floatingChatButton: {
         position: 'absolute',
-        bottom: 80,
         right: 20,
         width: 64,
         height: 64,

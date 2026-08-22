@@ -1,4 +1,4 @@
-﻿//This is my ServicesScreen.js
+//This is my ServicesScreen.js
 
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -10,7 +10,6 @@ import {
     TouchableOpacity,
     ScrollView,
     Dimensions,
-    SafeAreaView,
     Platform,
     StatusBar,
     Modal,
@@ -21,6 +20,7 @@ import {
     Alert,
     ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from "react-native-vector-icons/Ionicons";
 import LinearGradient from 'react-native-linear-gradient';
 import { createOrder, verifyPayment, submitServiceRequest } from '../services/paymentapi';
@@ -1555,7 +1555,6 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: "#E5E7EB",
         backgroundColor: '#fff',
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 10,
     },
     backButton: {
         padding: 8,
@@ -1734,6 +1733,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-around',
         alignItems: 'center',
         paddingVertical: 16,
+        paddingHorizontal: 12,
         borderRadius: 12,
         marginTop: 12,
         marginBottom: 16,
@@ -1742,6 +1742,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 6,
         elevation: 8,
+        overflow: 'hidden',
     },
     statsItem: {
         alignItems: 'center',

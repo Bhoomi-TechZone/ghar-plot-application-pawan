@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -468,6 +469,7 @@ const ServiceManagementScreen = ({ navigation }) => {
   ];
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <View style={styles.container}>
       {/* Header */}
       <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
@@ -831,18 +833,23 @@ const ServiceManagementScreen = ({ navigation }) => {
         </View>
       </Modal>
     </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
   header: {
-    paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
+    paddingTop: 16,
   },
   backButton: {
     marginBottom: 10,

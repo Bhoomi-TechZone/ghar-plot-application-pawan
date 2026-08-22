@@ -173,7 +173,7 @@ const PropertiesStack = () => (
   <Stack.Navigator
     screenOptions={{
       headerStyle: {
-        backgroundColor: '#007AFF',
+        backgroundColor: '#1e293b',
       },
       headerTintColor: '#fff',
       headerTitleStyle: {
@@ -198,7 +198,7 @@ const PropertiesStack = () => (
     <Stack.Screen
       name="BoughtProperty"
       component={BoughtPropertyScreen}
-      options={{ title: 'Bought Properties' }}
+      options={{ headerShown: false }}
     />
   </Stack.Navigator>
 );
@@ -462,9 +462,9 @@ const AdminBottomTabs = () => {
           backgroundColor: '#fff',
           borderTopWidth: 1,
           borderTopColor: '#e1e1e1',
-          paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 8,
+          paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : Math.max(insets.bottom, 8),
           paddingTop: 8,
-          height: Platform.OS === 'ios' ? 60 + Math.max(insets.bottom, 0) : 60,
+          height: Platform.OS === 'ios' ? 60 + Math.max(insets.bottom, 0) : 60 + Math.max(insets.bottom, 0),
           elevation: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },

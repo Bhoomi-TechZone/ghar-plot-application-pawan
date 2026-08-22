@@ -1,18 +1,20 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   RefreshControl,
   Modal,
   ScrollView,
   ActivityIndicator,
   Dimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,6 +24,9 @@ const API_BASE = 'https://gharplotbackend.gntechnology.de';
 const { width, height } = Dimensions.get('window');
 
 const BadAttendantAlertsScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
+
   // Main States
   const [notifications, setNotifications] = useState([]);
   const [stats, setStats] = useState({
@@ -599,17 +604,17 @@ const BadAttendantAlertsScreen = ({ navigation }) => {
   // Loading state
   if (!isAdmin) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: statusBarTop }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#DC2626" />
           <Text style={styles.loadingText}>Checking admin access...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: statusBarTop }]}>
       {/* Header */}
       <View style={styles.topHeader}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -703,7 +708,7 @@ const BadAttendantAlertsScreen = ({ navigation }) => {
 
       {/* Detail Modal */}
       {renderDetailModal()}
-    </SafeAreaView>
+    </View>
   );
 };
 

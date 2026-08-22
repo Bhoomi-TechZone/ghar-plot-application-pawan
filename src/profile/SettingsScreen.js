@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { 
     View, 
     Text, 
@@ -33,7 +33,7 @@ const sections = [
         data: [
             { icon: "person-outline", label: "Edit Profile", screen: "EditProfileScreen", type: "navigate" },
             { icon: "lock-closed-outline", label: "Change Password", screen: "ChangePasswordScreen", type: "navigate" },
-            { icon: "eye-off-outline", label: "Privacy Policy", screen: "PrivacyScreen", type: "navigate" },
+            { icon: "eye-off-outline", label: "Privacy Policy", screen: "PrivacySecurity", type: "navigate" },
         ],
     },
     {
@@ -157,7 +157,7 @@ const SettingsScreen = ({ navigation }) => {
         <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}>
                     <Icon name="arrow-back-outline" size={26} color={COLORS.black} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Settings</Text>

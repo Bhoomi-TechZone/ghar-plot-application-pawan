@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MediaCard from "../components/MediaCard";
 import CrossPlatformAlert from '../utils/crossPlatformAlert';
 import AuthModal from '../components/AuthModal';
@@ -60,6 +61,10 @@ const getAmenityIcon = (name) => {
 };
 
 const PropertyDetailsScreen = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
+  const bottomBarPadding = insets.bottom > 0 ? insets.bottom + 10 : (Platform.OS === 'ios' ? 30 : 20);
+  const scrollPaddingBottom = bottomBarPadding + 90;
+
   const { property: routeProperty, itemId, user: routeUser, fromAddProperty } = route?.params || {};
   const [property, setProperty] = useState(routeProperty || null);
   const [loading, setLoading] = useState(!routeProperty);
@@ -490,7 +495,7 @@ const PropertyDetailsScreen = ({ navigation, route }) => {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 160 }}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: scrollPaddingBottom }}>
         <View style={styles.infoCard}>
           {routeUser ? (
             <View style={styles.userBanner}>
@@ -605,7 +610,7 @@ const PropertyDetailsScreen = ({ navigation, route }) => {
       </ScrollView>
 
       {/* Bottom Bar */}
-      <View style={styles.bottomBarWrap}>
+      <View style={[styles.bottomBarWrap, { bottom: bottomBarPadding }]}>
         <View style={styles.bottomBar}>
           {/* Inquiry Button */}
           <TouchableOpacity 
@@ -962,7 +967,6 @@ const styles = StyleSheet.create({
     position: "absolute", 
     left: 0, 
     right: 0, 
-    bottom: Platform.OS === 'ios' ? 30 : 20, 
     alignItems: "center",
     paddingHorizontal: 20,
   },

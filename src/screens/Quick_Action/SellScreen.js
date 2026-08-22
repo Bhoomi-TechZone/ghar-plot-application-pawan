@@ -10,11 +10,12 @@ import {
   TextInput,
   Dimensions,
   Pressable,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
   Platform,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from "react-native-vector-icons/Ionicons";
 import LinearGradient from "react-native-linear-gradient";
 import { useFocusEffect } from '@react-navigation/native';
@@ -81,6 +82,9 @@ const SAMPLE_LISTINGS = [
 ];
 
 const SellScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
+
   const [filter, setFilter] = useState("Sell");
   const [showStats, setShowStats] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -336,7 +340,7 @@ const SellScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: statusBarTop }]}>
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()}>
@@ -422,7 +426,7 @@ const SellScreen = ({ navigation }) => {
           </View>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -436,7 +440,7 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 12, color: COLORS.gray, textAlign: "center", marginTop: 2 },
   quickActions: { flexDirection: "row", padding: 16, gap: 12 },
   quickActionBtn: { flex: 1 },
-  quickActionGradient: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 10, borderRadius: 12, gap: 8 },
+  quickActionGradient: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 46, borderRadius: 12, gap: 8 },
   quickActionText: { color: COLORS.white, fontWeight: "700", marginLeft: 8 },
   filtersSection: { paddingHorizontal: 16, paddingBottom: 8 },
   filterChips: { flexDirection: "row", gap: 8, marginBottom: 8, flexWrap: "wrap" },

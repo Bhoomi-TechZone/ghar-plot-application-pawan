@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Admin Bought Properties Screen
  * Comprehensive management screen for tracking all purchased properties
  * Features: Statistics Dashboard, Property Listing, Search/Filter, Pagination, Image Gallery
@@ -21,6 +21,7 @@ import {
   Dimensions,
   StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -618,6 +619,7 @@ const BoughtPropertyScreen = () => {
   };
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
@@ -858,10 +860,15 @@ const BoughtPropertyScreen = () => {
       {/* Property Details Modal */}
       {renderPropertyDetailsModal()}
     </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',

@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Animated,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from "react-native-linear-gradient";
 import Icon from "react-native-vector-icons/Ionicons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -83,7 +84,7 @@ const OtpScreen = ({ route, navigation }) => {
 
   const verifyOtp = async () => {
     const enteredOtp = otp.join("");
-    
+
     // Validate OTP length
     if (enteredOtp.length !== 4) {
       showToast("Please enter a complete 4-digit OTP.", "error");
@@ -92,10 +93,10 @@ const OtpScreen = ({ route, navigation }) => {
 
     try {
       setLoading(true);
-      
+
       // Call the verify phone OTP API
       const response = await authApi.verifyPhoneOtp(phone, enteredOtp);
-      
+
       console.log('================================================');
       console.log('🔍 OTP VERIFICATION RESPONSE (Full):');
       console.log(JSON.stringify(response, null, 2));
@@ -106,14 +107,14 @@ const OtpScreen = ({ route, navigation }) => {
       console.log('  - user:', response.user ? 'EXISTS ✅' : 'NOT FOUND ❌');
       console.log('  - isNewUser:', response.isNewUser);
       console.log('================================================');
-      
+
       // Check if OTP verification was successful
       if (response.success) {
-        
+
         // ALL USERS (both old and new) - Direct to Home
         console.log('✅✅✅ USER VERIFIED - NAVIGATING TO HOME ✅✅✅');
         console.log('→ Response:', JSON.stringify(response, null, 2));
-        
+
         // Save user profile to AsyncStorage (from OTP response or create default)
         const userProfile = response.user || {
           id: response.userId || Date.now().toString(),
@@ -121,35 +122,35 @@ const OtpScreen = ({ route, navigation }) => {
           fullName: 'User',
           email: ''
         };
-        
+
         try {
           await AsyncStorage.setItem('userProfile', JSON.stringify(userProfile));
           console.log('💾 User profile saved to AsyncStorage:', userProfile);
         } catch (profileError) {
           console.warn('Failed to save user profile:', profileError);
         }
-        
+
         // Store credentials for persistent login
         const tokenToStore = response.token || `temp_token_${Date.now()}`;
         const userIdToStore = userProfile.id;
-        
+
         await storeUserCredentials(tokenToStore, userIdToStore);
         console.log('💾 Credentials saved to AsyncStorage');
-        
+
         // Send FCM token to backend after successful OTP verification
         try {
           const fcmToken = await getStoredFCMToken();
-          
+
           if (fcmToken && userIdToStore) {
             await sendFCMTokenToBackend(userIdToStore, fcmToken);
           }
         } catch (fcmError) {
           console.log('FCM token error (non-critical):', fcmError);
         }
-        
+
         setLoading(false);
         showToast("Welcome! 🎉", "success");
-        
+
         setTimeout(() => {
           console.log('🏠 Navigating to Home...');
           navigation.reset({
@@ -157,35 +158,35 @@ const OtpScreen = ({ route, navigation }) => {
             routes: [{ name: 'Home' }]
           });
         }, 1500);
-        
+
       } else {
         // OTP verification failed
         console.log('❌ OTP Verification failed:', response.message);
         setLoading(false);
         showToast(response.message || "Invalid OTP. Please try again.", "error");
       }
-      
+
     } catch (error) {
       console.error("❌ OTP Verification Error:", error);
       setLoading(false);
-      
+
       // Check if error is "user already exists" type
       if (error.message && (
-          error.message.includes('already exists') ||
-          error.message.includes('already registered') ||
-          error.message.includes('Phone number already')
+        error.message.includes('already exists') ||
+        error.message.includes('already registered') ||
+        error.message.includes('Phone number already')
       )) {
         console.log('⚠️ User already exists error during OTP verification');
-        
+
         // Check if we have existing token in storage
         try {
           const existingToken = await AsyncStorage.getItem('userToken');
           const existingUserId = await AsyncStorage.getItem('userId');
-          
+
           if (existingToken && existingUserId) {
             console.log('✅ Found existing credentials - Logging in...');
             showToast("Welcome back! 🎉", "success");
-            
+
             setTimeout(() => {
               navigation.reset({
                 index: 0,
@@ -197,7 +198,7 @@ const OtpScreen = ({ route, navigation }) => {
         } catch (storageError) {
           console.error('Error checking AsyncStorage:', storageError);
         }
-        
+
         // If no token found, redirect to login
         showToast("Account exists. Please login again.", "info");
         setTimeout(() => {
@@ -216,7 +217,7 @@ const OtpScreen = ({ route, navigation }) => {
     try {
       setResending(true);
       const response = await authApi.sendPhoneOtp(phone);
-      
+
       if (response.success) {
         // Check if development mode with OTP
         if (response.isDevelopmentMode && response.otp) {
@@ -232,13 +233,13 @@ const OtpScreen = ({ route, navigation }) => {
       } else {
         // Phone not registered
         showToast(response.message || "Phone number not registered. Please sign up first.", "error");
-        
+
         // Navigate back to login after 2 seconds
         setTimeout(() => {
           navigation.goBack();
         }, 2000);
       }
-      
+
       setResending(false);
     } catch (error) {
       console.error("Resend OTP Error:", error);
@@ -248,106 +249,108 @@ const OtpScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ImageBackground
-      source={require("../assets/realestate-bg.png")}
-      style={styles.background}
-      blurRadius={4}
-    >
-      <View style={styles.overlay}>
-        {/* Toast Notification */}
-        {toastVisible && (
-          <Animated.View
-            style={[
-              styles.toastContainer,
-              {
-                backgroundColor: toastType === "success" ? "#4CAF50" : "#F44336",
-                transform: [{ translateY: toastAnim }],
-              },
-            ]}
-          >
-            <Icon
-              name={toastType === "success" ? "checkmark-circle" : "close-circle"}
-              size={24}
-              color="#fff"
-              style={styles.toastIcon}
-            />
-            <Text style={styles.toastText}>{toastMessage}</Text>
-          </Animated.View>
-        )}
-
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <Image
-            source={require("../assets/New_logo.png")}
-            style={styles.logo}
-          />
-          <Text style={styles.brandName}>Gharplot</Text>
-        </View>
-
-        {/* Card */}
-        <View style={styles.card}>
-          <Text style={styles.title}>Enter OTP</Text>
-          <Text style={styles.subtitle}>We sent an OTP to {phone}</Text>
-          
-          {/* Development Mode Notice */}
-          {developmentOTP && (
-            <View style={styles.devModeContainer}>
-              <Text style={styles.devModeText}>
-                🔧 Development Mode: OTP is {developmentOTP}
-              </Text>
-            </View>
+    <SafeAreaView style={{ flex: 1 }}>
+      <ImageBackground
+        source={require("../assets/realestate-bg.png")}
+        style={styles.background}
+        blurRadius={4}
+      >
+        <View style={styles.overlay}>
+          {/* Toast Notification */}
+          {toastVisible && (
+            <Animated.View
+              style={[
+                styles.toastContainer,
+                {
+                  backgroundColor: toastType === "success" ? "#4CAF50" : "#F44336",
+                  transform: [{ translateY: toastAnim }],
+                },
+              ]}
+            >
+              <Icon
+                name={toastType === "success" ? "checkmark-circle" : "close-circle"}
+                size={24}
+                color="#fff"
+                style={styles.toastIcon}
+              />
+              <Text style={styles.toastText}>{toastMessage}</Text>
+            </Animated.View>
           )}
 
-          {/* OTP Boxes */}
-          <View style={styles.otpContainer}>
-            {otp.map((digit, index) => (
-              <TextInput
-                key={index}
-                ref={(ref) => (inputs.current[index] = ref)}
-                style={styles.otpBox}
-                keyboardType="number-pad"
-                maxLength={1}
-                value={digit}
-                onChangeText={(text) => handleChange(text, index)}
-                onKeyPress={({ nativeEvent }) => {
-                  if (
-                    nativeEvent.key === "Backspace" &&
-                    otp[index] === "" &&
-                    index > 0
-                  ) {
-                    inputs.current[index - 1].focus();
-                  }
-                }}
-              />
-            ))}
+          {/* Logo */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require("../assets/New_logo.png")}
+              style={styles.logo}
+            />
+            <Text style={styles.brandName}>Gharplot</Text>
           </View>
 
-          {/* Verify Button */}
-          <TouchableOpacity onPress={verifyOtp} disabled={loading}>
-            <LinearGradient
-              colors={loading ? ["#ccc", "#aaa"] : ["#1E90FF", "#5DA9F6"]}
-              style={styles.loginBtn}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.btnText}>Verify OTP</Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+          {/* Card */}
+          <View style={styles.card}>
+            <Text style={styles.title}>Enter OTP</Text>
+            <Text style={styles.subtitle}>We sent an OTP to {phone}</Text>
 
-          {/* Resend OTP */}
-          <TouchableOpacity
-            onPress={resendOtp}
-            disabled={resending}
-          >
-            <Text style={styles.resendText}>
-              {resending ? "Sending..." : "Resend OTP"}
-            </Text>
-          </TouchableOpacity>
+            {/* Development Mode Notice */}
+            {developmentOTP && (
+              <View style={styles.devModeContainer}>
+                <Text style={styles.devModeText}>
+                  🔧 Development Mode: OTP is {developmentOTP}
+                </Text>
+              </View>
+            )}
+
+            {/* OTP Boxes */}
+            <View style={styles.otpContainer}>
+              {otp.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  ref={(ref) => (inputs.current[index] = ref)}
+                  style={styles.otpBox}
+                  keyboardType="number-pad"
+                  maxLength={1}
+                  value={digit}
+                  onChangeText={(text) => handleChange(text, index)}
+                  onKeyPress={({ nativeEvent }) => {
+                    if (
+                      nativeEvent.key === "Backspace" &&
+                      otp[index] === "" &&
+                      index > 0
+                    ) {
+                      inputs.current[index - 1].focus();
+                    }
+                  }}
+                />
+              ))}
+            </View>
+
+            {/* Verify Button */}
+            <TouchableOpacity onPress={verifyOtp} disabled={loading} style={styles.verifyBtnWrapper}>
+              <LinearGradient
+                colors={loading ? ["#ccc", "#aaa"] : ["#1E90FF", "#5DA9F6"]}
+                style={styles.loginBtn}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.btnText}>Verify OTP</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Resend OTP */}
+            <TouchableOpacity
+              onPress={resendOtp}
+              disabled={resending}
+            >
+              <Text style={styles.resendText}>
+                {resending ? "Sending..." : "Resend OTP"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </ImageBackground>
+      </ImageBackground>
+    </SafeAreaView>
   );
 };
 
@@ -403,17 +406,20 @@ const styles = StyleSheet.create({
     elevation: 3,
     color: "#000",
   },
+  verifyBtnWrapper: {
+    alignSelf: 'stretch',
+    marginBottom: 15,
+  },
   loginBtn: {
-    paddingVertical: 15,
-    paddingHorizontal:15,
+    height: 52,
     borderRadius: 12,
     alignItems: "center",
+    justifyContent: "center",
     width: "100%",
-    marginBottom: 15,
   },
   btnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
   resendText: {
-  color: "#1E90FF",
+    color: "#1E90FF",
     fontSize: 14,
     marginTop: 10,
     textAlign: "center",

@@ -11,6 +11,7 @@ import {
   Image,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PROPERTIES_DATA = [
   {
@@ -152,6 +153,7 @@ const PROPERTIES_DATA = [
 ];
 
 const PropertyListingsScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterType, setFilterType] = useState('All');
@@ -401,7 +403,9 @@ const PropertyListingsScreen = ({ navigation }) => {
       />
 
       {/* Floating Add Button */}
-      <TouchableOpacity style={styles.fabButton}>
+      <TouchableOpacity 
+        style={[styles.fabButton, { bottom: 20 + (insets.bottom > 0 ? insets.bottom : 0) }]}
+      >
         <MaterialCommunityIcons name="plus" size={28} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
@@ -702,7 +706,6 @@ const styles = StyleSheet.create({
   },
   fabButton: {
     position: 'absolute',
-    bottom: 20,
     right: 20,
     width: 56,
     height: 56,

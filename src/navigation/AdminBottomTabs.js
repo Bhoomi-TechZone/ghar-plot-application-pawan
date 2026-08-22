@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -142,7 +143,10 @@ const SettingsStack = () => (
 
 // Custom Tab Bar Component
 const CustomAdminTabBar = ({ state, descriptors, navigation }) => {
+  const insets = useSafeAreaInsets();
   const tabWidth = width / state.routes.length;
+  
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 8);
 
   const getTabIcon = (routeName, isFocused) => {
     let iconName;
@@ -179,7 +183,7 @@ const CustomAdminTabBar = ({ state, descriptors, navigation }) => {
   };
 
   return (
-    <View style={styles.tabBarContainer}>
+    <View style={[styles.tabBarContainer, { paddingBottom: bottomPadding }]}>
       <View style={styles.tabItemsContainer}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
@@ -286,7 +290,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e1e1e1',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
     paddingTop: 8,
     shadowColor: '#000',
     shadowOffset: {

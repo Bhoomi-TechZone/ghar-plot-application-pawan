@@ -1,13 +1,14 @@
-﻿/**
+/**
  * UserAssignmentsScreen - Assign customers (users) to employees
  * API: /admin/user-leads/*
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, SafeAreaView,
+  View, Text, FlatList, TouchableOpacity,
   Modal, ActivityIndicator, Alert, TextInput, StyleSheet,
-  ScrollView, RefreshControl, StatusBar,
+  ScrollView, RefreshControl, StatusBar, Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
@@ -29,6 +30,9 @@ const getHeaders = async () => {
 };
 
 const UserAssignmentsScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
+
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -228,7 +232,7 @@ const UserAssignmentsScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: statusBarTop }]}>
       <StatusBar barStyle="light-content" backgroundColor="#3b82f6" />
 
       <View style={styles.header}>
@@ -383,7 +387,7 @@ const UserAssignmentsScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

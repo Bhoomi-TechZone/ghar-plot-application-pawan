@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -19,7 +20,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'http://localhost:8866';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const USPEmployeesScreen = ({ navigation }) => {
   // Main Data States
@@ -679,6 +680,7 @@ const USPEmployeesScreen = ({ navigation }) => {
   }
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <View style={styles.container}>
       {/* Header */}
       <LinearGradient
@@ -1094,10 +1096,15 @@ const USPEmployeesScreen = ({ navigation }) => {
         </View>
       </Modal>
     </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f3f4f6',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f3f4f6',
@@ -1114,7 +1121,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   header: {
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 20,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,

@@ -25,7 +25,7 @@ import AdminNotificationPopup from '../../../components/AdminNotificationPopup';
 
 const AlertsScreen = ({ navigation, route }) => {
   const filterCategory = route?.params?.filterCategory || 'alert'; // 'alert' or 'reminder'
-  const screenTitle = filterCategory === 'reminder' ? 'My Reminders' : 'Alert Management';
+  const screenTitle = filterCategory === 'reminder' ? 'My Reminders' : 'My Alerts';
 
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);

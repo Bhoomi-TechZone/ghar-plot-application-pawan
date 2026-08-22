@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,9 @@ import {
   Switch,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
@@ -32,6 +34,9 @@ import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 const { width: screenWidth } = Dimensions.get('window');
 
 const UserManagementScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
+
   const [users, setUsers] = useState([]);
   const [allUsers, setAllUsers] = useState([]); // Store all users for selection
   const [currentPage, setCurrentPage] = useState(1);
@@ -664,12 +669,12 @@ const UserManagementScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: statusBarTop }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        {/* <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <Text style={styles.headerTitle}>User Management</Text>
 
@@ -1020,7 +1025,8 @@ const styles = StyleSheet.create({
   // Header
   header: {
     backgroundColor: '#1E293B',
-    paddingTop: Platform.OS === 'ios' ? 60 : (20 + (Platform.OS === 'android' ? 24 : 0)),
+   // paddingTop: Platform.OS === 'ios' ? 60 : (20 + (Platform.OS === 'android' ? 24 : 0)),
+    paddingTop: Platform.OS === 'ios' ? 10 : 10,
     paddingHorizontal: 16,
     paddingBottom: 16,
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useFocusEffect } from '@react-navigation/native';
 import {
     View,
@@ -12,9 +12,12 @@ import {
     Modal,
     ScrollView,
     ActivityIndicator,
+    Platform,
+    StatusBar,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { DeviceEventEmitter } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 // NOTE: Make sure formatImageUrl correctly prepends your base URL (e.g., https://gharplotbackend.gntechnology.de/)
 import { formatImageUrl, formatPrice } from '../services/homeApi';
 
@@ -266,8 +269,11 @@ const SavedScreen = ({ navigation }) => {
         </View>
     );
 
+    const insets = useSafeAreaInsets();
+    const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
+
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingTop: statusBarTop }]}>
             {/* Header */}
             <View style={styles.headerRowTop}>
                 <Text style={styles.header}>Shortlisted Properties</Text>
@@ -311,7 +317,7 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         marginBottom: 10,
         color: "#222",
-        paddingTop: 40,
+        paddingTop: 0,
     },
 
     searchContainer: {
@@ -417,7 +423,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 40,
+        marginTop: 15,
         marginBottom: 8,
     },
     countText: {

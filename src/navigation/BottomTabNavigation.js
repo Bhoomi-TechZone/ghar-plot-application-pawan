@@ -10,6 +10,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS as THEME_COLORS, FONTS } from '../constants/theme';
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from "react-native-vector-icons/Ionicons";
 import { isUserAuthenticated } from '../utils/authCheck';
 import AuthModal from '../components/AuthModal';
@@ -26,9 +27,14 @@ const tabs = ["Home", "Services", "AddSell", "Saved", "Profile"];
 
 // Custom Tab Bar
 const CustomTabBar = ({ state, descriptors, navigation }) => {
+  const insets = useSafeAreaInsets();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMessage, setAuthModalMessage] = useState('');
   const tabWidth = width / state.routes.length;
+  
+  // Calculate dynamic bottom padding and height
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 0);
+  const tabHeight = 70 + bottomPadding;
 
   // Function to check if user is fully registered
   const checkUserRegistration = async () => {
@@ -57,7 +63,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
   };
 
   return (
-    <View style={styles.tabBarContainer} pointerEvents="box-none">
+    <View style={[styles.tabBarContainer, { height: tabHeight, paddingBottom: bottomPadding }]} pointerEvents="box-none">
       <View style={styles.tabItemsContainer}>
         {/* simple bar: no active indicator */}
         {state.routes.map((route, index) => {
@@ -213,9 +219,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: Platform.OS === 'ios' ? 90 : 70,
+    // Base height + inset will be calculated dynamically in component
     backgroundColor: "transparent",
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
   },
   tabItemsContainer: {
     flexDirection: "row",

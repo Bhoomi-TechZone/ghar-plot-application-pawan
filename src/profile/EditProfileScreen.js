@@ -1,4 +1,4 @@
-﻿/**
+/**
  * EditProfileScreen.js
  * Screen for editing user name, email, and phone, integrated with API service.
  */
@@ -11,12 +11,12 @@ import {
     TouchableOpacity,
     TextInput,
     ScrollView,
-    SafeAreaView,
-    Alert,
     ActivityIndicator,
     Image,
     Platform,
+    StatusBar,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from "react-native-vector-icons/Ionicons";
 import { useFocusEffect } from '@react-navigation/native'; // Used to trigger data fetch when screen is active
 
@@ -58,6 +58,9 @@ const EditProfileScreen = ({ navigation }) => {
     // API Call States
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+
+    const insets = useSafeAreaInsets();
+    const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
     const [error, setError] = useState('');
 
     // Function to load profile data from API
@@ -173,16 +176,16 @@ const EditProfileScreen = ({ navigation }) => {
     // --- Conditional Rendering: Loading State ---
     if (loading) {
         return (
-            <SafeAreaView style={[styles.container, styles.centerContent]}>
+            <View style={[styles.container, styles.centerContent, { paddingTop: statusBarTop }]}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
                 <Text style={styles.loadingText}>Loading profile data...</Text>
-            </SafeAreaView>
+            </View>
         );
     }
     
     // --- Conditional Rendering: Main Form ---
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={[styles.container, { paddingTop: statusBarTop }]}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -302,7 +305,7 @@ const EditProfileScreen = ({ navigation }) => {
                 </TouchableOpacity>
 
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 };
 

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * PrivacySecurityScreen.js
  * Comprehensive Privacy & Security settings with modern UI
  */
@@ -11,10 +11,10 @@ import {
   Switch,
   Alert,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   Platform,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -49,6 +49,9 @@ const KEYS = {
 };
 
 const PrivacySecurityScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
+
   // Security States
   const [twoFA, setTwoFA] = useState(false);
   const [dataSharing, setDataSharing] = useState(true);
@@ -270,12 +273,12 @@ const PrivacySecurityScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: statusBarTop }]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}>
           <Icon name="arrow-back" size={24} color={COLORS.black} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Privacy & Security</Text>
@@ -423,7 +426,7 @@ const PrivacySecurityScreen = ({ navigation }) => {
 
         <View style={{ height: 30 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

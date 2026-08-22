@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AdminReminderDetailsScreen.js
  * Premium detailed view for Admin reminder notifications
  * Features: View Details, Edit, Cancel, Complete, Add Comment, Reassign Info
@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { updateReminder } from '../../../services/api';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
@@ -30,6 +31,7 @@ const { width } = Dimensions.get('window');
 const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const AdminReminderDetailsScreen = ({ route, navigation }) => {
+  const insets = useSafeAreaInsets();
   const {
     reminderId,
     employeeName: paramEmployeeName,
@@ -435,7 +437,7 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
 
       {/* FOOTER ACTIONS */}
       {isActionable && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { bottom: 25 + (insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 0)) }]}>
           <TouchableOpacity style={styles.footerEdit} onPress={handleEdit}>
             <Icon name="pencil" size={20} color="#1F2937" />
           </TouchableOpacity>
@@ -523,7 +525,7 @@ const styles = StyleSheet.create({
   leadBtn: { backgroundColor: '#4F46E5', padding: 18, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, elevation: 4 },
   leadBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 
-  footer: { position: 'absolute', bottom: 25, left: 20, right: 20, backgroundColor: '#fff', padding: 12, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 12, elevation: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20 },
+  footer: { position: 'absolute', left: 20, right: 20, backgroundColor: '#fff', padding: 12, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 12, elevation: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20 },
   footerEdit: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
   footerMsg: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
   footerCancel: { paddingHorizontal: 15, height: 48, justifyContent: 'center' },

@@ -1,5 +1,6 @@
-﻿import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, FlatList, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, FlatList, Alert, Platform, StatusBar } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from "react-native-vector-icons/Ionicons";
 import CrossPlatformAlert from '../utils/crossPlatformAlert';
 
@@ -10,6 +11,8 @@ const FAQS = [
 ];
 
 const HelpScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
   const [expanded, setExpanded] = useState(null);
 
   const toggle = (id) => setExpanded(prev => (prev === id ? null : id));
@@ -36,9 +39,9 @@ const HelpScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: statusBarTop }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}>
           <Icon name="arrow-back" size={24} color="#FF7A00" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Help & Support</Text>

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -209,7 +209,7 @@ const EmployeeAlertsScreen = ({ navigation }) => {
       <ScrollView style={styles.scrollContainer}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Alert Management</Text>
+          <Text style={styles.headerTitle}>My Alerts</Text>
 
           <TouchableOpacity style={styles.createButton} onPress={createAlert}>
             <Icon name="add" size={20} color="#fff" />

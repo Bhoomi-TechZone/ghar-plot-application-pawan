@@ -94,6 +94,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 1,
   },
   icon: {
     marginRight: 8,
@@ -130,6 +131,8 @@ const styles = StyleSheet.create({
   // Text styles
   text: {
     fontWeight: '600',
+    flexShrink: 1,
+    includeFontPadding: false,
   },
   primaryText: {
     color: '#fff',

@@ -413,6 +413,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
       {/* BODY */}
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom > 0 ? insets.bottom + 90 : 90 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -863,18 +864,18 @@ const styles = StyleSheet.create({
   },
 
   /* Header */
-  headerWrapper: {
-    paddingHorizontal: 18,
-    paddingTop: Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 0) + 10,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
+ headerWrapper: {
+  paddingHorizontal: 18,
+  paddingTop: 10,
+  paddingBottom: 20,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  elevation: 5,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.3,
+  shadowRadius: 8,
+},
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",

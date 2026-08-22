@@ -10,6 +10,7 @@ import {
 import { COLORS as THEME_COLORS, FONTS } from '../constants/theme';
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from "react-native-vector-icons/Ionicons";
 
 // CRM Employee Screens
@@ -43,8 +44,12 @@ const AlertsStack = () => (
 
 // Custom Tab Bar
 const CustomTabBar = ({ state, descriptors, navigation }) => {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 0);
+  const tabHeight = 70 + bottomPadding;
+
   return (
-    <View style={styles.tabBarContainer} pointerEvents="box-none">
+    <View style={[styles.tabBarContainer, { height: tabHeight, paddingBottom: bottomPadding }]} pointerEvents="box-none">
       <View style={styles.tabItemsContainer}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
@@ -140,9 +145,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: Platform.OS === 'ios' ? 90 : 70,
     backgroundColor: "transparent",
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
   },
   tabItemsContainer: {
     flexDirection: "row",

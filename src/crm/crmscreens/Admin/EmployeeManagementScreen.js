@@ -1,11 +1,10 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   TextInput,
   Alert,
   Modal,
@@ -16,6 +15,7 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
@@ -37,6 +37,9 @@ import { prepareEmployeeSubmitData } from '../../utils/employeeFormValidation';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const EmployeeManagementScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
+
   const [employees, setEmployees] = useState([]);
   const [roles, setRoles] = useState([]);
   const [uspCategories, setUspCategories] = useState([]);
@@ -1286,7 +1289,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
       animationType="slide"
       onRequestClose={() => setRemindersModalVisible(false)}
     >
-      <SafeAreaView style={styles.reminderModalContainer}>
+      <View style={styles.reminderModalContainer}>
         <View style={styles.reminderModalContent}>
           {/* Modal Header */}
           <View style={styles.reminderModalHeader}>
@@ -1386,107 +1389,112 @@ const EmployeeManagementScreen = ({ navigation }) => {
             <Text style={styles.reminderCloseFooterButtonText}>Close</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 
-  return (
-    <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#1e293b"
-        translucent={false}
-      />
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-back" size={24} color="#ffffff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Employee Management</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={openCreateEmployee}
-        >
-          <Icon name="add" size={24} color="#ffffff" />
-        </TouchableOpacity>
-      </View>
+ return (
+  <View style={[styles.container, { paddingTop: statusBarTop }]}>
+    <StatusBar
+      barStyle="light-content"
+      backgroundColor="#1e293b"
+      translucent={false}
+    />
 
-      <View style={styles.content}>
-        <View style={styles.searchContainer}>
-          <Icon name="search" size={20} color="#6b7280" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search employees..."
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholderTextColor="#9ca3af"
-          />
-        </View>
+    <View style={styles.header}>
+      <Text style={styles.headerTitle}>Employee Management</Text>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{employees.length}</Text>
-            <Text style={styles.statLabel}>Total</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#10b981' }]}>
-              {employees.filter(emp => emp.isActive).length}
-            </Text>
-            <Text style={styles.statLabel}>Active</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#ef4444' }]}>
-              {employees.filter(emp => !emp.isActive).length}
-            </Text>
-            <Text style={styles.statLabel}>Inactive</Text>
-          </View>
-        </View>
-
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3b82f6" />
-            <Text style={styles.loadingText}>Loading employees...</Text>
-          </View>
-        ) : filteredEmployees.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Icon name="people" size={60} color="#9ca3af" />
-            <Text style={styles.emptyText}>
-              {searchText ? 'No employees found' : 'No employees found'}
-            </Text>
-            <Text style={styles.emptySubText}>
-              {searchText
-                ? 'Try adjusting your search criteria'
-                : 'Create your first employee!'
-              }
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredEmployees}
-            renderItem={renderEmployeeItem}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContainer}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={['#3b82f6']}
-                tintColor="#3b82f6"
-              />
-            }
-          />
-        )}
-      </View>
-
-      {renderAssignSubAdminModal()}
-      {renderPasswordModal()}
-      {renderUspModal()}
-      {renderRemindersModal()}
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={openCreateEmployee}
+      >
+        <Icon name="add" size={24} color="#ffffff" />
+      </TouchableOpacity>
     </View>
-  );
+
+    <View style={styles.content}>
+      <View style={styles.searchContainer}>
+        <Icon
+          name="search"
+          size={20}
+          color="#6b7280"
+          style={styles.searchIcon}
+        />
+
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search employees..."
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholderTextColor="#9ca3af"
+        />
+      </View>
+
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{employees.length}</Text>
+          <Text style={styles.statLabel}>Total</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, { color: '#10b981' }]}>
+            {employees.filter(emp => emp.isActive).length}
+          </Text>
+          <Text style={styles.statLabel}>Active</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, { color: '#ef4444' }]}>
+            {employees.filter(emp => !emp.isActive).length}
+          </Text>
+          <Text style={styles.statLabel}>Inactive</Text>
+        </View>
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={styles.loadingText}>Loading employees...</Text>
+        </View>
+      ) : filteredEmployees.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Icon name="people" size={60} color="#9ca3af" />
+
+          <Text style={styles.emptyText}>
+            {searchText ? 'No employees found' : 'No employees found'}
+          </Text>
+
+          <Text style={styles.emptySubText}>
+            {searchText
+              ? 'Try adjusting your search criteria'
+              : 'Create your first employee!'}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredEmployees}
+          renderItem={renderEmployeeItem}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#3b82f6']}
+              tintColor="#3b82f6"
+            />
+          }
+        />
+      )}
+    </View>
+
+    {renderAssignSubAdminModal()}
+    {renderPasswordModal()}
+    {renderUspModal()}
+    {renderRemindersModal()}
+  </View>
+);
 };
 const styles = StyleSheet.create({
   container: {
@@ -1495,8 +1503,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#1e293b',
-    paddingTop: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight || 0) + 12,
-    paddingBottom: 14,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1506,7 +1513,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
-  },
+},
   backButton: {
     width: 40,
     height: 40,

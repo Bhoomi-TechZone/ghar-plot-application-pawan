@@ -10,7 +10,6 @@ import {
     StyleSheet,
     TouchableOpacity,
     Image,
-    SafeAreaView,
     ActivityIndicator,
     ScrollView,
     StatusBar,
@@ -23,6 +22,7 @@ import Icon from "react-native-vector-icons/Ionicons";
 import FeatherIcon from "react-native-vector-icons/Feather";
 import FontAwesomeIcon from "react-native-vector-icons/FontAwesome";
 import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // NOTE: Ensure this path is correct for your project structure
 import { getCurrentUserProfile } from '../services/userapi';
@@ -56,6 +56,9 @@ const ProfileScreen = ({ navigation }) => {
     const [error, setError] = useState('');
     const [avatar, setAvatar] = useState(null);
     const [avatarVersion, setAvatarVersion] = useState(Date.now());
+
+    const insets = useSafeAreaInsets();
+    const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
 
     const loadProfileData = useCallback(async () => {
         setLoading(true);
@@ -355,11 +358,11 @@ const ProfileScreen = ({ navigation }) => {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor={COLORS.blueHeader} />
             
             {/* Enhanced Header with Gradient Effect */}
-            <View style={styles.headerSection}>
+            <View style={[styles.headerSection, { paddingTop: statusBarTop }]}>
                 <View style={styles.headerBar}>
                     <TouchableOpacity 
                         style={styles.headerButton}
@@ -595,9 +598,9 @@ const ProfileScreen = ({ navigation }) => {
                     <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
 
-                <View style={{ height: 30 }} />
+                <View style={{ height: 80 }} />
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 };
 

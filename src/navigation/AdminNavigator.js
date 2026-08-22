@@ -1,15 +1,14 @@
 /**
- * Admin Navigator
- * Navigation for admin users with full access
+ * Admin Navigator                            
+ * Navigation for admin users with full access   
  * Uses AdminBottomTabs for main admin navigation
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect } from 'react'; 
 import { View, Text, BackHandler } from 'react-native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { useNavigation } from '@react-navigation/native';
-import AdminBottomTabs from './AdminBottomTabsSimple';
-
+import { createStackNavigator } from '@react-navigation/stack'; 
+import { useNavigation } from '@react-navigation/native'; 
+import AdminBottomTabs from './AdminBottomTabsSimple'; 
 // Additional Admin Screens that might be navigated to from the main tabs
 import RoleManagementScreen from '../crm/crmscreens/Admin/RoleManagementScreen';
 import Reminders from '../crm/crmscreens/Admin/Reminders';
@@ -197,15 +196,7 @@ const AdminNavigator = ({ onLogout }) => {
         name="AdminAlerts"
         component={Alerts}
         options={{
-          headerShown: true,
-          title: 'Admin Alerts',
-          headerStyle: {
-            backgroundColor: '#007AFF',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -226,17 +217,7 @@ const AdminNavigator = ({ onLogout }) => {
       <Stack.Screen
         name="BadAttendantAlerts"
         component={BadAttendantAlertsScreen}
-        options={{
-          headerShown: true,
-          title: 'Bad Attendant Alerts',
-          headerStyle: {
-            backgroundColor: '#007AFF',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen name="AdminNotificationSettings"
         component={AdminNotificationSettings}
@@ -279,17 +260,7 @@ const AdminNavigator = ({ onLogout }) => {
       <Stack.Screen
         name="BoughtProperty"
         component={BoughtPropertyScreen}
-        options={{
-          headerShown: true,
-          title: 'Bought Properties',
-          headerStyle: {
-            backgroundColor: '#007AFF',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ServiceManagement"
@@ -361,15 +332,7 @@ const AdminNavigator = ({ onLogout }) => {
         name="Alerts"
         component={Alerts}
         options={{
-          headerShown: true,
-          title: 'Alerts',
-          headerStyle: {
-            backgroundColor: '#007AFF',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          headerShown: false,
         }}
       />
 

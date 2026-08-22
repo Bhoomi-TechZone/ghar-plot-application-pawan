@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { addProperty } from "../services/propertyapi";
 import { simulatePropertyAddedNotification } from "../utils/testNotifications";
 import CrossPlatformAlert from '../utils/crossPlatformAlert';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // --- Reusable Components ---
 const FormInput = ({
@@ -76,6 +77,12 @@ const Selector = ({ label, options, selectedValue, onSelect }) => (
 
 // --- Main Component ---
 const AddSellScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const bottomInset = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 0);
+  const tabBarHeight = 70 + bottomInset;
+  const buttonBottom = Platform.OS === 'web' ? 80 : tabBarHeight + 10;
+  const scrollPaddingBottom = tabBarHeight + 100;
+
   const [propertyLocation, setPropertyLocation] = useState("");
   const [areaDetails, setAreaDetails] = useState("");
   const [availability, setAvailability] = useState("Ready to Move");
@@ -451,18 +458,20 @@ const AddSellScreen = ({ navigation }) => {
     navigation,
   ]);
 
+  const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? 24 : 0); // fallback 24 for android status bar if currentHeight is undefined without import
+
   // --- Render ---
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {/* Header */}
-      <LinearGradient colors={["#007BFF", "#0056D2"]} style={styles.header}>
+      <LinearGradient colors={["#007BFF", "#0056D2"]} style={[styles.header, { paddingTop: Math.max(statusBarTop + 10, 25) }]}>
         <Text style={styles.headerTitle}>🏠 Add Property</Text>
         <Text style={styles.headerSubtitle}>Enter property details below</Text>
       </LinearGradient>
 
       {/* Scrollable Form */}
       <ScrollView 
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingBottom: scrollPaddingBottom }]}
         style={Platform.OS === 'web' ? { flex: 1, overflow: 'auto' } : undefined}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
@@ -660,7 +669,7 @@ const AddSellScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Submit Button */}
-      <View style={styles.fixedBottom}>
+      <View style={[styles.fixedBottom, { bottom: buttonBottom }]}>
         <TouchableOpacity
           style={styles.submitButton}
           onPress={handleSubmit}
@@ -675,7 +684,7 @@ const AddSellScreen = ({ navigation }) => {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -706,7 +715,6 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 16,
-    paddingBottom: 120,
   },
   card: {
     backgroundColor: "#fff",
@@ -792,7 +800,6 @@ const styles = StyleSheet.create({
   },
   fixedBottom: {
     position: Platform.OS === 'web' ? 'fixed' : 'absolute',
-    bottom: Platform.OS === 'web' ? 80 : 70,
     left: 16,
     right: 16,
     elevation: 8,
@@ -807,11 +814,17 @@ const styles = StyleSheet.create({
   },
   gradientButton: {
     paddingVertical: 16,
+    paddingHorizontal: 20,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   submitButtonText: {
     color: "#fff",
     textAlign: "center",
     fontWeight: "bold",
     fontSize: 18,
+    flexShrink: 1,
+    includeFontPadding: false,
   },
 });

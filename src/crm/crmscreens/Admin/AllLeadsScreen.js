@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   ActivityIndicator,
   RefreshControl,
@@ -13,12 +12,16 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import * as crmLeadsApi from '../../services/crmLeadsApi';
 
 const AllLeadsScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0);
+
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -145,82 +148,105 @@ const AllLeadsScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar 
-        barStyle="light-content" 
-        backgroundColor="#3b82f6" 
-        translucent={false}
-      />
-      
-      {/* HEADER */}
-      <LinearGradient colors={['#3b82f6', '#2563eb']} style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Icon name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>All Leads</Text>
-            <Text style={styles.headerSub}>Manage & track all leads</Text>
-          </View>
-        </View>
+  <View style={[styles.container, { paddingTop: statusBarTop }]}>
+    <StatusBar
+      barStyle="light-content"
+      backgroundColor="#1e293b"
+      translucent={false}
+    />
 
-        <View style={styles.statsRow}>
-          <StatCard title="TOTAL" value={leads.length} />
-          <StatCard title="ENQUIRY" value={leads.length} />
-          <StatCard title="CLIENT" value={0} />
-        </View>
-      </LinearGradient>
+    {/* HEADER */}
+    <LinearGradient
+      colors={['#1e293b', '#1e293b']}
+      style={styles.header}
+    >
+      <View style={styles.headerTop}>
+        {/* <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+        >
+          <Icon name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity> */}
 
-      {/* SEARCH */}
-      <View style={styles.searchRow}>
-        <View style={styles.searchContainer}>
-          <Icon name="search" size={20} color="#9ca3af" />
-          <TextInput
-            placeholder="Search by name, phone..."
-            placeholderTextColor="#9ca3af"
-            style={styles.searchInput}
-            value={search}
-            onChangeText={setSearch}
-          />
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle}>All Leads</Text>
+          <Text style={styles.headerSub}>
+            Manage & track all leads
+          </Text>
         </View>
-        <TouchableOpacity style={styles.filterBtn}>
-          <Icon name="filter" size={20} color="#fff" />
-        </TouchableOpacity>
       </View>
 
-      {/* LEADS LIST */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Loading leads...</Text>
-        </View>
-      ) : filteredLeads.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Icon name="folder-open-outline" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>No leads found</Text>
-          <Text style={styles.emptySubtext}>Start by assigning leads to employees</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredLeads}
-          renderItem={renderLeadCard}
-          keyExtractor={(item, i) => i.toString()}
-          contentContainerStyle={styles.listContainer}
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={() => {
-                setRefreshing(true);
-                fetchLeads();
-              }}
-              colors={['#3b82f6']}
-              tintColor="#3b82f6"
-            />
-          }
+      <View style={styles.statsRow}>
+        <StatCard title="TOTAL" value={leads.length} />
+        <StatCard title="ENQUIRY" value={leads.length} />
+        <StatCard title="CLIENT" value={0} />
+      </View>
+    </LinearGradient>
+
+    {/* SEARCH */}
+    <View style={styles.searchRow}>
+      <View style={styles.searchContainer}>
+        <Icon name="search" size={20} color="#9ca3af" />
+
+        <TextInput
+          placeholder="Search by name, phone..."
+          placeholderTextColor="#9ca3af"
+          style={styles.searchInput}
+          value={search}
+          onChangeText={setSearch}
         />
-      )}
+      </View>
+
+      <TouchableOpacity style={styles.filterBtn}>
+        <Icon name="filter" size={20} color="#fff" />
+      </TouchableOpacity>
     </View>
-  );
+
+    {/* LEADS LIST */}
+    {loading ? (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={styles.loadingText}>
+          Loading leads...
+        </Text>
+      </View>
+    ) : filteredLeads.length === 0 ? (
+      <View style={styles.emptyContainer}>
+        <Icon
+          name="folder-open-outline"
+          size={64}
+          color="#d1d5db"
+        />
+
+        <Text style={styles.emptyText}>
+          No leads found
+        </Text>
+
+        <Text style={styles.emptySubtext}>
+          Start by assigning leads to employees
+        </Text>
+      </View>
+    ) : (
+      <FlatList
+        data={filteredLeads}
+        renderItem={renderLeadCard}
+        keyExtractor={(item, i) => i.toString()}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              fetchLeads();
+            }}
+            colors={['#3b82f6']}
+            tintColor="#3b82f6"
+          />
+        }
+      />
+    )}
+  </View>
+);
 };
 
 export default AllLeadsScreen;
@@ -236,12 +262,15 @@ const styles = StyleSheet.create({
   // Header
   header: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight || 0) + 16,
-    paddingBottom: 20,
+    paddingVertical: 16,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     elevation: 4,
-  },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+},
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -261,7 +290,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   headerSub: { 
-    color: 'rgba(255,255,255,0.8)', 
+    color: '#fafbfc', 
     fontSize: 13,
   },
 

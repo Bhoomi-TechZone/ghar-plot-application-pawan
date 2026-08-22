@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,12 +17,14 @@ import Icon from "react-native-vector-icons/Ionicons";
 import LinearGradient from "react-native-linear-gradient";
 import * as crmEmployeeDashboardApi from '../../services/crmEmployeeDashboardApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { startAdminNotificationPolling, stopAdminNotificationPolling } from '../../../services/AdminNotificationPollingService';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const { width } = Dimensions.get("window");
 
 const DashboardEmployee = ({ navigation, openDrawer }) => {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [employeeName, setEmployeeName] = useState('Employee');
@@ -285,6 +287,7 @@ const DashboardEmployee = ({ navigation, openDrawer }) => {
       {/* BODY */}
       <ScrollView 
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom > 0 ? insets.bottom + 90 : 90 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

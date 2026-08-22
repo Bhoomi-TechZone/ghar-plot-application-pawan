@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Lead Details Screen
  * Shows full information of a lead
  */
@@ -15,11 +15,13 @@ import {
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ReminderModal from '../../components/Enquiries/modals/ReminderModal';
 import FollowUpModal from '../../components/Enquiries/modals/FollowUpModal';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const LeadDetails = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
   const { lead } = route.params || {};
   const [reminderModalVisible, setReminderModalVisible] = useState(false);
   const [followUpModalVisible, setFollowUpModalVisible] = useState(false);
@@ -401,7 +403,7 @@ const LeadDetails = ({ navigation, route }) => {
       </ScrollView>
 
       {/* Quick Action Buttons */}
-      <View style={styles.quickActions}>
+      <View style={[styles.quickActions, { paddingBottom: insets.bottom > 0 ? insets.bottom + 12 : 12 }]}>
         <TouchableOpacity style={styles.quickActionBtn} onPress={handleCall}>
           <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
             <Icon name="phone" size={22} color="#10B981" />
