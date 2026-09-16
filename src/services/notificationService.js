@@ -258,17 +258,44 @@ export const handleNotificationAction = (notificationData, navigation) => {
 
     // 1. Priority: Handle alerts and Admin-created reminders (which are technically alerts)
     if (type === 'alert' || type === 'admin_reminder' || type === 'system_alert' || notificationData.alertId) {
-        console.log(`✅ MATCHED ALERT/ADMIN_REMINDER - Navigating to EditAlertScreen`);
+        console.log(`✅ MATCHED ALERT/ADMIN_REMINDER - Triggering popup dialog`);
 
-        // Navigate directly to EditAlertScreen
-        navigation.navigate('EditAlert', {
-            alertId: notificationData.alertId?.replace('alert_', '') || notificationData.id?.replace('alert_', '') || notificationData.reminderId?.replace('alert_', ''),
-            originalTitle: notificationData.alertTitle || notificationData.title || notificationData.reminderTitle || '',
-            originalReason: notificationData.reason || notificationData.message || notificationData.body || notificationData.note || '',
-            originalDate: notificationData.date || notificationData.scheduledDate || notificationData.reminderTime || '',
-            originalTime: notificationData.time || notificationData.scheduledTime || '',
-            repeatDaily: (notificationData.repeatDaily === 'true' || notificationData.repeatDaily === true || notificationData.repeatDaily === 'daily' || notificationData.repeatFrequency === 'daily'),
-        });
+        const popupData = {
+            ...notificationData,
+            fromTap: true,
+            type: notificationData.alertId ? 'admin_reminder' : (type || 'alert'),
+            title: notificationData.alertTitle || notificationData.title || notificationData.reminderTitle || (type === 'alert' ? 'Alert' : 'Reminder'),
+            note: notificationData.reason || notificationData.message || notificationData.body || notificationData.note || '',
+        };
+
+        if (global.triggerProfessionalReminder) {
+            console.log('🚀 Triggering popup from handleNotificationAction');
+            global.triggerProfessionalReminder(popupData);
+            return;
+        }
+
+        // Fallback: Queue for AppState/onNavigationReady
+        try {
+            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+            AsyncStorage.setItem('pendingNotificationData', JSON.stringify({
+                triggerReminderPopup: true,
+                data: popupData,
+                timestamp: Date.now()
+            }));
+            return;
+        } catch (_) {}
+
+        // Ultimate fallback if popup cannot be shown
+        if (navigation && navigation.navigate) {
+            navigation.navigate('EditAlert', {
+                alertId: notificationData.alertId?.replace('alert_', '') || notificationData.id?.replace('alert_', '') || notificationData.reminderId?.replace('alert_', ''),
+                originalTitle: notificationData.alertTitle || notificationData.title || notificationData.reminderTitle || '',
+                originalReason: notificationData.reason || notificationData.message || notificationData.body || notificationData.note || '',
+                originalDate: notificationData.date || notificationData.scheduledDate || notificationData.reminderTime || '',
+                originalTime: notificationData.time || notificationData.scheduledTime || '',
+                repeatDaily: (notificationData.repeatDaily === 'true' || notificationData.repeatDaily === true || notificationData.repeatDaily === 'daily' || notificationData.repeatFrequency === 'daily'),
+            });
+        }
         return;
     }
 

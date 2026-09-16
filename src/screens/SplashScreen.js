@@ -75,12 +75,18 @@ const SplashScreen = ({ navigation }) => {
           console.log('📬 App opened from notification (killed state):', JSON.stringify(remoteMessage.data, null, 2));
           
           const notificationData = remoteMessage.data || {};
+          
+          // 🍎 iOS-SPECIFIC: Check if this is a local fallback notification
+          const isLocalFallback = notificationData['gharplot.localFallback'] === 1 || 
+                                  notificationData['gharplot.localFallback'] === '1' ||
+                                  notificationData['gharplot.localFallback'] === true;
+          
           const notificationType = String(
             notificationData.type || notificationData.notificationType || ''
           ).toLowerCase();
 
           // These notifications show the in-app reminder dialog when tapped
-          // from the background.  Queue the exact same dialog for a cold start
+          // from the background. Queue the exact same dialog for a cold start
           // as well, because onNotificationOpenedApp is not called when the
           // app was fully closed.
           const opensReminderPopup = [
@@ -89,7 +95,9 @@ const SplashScreen = ({ navigation }) => {
             'admin_reminder',
             'employee_reminder_to_admin',
             'employee_due_reminder',
-          ].includes(notificationType) || !!notificationData.alertId;
+            'alert',
+            'system_alert',
+          ].includes(notificationType) || !!notificationData.alertId || !!notificationData.reminderId || isLocalFallback; // ← iOS local fallback always shows popup
           
           // Check if user is logged in
           const adminToken = await AsyncStorage.getItem('adminToken');
@@ -97,28 +105,16 @@ const SplashScreen = ({ navigation }) => {
           const crmToken = await AsyncStorage.getItem('crm_token');
           
           if (adminToken || userToken || crmToken) {
-            if (notificationType === 'alert' || notificationType === 'system_alert') {
-              const params = {
-                alertId: notificationData.alertId?.replace('alert_', '') || notificationData.id?.replace('alert_', '') || Date.now().toString(),
-                originalReason: notificationData.reason || notificationData.body || notificationData.message || '',
-                originalDate: notificationData.date,
-                originalTime: notificationData.time,
-                repeatDaily: notificationData.repeatDaily === 'true' || notificationData.repeatDaily === true,
-              };
-              
-              clearTimeout(safetyTimeout);
-              navigation.replace('EditAlert', params);
-              shouldDoAutoLogin = false;
-            } else if (opensReminderPopup) {
-              // Store for App.js to show the dialog after navigation and popup
-              // callbacks are ready. This also covers an app opened from a
-              // fully closed state by an admin FCM notification.
+            if (opensReminderPopup) {
+              console.log('🚀 SplashScreen: Queuing reminder/alert popup for cold start');
               await AsyncStorage.setItem('pendingNotificationData', JSON.stringify({
                 triggerReminderPopup: true,
                 data: {
                   ...notificationData,
-                  title: notificationData.title || remoteMessage.notification?.title,
-                  note: notificationData.note || notificationData.body || notificationData.message || remoteMessage.notification?.body,
+                  fromTap: true,
+                  type: notificationData.alertId ? 'admin_reminder' : (notificationType || 'reminder'),
+                  title: notificationData.title || remoteMessage.notification?.title || (notificationType === 'alert' ? 'Alert' : 'Reminder'),
+                  note: notificationData.note || notificationData.reason || notificationData.body || notificationData.message || remoteMessage.notification?.body || '',
                 },
                 timestamp: Date.now()
               }));
@@ -201,6 +197,7 @@ const SplashScreen = ({ navigation }) => {
           />
         </View>
         <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.footerText}>India's Trusted Real Estate Platform</Text>
       </View>
     </View>
   );
@@ -245,11 +242,16 @@ const styles = StyleSheet.create({
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#e3f2fd",
+    shadowColor: "#007bff",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 4,
   },
   logo: {
     width: 90,
@@ -269,9 +271,9 @@ const styles = StyleSheet.create({
   },
   bottomContainer: {
     position: "absolute",
-    bottom: 70,
+    bottom: 50,
     alignItems: "center",
-    width: width * 0.65,
+    width: width * 0.75,
   },
   progressBackground: {
     width: "100%",
@@ -291,6 +293,13 @@ const styles = StyleSheet.create({
     color: "#495057",
     letterSpacing: 1,
     fontWeight: "600",
+  },
+  footerText: {
+    marginTop: 18,
+    fontSize: 13,
+    color: "#94a3b8",
+    fontWeight: "500",
+    letterSpacing: 0.5,
   },
 });
 

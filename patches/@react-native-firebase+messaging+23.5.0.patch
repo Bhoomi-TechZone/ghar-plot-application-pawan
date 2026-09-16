@@ -1,0 +1,28 @@
+diff --git a/node_modules/@react-native-firebase/messaging/ios/RNFBMessaging/RNFBMessaging+UNUserNotificationCenter.m b/node_modules/@react-native-firebase/messaging/ios/RNFBMessaging/RNFBMessaging+UNUserNotificationCenter.m
+--- a/node_modules/@react-native-firebase/messaging/ios/RNFBMessaging/RNFBMessaging+UNUserNotificationCenter.m
++++ b/node_modules/@react-native-firebase/messaging/ios/RNFBMessaging/RNFBMessaging+UNUserNotificationCenter.m
+@@ -127,16 +127,13 @@
+     presentationOptions |= UNNotificationPresentationOptionAlert;
+   }
+ 
+-  if (notification.request.content.userInfo[@"gcm.message_id"]) {
+-    NSDictionary *notificationDict = [RNFBMessagingSerializer notificationToDict:notification];
+-
+-    // Don't send an event if contentAvailable is true - application:didReceiveRemoteNotification
+-    // will send the event for us, we don't want to duplicate them
+-    if (!notificationDict[@"contentAvailable"]) {
+-      [[RNFBRCTEventEmitter shared] sendEventWithName:@"messaging_message_received"
+-                                                 body:notificationDict];
+-    }
+-    completionHandler(presentationOptions);
+-  }
++  NSDictionary *userInfo = notification.request.content.userInfo;
++  if (userInfo[@"gcm.message_id"] || userInfo[@"google.message_id"] || userInfo[@"alertId"] || userInfo[@"reminderId"] || userInfo[@"aps"]) {
++    NSDictionary *notificationDict = [RNFBMessagingSerializer notificationToDict:notification];
++
++    // Always send the foreground message event to JS so messaging().onMessage reliably triggers on iOS
++    [[RNFBRCTEventEmitter shared] sendEventWithName:@"messaging_message_received"
++                                               body:notificationDict];
++  }
+ 
+   if (_originalDelegate != nil && originalDelegateRespondsTo.willPresentNotification) {

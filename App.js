@@ -238,22 +238,24 @@ const AppMain = () => {
           // 🔔 IMPORTANT: Android stores app-level importance=DEFAULT permanently across reinstalls.
           // Only user can fix it via Android Settings → Apps → Gharplot → Notifications → set to HIGH.
           // We open the settings page once so user can fix it.
-          const _AsyncStorage = require('@react-native-async-storage/async-storage').default;
-          const settingsPrompted = await _AsyncStorage.getItem('app_notif_settings_prompted_v3');
-          if (!settingsPrompted) {
-            const ch = await notifee.getChannel('default_notification_channel').catch(() => null);
-            const needsFix = !ch || (ch.importance !== undefined && ch.importance < 4);
-            if (needsFix) {
-              await _AsyncStorage.setItem('app_notif_settings_prompted_v3', '1');
-              Alert.alert(
-                '🔔 Enable Alert Notifications',
-                'Pop-up reminder notifications require HIGH importance.\n\nTap "Open Settings" → set Gharplot notifications to "High" or "Alert".',
-                [
-                  { text: 'Later', style: 'cancel' },
-                  { text: 'Open Settings', onPress: () => notifee.openNotificationSettings() },
-                ],
-                { cancelable: false }
-              );
+          if (Platform.OS === 'android') {
+            const _AsyncStorage = require('@react-native-async-storage/async-storage').default;
+            const settingsPrompted = await _AsyncStorage.getItem('app_notif_settings_prompted_v3');
+            if (!settingsPrompted) {
+              const ch = await notifee.getChannel('default_notification_channel').catch(() => null);
+              const needsFix = !ch || (ch.importance !== undefined && ch.importance < 4);
+              if (needsFix) {
+                await _AsyncStorage.setItem('app_notif_settings_prompted_v3', '1');
+                Alert.alert(
+                  '🔔 Enable Alert Notifications',
+                  'Pop-up reminder notifications require HIGH importance.\n\nTap "Open Settings" → set Gharplot notifications to "High" or "Alert".',
+                  [
+                    { text: 'Later', style: 'cancel' },
+                    { text: 'Open Settings', onPress: () => notifee.openNotificationSettings() },
+                  ],
+                  { cancelable: false }
+                );
+              }
             }
           }
         } catch (channelErr) {
@@ -309,15 +311,16 @@ const AppMain = () => {
 
             // 🛑 DUAL-PATH BRIDGE CHECK: Only block if same OCCURRENCE is already showing.
             // Uses occurrenceKey (alertId + scheduledMinute) so recurring reminders are NOT blocked.
-            // ALERTS (Red) always bypass the bridge to guarantee visibility.
-            if (!isActuallyAlert && occurrenceKey && !occurrenceKey.startsWith('rem_') && global.lastGlobalReminderId === occurrenceKey && (now - global.lastGlobalReminderTime < 10000)) {
+            // ALERTS (Red) and explicit notification taps always bypass the bridge to guarantee visibility.
+            const isFromTap = !!reminder.fromTap;
+            if (!isFromTap && !isActuallyAlert && occurrenceKey && !occurrenceKey.startsWith('rem_') && global.lastGlobalReminderId === occurrenceKey && (now - global.lastGlobalReminderTime < 10000)) {
               console.log('🛑 Blocking dual-popup (Large Path): Already showing popup for occurrence:', occurrenceKey);
               return;
             }
 
             // 🛑 LOCAL RAPID-TRIGGER LOCK: Skip only if it's a duplicate REMINDER.
-            // (Standard alerts should almost always fire if they are fresh)
-            if (!isActuallyAlert && occurrenceKey && occurrenceKey === lastTriggeredId && (now - lastTriggeredTime < 5000)) {
+            // (Standard alerts and taps should almost always fire)
+            if (!isFromTap && !isActuallyAlert && occurrenceKey && occurrenceKey === lastTriggeredId && (now - lastTriggeredTime < 5000)) {
               console.log('🚨🚨🚨 [DEBUG APP] ⏭️ Skipping local duplicate REMINDER for occurrence:', occurrenceKey);
               return;
             }
@@ -518,7 +521,7 @@ const AppMain = () => {
               const permStatus = await ReminderNotificationService.getNotificationPermissionStatus();
               console.log('📊 Permission Status:', permStatus);
 
-              if (permStatus && !permStatus.canScheduleExactAlarms) {
+              if (Platform.OS === 'android' && permStatus && !permStatus.canScheduleExactAlarms) {
                 console.warn('⚠️ WARNING: Cannot schedule exact alarms - Background notifications may not work!');
                 console.warn('📱 User needs to grant "Alarms & reminders" permission in app settings');
               }
@@ -564,7 +567,7 @@ const AppMain = () => {
         // Setup notification listeners
         unsubscribeNotificationPress = setupNotificationListeners();
 
-        // 🎯 CRITICAL: Setup direct background notification tap handler
+        //  CRITICAL: Setup direct background notification tap handler
         // 🔥 NOTE: Notifee already handles background events - FCM handler is BACKUP only
         const setupBackgroundTapHandler = () => {
           try {
@@ -576,50 +579,60 @@ const AppMain = () => {
             const unsubscribe = messaging().onNotificationOpenedApp(async remoteMessage => {
               console.log('🔔🔔 BACKGROUND TAP (FCM) - Notification opened:', JSON.stringify(remoteMessage, null, 2));
 
-              const notifType = remoteMessage.data?.type || remoteMessage.data?.notificationType;
+              const notifData = remoteMessage.data || {};
+              const notifType = String(notifData.type || notifData.notificationType || '').toLowerCase();
               console.log('🎯 Notification Type:', notifType);
 
-              // 🔥 SKIP reminder/alert - Notifee handles these
-              if (notifType === 'reminder' || notifType === 'enquiry_reminder') {
-                console.log('⏭️ SKIPPING FCM handler for reminder - Notifee will handle');
+              const isReminderOrAlert = [
+                'reminder',
+                'enquiry_reminder',
+                'alert',
+                'system_alert',
+                'admin_reminder',
+                'employee_reminder_to_admin',
+                'employee_due_reminder',
+              ].includes(notifType) || !!notifData.alertId || !!notifData.reminderId;
+
+              if (isReminderOrAlert) {
+                console.log('🚀🚀🚀 REMINDER/ALERT DETECTED (FCM BACKGROUND TAP) - Triggering/queueing popup');
+
+                const popupPayload = {
+                  ...notifData,
+                  fromTap: true,
+                  type: notifData.alertId ? 'admin_reminder' : (notifType || 'reminder'),
+                  title: remoteMessage.notification?.title || notifData.title || notifData.reminderTitle || (notifType === 'alert' ? 'Alert' : 'Reminder'),
+                  note: remoteMessage.notification?.body || notifData.note || notifData.reason || notifData.message || notifData.body || '',
+                };
+
+                // If popup callback is already available in foreground, trigger directly
+                if (global.triggerProfessionalReminder) {
+                  console.log('✅ Triggering popup directly from FCM background tap');
+                  setTimeout(() => {
+                    global.triggerProfessionalReminder(popupPayload);
+                  }, 100);
+                } else {
+                  // Queue for AppState handler or onNavigationReady
+                  const notificationData = {
+                    triggerReminderPopup: true,
+                    data: popupPayload,
+                    timestamp: Date.now()
+                  };
+                  try {
+                    await AsyncStorage.setItem('pendingNotificationData', JSON.stringify(notificationData));
+                    console.log('✅ Alert/Reminder queued for popup in AsyncStorage');
+                  } catch (err) {
+                    console.error('❌ Failed to store alert/reminder popup:', err);
+                  }
+                }
                 return;
               }
 
-              // 🔥 Check if Notifee already stored this notification
+              // Non-alert/reminder notifications (chat, inquiry, property) can be handled normally
               const existingData = await AsyncStorage.getItem('pendingNotificationData');
               if (existingData) {
-                console.log('⚠️ Notifee already stored data, skipping FCM handler');
+                console.log('⚠️ Pending notification data already exists, skipping FCM handler');
                 return;
               }
-
-              if (notifType === 'alert' || notifType === 'system_alert') {
-                console.log('🚀🚀🚀 ALERT DETECTED (FCM BACKUP) - Storing for navigation');
-
-                const params = {
-                  alertId: remoteMessage.data.alertId?.replace('alert_', '') || remoteMessage.data.alertId || Date.now().toString(),
-                  originalReason: remoteMessage.data.reason || remoteMessage.notification?.body || '',
-                  originalDate: remoteMessage.data.date,
-                  originalTime: remoteMessage.data.time,
-                  repeatDaily: remoteMessage.data.repeatDaily === 'true' || remoteMessage.data.repeatDaily === true
-                };
-
-                console.log('📤 Storing alert for navigation:', params);
-
-                // Store for immediate navigation when app comes to foreground
-                const notificationData = {
-                  id: remoteMessage.messageId,
-                  data: remoteMessage.data,
-                  timestamp: new Date().toISOString(),
-                  shouldNavigateImmediately: true,
-                  navigateTo: 'EditAlert',
-                  navigationParams: params
-                };
-
-                AsyncStorage.setItem('pendingNotificationData', JSON.stringify(notificationData))
-                  .then(() => console.log('✅ Alert stored in AsyncStorage'))
-                  .catch(err => console.error('❌ Failed to store alert:', err));
-              }
-              // 🔥 Reminder handling REMOVED - Notifee handles it to prevent duplicate
             });
 
             console.log('✅ Background tap handler registered successfully');
@@ -755,9 +768,33 @@ const AppMain = () => {
               }
 
               // Use notification service to handle navigation
+              const notifData = notification.data || notification || {};
+              const notifType = String(notifData.type || notifData.notificationType || '').toLowerCase();
+              const isReminderOrAlert = [
+                'reminder',
+                'enquiry_reminder',
+                'alert',
+                'system_alert',
+                'admin_reminder',
+                'employee_reminder_to_admin',
+                'employee_due_reminder',
+              ].includes(notifType) || !!notifData.alertId || !!notifData.reminderId;
+
+              if (isReminderOrAlert && global.triggerProfessionalReminder) {
+                console.log('🚀 Triggering popup directly from setupFCM notification opened callback');
+                global.triggerProfessionalReminder({
+                  ...notifData,
+                  fromTap: true,
+                  type: notifData.alertId ? 'admin_reminder' : (notifType || 'reminder'),
+                  title: notification.notification?.title || notifData.title || notifData.reminderTitle || (notifType === 'alert' ? 'Alert' : 'Reminder'),
+                  note: notification.notification?.body || notifData.note || notifData.reason || notifData.message || notifData.body || '',
+                });
+                return;
+              }
+
               if (navigationRef.current) {
                 const { handleNotificationAction } = require('./src/services/notificationService');
-                handleNotificationAction(notification.data || notification, navigationRef.current);
+                handleNotificationAction(notifData, navigationRef.current);
               }
             } catch (notificationError) {
               console.error('❌ Error handling opened notification:', notificationError);

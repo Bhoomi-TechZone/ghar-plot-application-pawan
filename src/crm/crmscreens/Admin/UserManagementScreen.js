@@ -669,9 +669,9 @@ const UserManagementScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: statusBarTop }]}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: statusBarTop + 10 }]}>
         {/* <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity> */}

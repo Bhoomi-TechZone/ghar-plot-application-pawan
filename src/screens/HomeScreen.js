@@ -1342,6 +1342,7 @@ const Homescreen = ({ navigation }) => {
                                         name="business-outline"
                                         size={18}
                                         color={theme.COLORS.white}
+                                        style={styles.headerActionIcon}
                                     />
                                 </View>
                             </LinearGradient>
@@ -1364,6 +1365,7 @@ const Homescreen = ({ navigation }) => {
                                         name="notifications-outline"
                                         size={20}
                                         color={theme.COLORS.white}
+                                        style={styles.headerActionIcon}
                                     />
                                 </View>
                             </LinearGradient>
@@ -1582,10 +1584,15 @@ const styles = StyleSheet.create({
         fontSize: 9,
         letterSpacing: 0.5,
     },
+    headerActionIcon: {
+        textAlign: 'center',
+        textAlignVertical: 'center',
+        alignSelf: 'center',
+    },
     notificationIconContainer: {
-        width: 46,
-        height: 46,
-        borderRadius: 24,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
         justifyContent: "center",
         alignItems: "center",
         backgroundColor: 'transparent',
@@ -1594,24 +1601,23 @@ const styles = StyleSheet.create({
         transform: Platform.OS === 'web' ? [] : [{ translateX: -95 }, { translateY: -12 }],
     },
     notificationGradient: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 24,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 4,
         shadowColor: "#1E90FF",
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.35,
-        shadowRadius: 12,
-        elevation: 10,
-        borderWidth: 2,
+        shadowRadius: 10,
+        elevation: 8,
+        borderWidth: 1.5,
         borderColor: 'rgba(255,255,255,0.3)',
     },
     notificationIconInner: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 24,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(255, 255, 255, 0.15)',
@@ -1628,46 +1634,45 @@ const styles = StyleSheet.create({
         transform: Platform.OS === 'web' ? [] : [{ translateX: -95 }, { translateY: -12 }],
     },
     crmGradient: {
-        width: '100%',
-        height: '100%',
+        width: 42,
+        height: 42,
         borderRadius: 21,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 3,
         shadowColor: "#1E90FF",
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.3,
         shadowRadius: 10,
         elevation: 8,
-        borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
     crmIconInner: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 21,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
     },
     notificationBadgeHeader: {
         position: 'absolute',
-        top: -6,
-        right: -6,
+        top: -4,
+        right: -4,
         backgroundColor: '#EF4444',
-        borderRadius: 12,
-        minWidth: 20,
-        height: 20,
+        borderRadius: 10,
+        minWidth: 18,
+        height: 18,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 4,
+        paddingHorizontal: 3,
         zIndex: 6,
         shadowColor: "#EF4444",
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.5,
-        shadowRadius: 6,
+        shadowRadius: 4,
         elevation: 8,
-        borderWidth: 2.5,
+        borderWidth: 1.5,
         borderColor: '#FFFFFF',
     },
     notificationBadgeText: {

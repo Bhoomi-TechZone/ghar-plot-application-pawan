@@ -1,45 +1,98 @@
-# Resolve react_native_pods.rb with node to allow for hoisting
-require Pod::Executable.execute_command('node', ['-p',
-  'require.resolve(
-    "react-native/scripts/react_native_pods.rb",
-    {paths: [process.argv[1]]},
-  )', __dir__]).strip
+# Resolve React Native pods with Node to support hoisting
+require Pod::Executable.execute_command(
+  'node',
+  [
+    '-p',
+    'require.resolve(
+      "react-native/scripts/react_native_pods.rb",
+      { paths: [process.argv[1]] }
+    )',
+    __dir__
+  ]
+).strip
+
+# Expo modules autolinking
+require File.join(
+  File.dirname(
+    `node --print "require.resolve('expo/package.json')"`
+  ),
+  'scripts/autolinking'
+)
 
 platform :ios, min_ios_version_supported
+
 prepare_react_native_project!
 
 linkage = ENV['USE_FRAMEWORKS']
+
 if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  Pod::UI.puts "Configuring Pods with #{linkage}ally linked Frameworks".green
+
   use_frameworks! :linkage => linkage.to_sym
 end
 
 target 'GharPlot' do
+
+  # Enable Expo modules
+  use_expo_modules!
+
   config = use_native_modules!
 
   use_react_native!(
     :path => config[:reactNativePath],
-    # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  # Firebase dependencies are automatically included via @react-native-firebase/app and @react-native-firebase/messaging
-  # No need to manually add pods as React Native Firebase auto-links them
+  # Firebase modular headers
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'FirebaseCoreInternal', :modular_headers => true
+  pod 'FirebaseCore', :modular_headers => true
+  pod 'FirebaseCoreExtension', :modular_headers => true
+  pod 'FirebaseInstallations', :modular_headers => true
+  pod 'GoogleDataTransport', :modular_headers => true
+  pod 'nanopb', :modular_headers => true
 
   post_install do |installer|
-    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
+
     react_native_post_install(
       installer,
       config[:reactNativePath],
-      :mac_catalyst_enabled => false,
-      # :ccache_enabled => true
+      :mac_catalyst_enabled => false
     )
-    
-    # Fix for Xcode 15+ - Ensure proper code signing for all targets
+
     installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.4'
+
+      target.build_configurations.each do |build_config|
+
+        # Minimum iOS version
+        build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+
+        # Fix non-modular include errors with Xcode 26 / iOS 26 SDK
+        build_config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+
+        # Fix fmt compiler issue
+       if target.name == 'fmt'
+  flags = build_config.build_settings['OTHER_CPLUSPLUSFLAGS'] || '$(inherited)'
+  build_config.build_settings['OTHER_CPLUSPLUSFLAGS'] =
+    "#{flags} -DFMT_CONSTEVAL="
+end
+
+        # Fix RCT-Folly compiler issue
+       if target.name == 'RCT-Folly'
+  flags = build_config.build_settings['OTHER_CPLUSPLUSFLAGS'] || '$(inherited)'
+  build_config.build_settings['OTHER_CPLUSPLUSFLAGS'] =
+    "#{flags} -DFMT_CONSTEVAL="
+end
+
+        # Prevent Yoga warnings from being treated as errors
+        if target.name == 'Yoga'
+          build_config.build_settings['GCC_TREAT_WARNINGS_AS_ERRORS'] = 'NO'
+        end
+
       end
+
     end
+
   end
+
 end

@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "107182585860",
-    "project_id": "gharplot-435ee",
-    "storage_bucket": "gharplot-435ee.firebasestorage.app"
+    "project_number": "523920439041",
+    "project_id": "dailymart-55405",
+    "storage_bucket": "dailymart-55405.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:107182585860:android:bebb39f413793301869d51",
+        "mobilesdk_app_id": "1:523920439041:android:91285a2b81b6facc1a8d00",
         "android_client_info": {
           "package_name": "com.bhoomitechzone.gharplot"
         }
@@ -15,7 +15,26 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBKX-Jm6dgbRjo8x6-VLty6himiVwnAwDc"
+          "current_key": "AIzaSyD6TdiQoHvEa2axqtc7fCN1GD0OHkr7qpw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:523920439041:android:ed09fe3f3f09bce11a8d00",
+        "android_client_info": {
+          "package_name": "com.example.daily_mart"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6TdiQoHvEa2axqtc7fCN1GD0OHkr7qpw"
         }
       ],
       "services": {

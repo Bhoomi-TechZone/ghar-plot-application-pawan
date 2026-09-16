@@ -80,8 +80,9 @@ const AddSellScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 0);
   const tabBarHeight = 70 + bottomInset;
-  const buttonBottom = Platform.OS === 'web' ? 80 : tabBarHeight + 10;
-  const scrollPaddingBottom = tabBarHeight + 100;
+  const buttonBottom = Platform.OS === 'web' ? 90 : tabBarHeight + 16;
+  const submitButtonHeight = 56;
+  const scrollPaddingBottom = tabBarHeight + submitButtonHeight + 40;
 
   const [propertyLocation, setPropertyLocation] = useState("");
   const [areaDetails, setAreaDetails] = useState("");
@@ -464,15 +465,20 @@ const AddSellScreen = ({ navigation }) => {
   return (
     <View style={styles.safeArea}>
       {/* Header */}
-      <LinearGradient colors={["#007BFF", "#0056D2"]} style={[styles.header, { paddingTop: Math.max(statusBarTop + 10, 25) }]}>
-        <Text style={styles.headerTitle}>🏠 Add Property</Text>
-        <Text style={styles.headerSubtitle}>Enter property details below</Text>
+      <LinearGradient
+        colors={["#007BFF", "#0056D2"]}
+        style={[styles.header, { height: Math.max(statusBarTop + 80, 120) }]}
+      >
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle} numberOfLines={1}>Add Property</Text>
+          <Text style={styles.headerSubtitle} numberOfLines={1}>Enter property details below</Text>
+        </View>
       </LinearGradient>
 
       {/* Scrollable Form */}
       <ScrollView 
         contentContainerStyle={[styles.container, { paddingBottom: scrollPaddingBottom }]}
-        style={Platform.OS === 'web' ? { flex: 1, overflow: 'auto' } : undefined}
+        style={Platform.OS === 'web' ? { flex: 1, overflow: 'auto', zIndex: 0 } : { zIndex: 0 }}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
       >
@@ -669,7 +675,7 @@ const AddSellScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Submit Button */}
-      <View style={[styles.fixedBottom, { bottom: buttonBottom }]}>
+      <View style={[styles.fixedBottom, { bottom: buttonBottom, height: submitButtonHeight }]}>
         <TouchableOpacity
           style={styles.submitButton}
           onPress={handleSubmit}
@@ -697,21 +703,39 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9FAFB",
   },
   header: {
-    paddingVertical: 25,
-    paddingHorizontal: 20,
+    position: 'relative',
+    width: '100%',
+    alignSelf: 'stretch',
+    marginHorizontal: 0,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     elevation: 4,
+    zIndex: 2,
+    overflow: 'visible',
+  },
+  headerContent: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 3,
   },
   headerTitle: {
     fontSize: 24,
+    lineHeight: 30,
     fontWeight: "700",
     color: "#fff",
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   headerSubtitle: {
     color: "#E0E7FF",
     marginTop: 4,
     fontSize: 14,
+    lineHeight: 18,
+    textAlign: 'center',
   },
   container: {
     padding: 16,
@@ -807,15 +831,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 10,
     zIndex: 999,
+    overflow: "visible",
   },
   submitButton: {
+    flex: 1,
     borderRadius: 12,
     overflow: "hidden",
   },
   gradientButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    flex: 1,
     minHeight: 56,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -824,6 +850,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "bold",
     fontSize: 18,
+    lineHeight: 22,
     flexShrink: 1,
     includeFontPadding: false,
   },

@@ -1067,8 +1067,10 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight || 0) + 16,
+    width: '100%',
+    alignSelf: 'stretch',
+    paddingHorizontal: 0,
+    paddingTop: Platform.OS === 'ios' ? 10 : (StatusBar.currentHeight || 0) + 16,
     paddingBottom: 16,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
@@ -1105,7 +1107,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     marginTop: 8,
-    width: '100%',
+    marginHorizontal: 12,
+    alignSelf: 'stretch',
   },
 
   addText: {
@@ -1118,6 +1121,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 16,
     marginBottom: 8,
+    width: '100%',
+    paddingHorizontal: 12,
   },
 
   statBox: {
@@ -1245,11 +1250,13 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     marginTop: 12,
+    marginHorizontal: 12,
+    alignSelf: 'stretch',
     gap: 8,
   },
 
   actionButton: {
-    flex: 1,
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

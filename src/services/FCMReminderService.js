@@ -5,6 +5,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
+import { Platform } from 'react-native';
 
 const API_BASE_URL = 'https://gharplotbackend.gntechnology.de'; // Your backend URL
 
@@ -78,7 +79,7 @@ class FCMReminderService {
         body: JSON.stringify({
           userId,
           fcmToken: token,
-          deviceType: 'android',
+          deviceType: Platform.OS,
           timestamp: new Date().toISOString(),
         }),
       });

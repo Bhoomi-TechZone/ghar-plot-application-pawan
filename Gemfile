@@ -14,3 +14,7 @@ gem 'bigdecimal'
 gem 'logger'
 gem 'benchmark'
 gem 'mutex_m'
+
+gem "base64", "~> 0.3.0"
+
+gem "nkf", "~> 0.3.0"

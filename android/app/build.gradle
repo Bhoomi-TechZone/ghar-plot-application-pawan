@@ -1,7 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
 // Apply Google Services plugin for Firebase
 apply plugin: "com.google.gms.google-services"
 
@@ -37,8 +36,8 @@ android {
         applicationId "com.bhoomitechzone.gharplot"
         minSdkVersion 24
         targetSdkVersion 35
-        versionCode 9
-        versionName "1.0.5"
+        versionCode 14
+        versionName "1.0.9"
 
         // Needed for new Gradle plugin
         multiDexEnabled true

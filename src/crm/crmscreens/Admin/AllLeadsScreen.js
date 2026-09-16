@@ -148,12 +148,14 @@ const AllLeadsScreen = ({ navigation }) => {
   };
 
   return (
-  <View style={[styles.container, { paddingTop: statusBarTop }]}>
+  <View style={styles.container}>
     <StatusBar
       barStyle="light-content"
-      backgroundColor="#1e293b"
+      backgroundColor="#000"
       translucent={false}
     />
+
+    <View style={[styles.safeAreaBackground, { height: statusBarTop }]} />
 
     {/* HEADER */}
     <LinearGradient
@@ -168,11 +170,11 @@ const AllLeadsScreen = ({ navigation }) => {
           <Icon name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity> */}
 
-        <View style={styles.headerTextContainer}>
+        <View style={styles.headerTop}>
+         <View style={styles.headerTextContainer}>
           <Text style={styles.headerTitle}>All Leads</Text>
-          <Text style={styles.headerSub}>
-            Manage & track all leads
-          </Text>
+          <Text style={styles.headerSub}>Manage & track all leads</Text>
+         </View>
         </View>
       </View>
 
@@ -181,6 +183,7 @@ const AllLeadsScreen = ({ navigation }) => {
         <StatCard title="ENQUIRY" value={leads.length} />
         <StatCard title="CLIENT" value={0} />
       </View>
+      
     </LinearGradient>
 
     {/* SEARCH */}
@@ -258,11 +261,18 @@ const styles = StyleSheet.create({
     flex: 1, 
     backgroundColor: '#f3f4f6',
   },
+  safeAreaBackground: {
+    backgroundColor: '#1e293b',
+  },
 
   // Header
   header: {
+    width: 'auto',
+    alignSelf: 'stretch',
+    marginHorizontal: -16,
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 0,
+    paddingBottom: 36,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     elevation: 4,
@@ -272,36 +282,39 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
 },
   headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
+  width: '100%',
+  marginBottom: 12,
+},
   backBtn: {
     marginRight: 12,
     padding: 4,
   },
   headerTextContainer: {
-    flex: 1,
-  },
-  headerTitle: { 
-    color: '#fff', 
-    fontSize: 22, 
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  headerSub: { 
-    color: '#fafbfc', 
-    fontSize: 13,
-  },
+  width: '100%',
+},
+headerTitle: {
+  color: '#fff',
+  fontSize: 22,
+  fontWeight: '700',
+  marginBottom: 4,
+},
+headerSub: {
+  color: 'rgba(255,255,255,0.85)',
+  fontSize: 13,
+},
 
   statsRow: { 
     flexDirection: 'row', 
     marginTop: 8,
+    marginBottom: 8,
+    marginRight: 30,
     justifyContent: 'space-between',
   },
   statBox: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-    padding: 12,
+    height: 60,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 12,
     flex: 1,
     marginHorizontal: 4,
@@ -316,6 +329,7 @@ const styles = StyleSheet.create({
   statTitle: { 
     color: 'rgba(255,255,255,0.9)', 
     fontSize: 11,
+    lineHeight: 16,
     fontWeight: '600',
   },
 

@@ -90,10 +90,11 @@ const AdminDashboardScreen = ({ navigation, user }) => {
       console.log('🔑 ADMIN TOKEN FOR CURL:', token);
     })();
 
-    // Create notification channels so FCM push notifications show on Android 8+
-    (async () => {
-      try {
-        const notifee = require('@notifee/react-native').default;
+    // Create notification channels and check channel importance on Android only.
+    if (Platform.OS === 'android') {
+      (async () => {
+        try {
+          const notifee = require('@notifee/react-native').default;
         // Ensure notification channels exist (idempotent — preserves displayed notifications)
         await notifee.createChannel({ id: 'default_notification_channel', name: 'Notifications', importance: 4, sound: 'default', vibration: true, vibrationPattern: [300, 500] });
         await notifee.createChannel({ id: 'enquiry_reminders', name: 'Reminders', importance: 4, sound: 'default', vibration: true, vibrationPattern: [300, 500] });
@@ -128,8 +129,32 @@ const AdminDashboardScreen = ({ navigation, user }) => {
             await notifee.requestPermission();
           }
         }
-      } catch (e) { console.log('⚠️ Channel creation:', e.message); }
-    })();
+        } catch (e) { console.log('⚠️ Channel creation:', e.message); }
+      })();
+    } else if (Platform.OS === 'ios') {
+      (async () => {
+        try {
+          const notifee = require('@notifee/react-native').default;
+          const settings = await notifee.requestPermission({ alert: true, badge: true, sound: true });
+          const notificationsEnabled = settings.authorizationStatus > 0;
+
+          if (!notificationsEnabled) {
+            CrossPlatformAlert.alert(
+              '🔔 Enable Notifications',
+              'Enable Gharplot notifications in iPhone Settings to receive reminder pop-ups and sound.',
+              [
+                { text: 'Later', style: 'cancel' },
+                {
+                  text: 'Fix Now ✅',
+                  onPress: () => notifee.openNotificationSettings(),
+                },
+              ],
+              { cancelable: false }
+            );
+          }
+        } catch (e) { console.log('⚠️ iOS notification permission:', e.message); }
+      })();
+    }
     // 🔔 Start polling for employee reminder/alert notifications
     startAdminNotificationPolling();
     return () => {
@@ -371,33 +396,35 @@ const AdminDashboardScreen = ({ navigation, user }) => {
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Admin Dashboard</Text>
-            <Text style={styles.headerSubtitle}>Welcome, {user?.name || 'Admin'}</Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>Admin Dashboard</Text>
+            <Text style={styles.headerSubtitle} numberOfLines={1}>Welcome, {user?.name || 'Admin'}</Text>
           </View>
 
-          {/* Back to User Home */}
-          <TouchableOpacity style={styles.backToHomeButton} onPress={goToUserHome}>
-            <Icon name="home-outline" size={22} color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {/* Back to User Home */}
+            <TouchableOpacity style={styles.backToHomeButton} onPress={goToUserHome}>
+              <Icon name="home-outline" size={22} color="#fff" />
+            </TouchableOpacity>
 
-          {/* 🔔 Notification Bell */}
-          <TouchableOpacity
-            onPress={() => navigation.navigate('AdminNotificationsInbox')}
-            style={styles.bellButton}
-          >
-            <Icon name="notifications-outline" size={24} color="#fff" />
-            {unreadNotifCount > 0 && (
-              <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>
-                  {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+            {/* Notification Bell */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('AdminNotificationsInbox')}
+              style={styles.bellButton}
+            >
+              <Icon name="notifications-outline" size={24} color="#fff" />
+              {unreadNotifCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>
+                    {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Icon name="log-out-outline" size={24} color="#fff" />
-          </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <Icon name="log-out-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -864,41 +891,57 @@ const styles = StyleSheet.create({
   },
 
   /* Header */
- headerWrapper: {
-  paddingHorizontal: 18,
-  paddingTop: 10,
-  paddingBottom: 20,
-  borderBottomLeftRadius: 20,
-  borderBottomRightRadius: 20,
-  elevation: 5,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.3,
-  shadowRadius: 8,
-},
+  headerWrapper: {
+    width: 'auto',
+    alignSelf: 'stretch',
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+    paddingBottom: 22,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+  },
   headerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    alignSelf: 'stretch',
+    marginRight: 16,
+    marginBottom: 14,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    gap: 5,
+    marginRight: 8,
   },
   menuButton: {
-    padding: 8,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   backToHomeButton: {
-    padding: 8,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    marginRight: 6,
   },
   headerCenter: {
     flex: 1,
-    marginHorizontal: 12,
+    minWidth: 0,
+    overflow: 'hidden',
+    marginHorizontal: 10,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "700",
     color: "#fff",
     marginBottom: 2,
@@ -908,15 +951,20 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.85)',
   },
   logoutButton: {
-    padding: 8,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   bellButton: {
-    padding: 8,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    marginRight: 6,
     position: 'relative',
   },
   bellBadge: {
@@ -939,11 +987,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   createAlertButton: {
+    alignSelf: 'stretch',
+    minHeight: 42,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    marginHorizontal: 75,
+    marginBottom: 8,
+    paddingHorizontal: 10,
     borderRadius: 12,
     backgroundColor: '#7c3aed',
     elevation: 3,
@@ -955,9 +1006,12 @@ const styles = StyleSheet.create({
   createAlertText: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: 14,
-    letterSpacing: 0.8,
-    marginLeft: 8,
+    fontSize: 13,
+    lineHeight: 18,
+    letterSpacing: 0.6,
+    marginLeft: 7,
+    flexShrink: 1,
+    textAlign: 'center',
   },
 
   /* Stats Cards */

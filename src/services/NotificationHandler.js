@@ -6,6 +6,7 @@
 import notifee from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavigationService from './NavigationService';
+import { Platform } from 'react-native';
 
 class NotificationHandler {
   // 🔥 Navigation lock to prevent duplicate navigation
@@ -106,15 +107,28 @@ class NotificationHandler {
         // (i.e., notifee fired onForegroundEvent directly because app was active).
         const tappedData = detail.notification?.data || {};
         const tappedType = String(tappedData.type || tappedData.notificationType || tappedData.category || '').toLowerCase();
+        
+        // 🍎 iOS-SPECIFIC: Check if this is a local fallback notification
+        const isLocalFallback = Platform.OS === 'ios' && (
+          tappedData['gharplot.localFallback'] === 1 || 
+          tappedData['gharplot.localFallback'] === '1' ||
+          tappedData['gharplot.localFallback'] === true ||
+          tappedData['gharplot.localFallback'] === 'true'
+        );
+        
         const isAdminOrAlert = tappedType === 'admin_reminder' || tappedType === 'alert' ||
                                tappedType === 'system_alert' || tappedType === 'employee_alert_to_admin' ||
-                               !!tappedData.alertId;
+                               !!tappedData.alertId ||
+                               isLocalFallback; // ← iOS local fallback always shows popup
 
         if (isAdminOrAlert && global.triggerProfessionalReminder) {
           console.log('🔔 [FG TAP] Admin/Alert notification tapped while app in foreground — showing popup dialog');
+          if (isLocalFallback) {
+            console.log('🍎 iOS local fallback detected in foreground tap');
+          }
           global.triggerProfessionalReminder({
             ...tappedData,
-            type: tappedData.alertId ? 'admin_reminder' : (tappedType || 'admin_reminder'),
+            type: tappedData.alertId ? 'admin_reminder' : (tappedType || 'reminder'),
             title: detail.notification?.title || tappedData.title || 'Reminder',
             note: detail.notification?.body || tappedData.note || tappedData.reason || tappedData.body || '',
           });
@@ -131,6 +145,44 @@ class NotificationHandler {
         // 🔥 Event Type 3 = DELIVERED (Foreground)
         console.log('🚨🚨🚨 [FG] Local Notification DELIVERED (Event 3)');
         const notifData = detail.notification?.data || {};
+        
+        // 🍎 iOS-SPECIFIC: Check if this is a local fallback notification delivered in foreground
+        const isLocalFallback = Platform.OS === 'ios' && (
+          notifData['gharplot.localFallback'] === 1 || 
+          notifData['gharplot.localFallback'] === '1' ||
+          notifData['gharplot.localFallback'] === true ||
+          notifData['gharplot.localFallback'] === 'true'
+        );
+        
+        if (isLocalFallback) {
+          console.log('🍎 iOS local fallback notification delivered in foreground');
+          console.log('📦 Notification data:', JSON.stringify(notifData, null, 2));
+          
+          // Wait a bit for global.triggerProfessionalReminder to be defined
+          const tryTriggerPopup = (attempts = 0) => {
+            if (global.triggerProfessionalReminder) {
+              console.log('✅ Triggering iOS local fallback popup now');
+              const notificationType = notifData.alertId ? 'admin_reminder' : 
+                                      (notifData.type === 'alert' || notifData.category === 'alert' ? 'alert' : 'reminder');
+              global.triggerProfessionalReminder({
+                ...notifData,
+                type: notificationType,
+                notificationType: notificationType,
+                title: detail.notification?.title || notifData.title || notifData.alertTitle || 'Reminder',
+                note: detail.notification?.body || notifData.note || notifData.reason || notifData.body || notifData.alertReason || ''
+              });
+              console.log('✅ iOS local fallback popup triggered on DELIVERED event');
+            } else if (attempts < 5) {
+              console.log(`⏳ Waiting for global.triggerProfessionalReminder (attempt ${attempts + 1}/5)`);
+              setTimeout(() => tryTriggerPopup(attempts + 1), 200);
+            } else {
+              console.error('❌ global.triggerProfessionalReminder not defined after 5 attempts');
+            }
+          };
+          
+          tryTriggerPopup();
+          return; // Don't process further for local fallback
+        }
         
         this.triggerPopups(detail.notification);
 
@@ -327,6 +379,38 @@ class NotificationHandler {
         return;
       }
 
+      // 🍎 iOS-SPECIFIC: Check if this is a local fallback notification
+      // Local fallback = data-only FCM push converted to iOS local notification
+      // These should show POPUP, not navigate directly to screen
+      const isLocalFallback = Platform.OS === 'ios' && (
+        notificationData['gharplot.localFallback'] === 1 || 
+        notificationData['gharplot.localFallback'] === '1' ||
+        notificationData['gharplot.localFallback'] === true ||
+        notificationData['gharplot.localFallback'] === 'true'
+      );
+
+      if (isLocalFallback) {
+        console.log('🍎 iOS local fallback notification tapped — showing popup instead of navigating');
+        console.log('📦 Notification data:', JSON.stringify(notificationData, null, 2));
+        
+        // Trigger popup with notification data
+        if (global.triggerProfessionalReminder) {
+          const notificationType = notificationData.alertId ? 'admin_reminder' : 
+                                  (notificationData.type === 'alert' || notificationData.category === 'alert' ? 'alert' : 'reminder');
+          global.triggerProfessionalReminder({
+            ...notificationData,
+            type: notificationType,
+            notificationType: notificationType,
+            title: notification?.title || notificationData.title || notificationData.alertTitle || 'Reminder',
+            note: notification?.body || notificationData.note || notificationData.reason || notificationData.body || notificationData.alertReason || ''
+          });
+          console.log('✅ Popup triggered from iOS local fallback tap (via NotificationHandler)');
+          return; // ← CRITICAL: Stop here, don't navigate
+        } else {
+          console.error('❌ global.triggerProfessionalReminder not defined');
+        }
+      }
+
       const notifType = notificationData.type || notificationData.notificationType || 'reminder';
       console.log('🚀 Processing notification press for type:', notifType);
 
@@ -344,21 +428,47 @@ class NotificationHandler {
 
       // 2. Priority: Handle Alerts and Admin-created reminders (which are technically alerts)
       if (notifType === 'admin_reminder' || notifType === 'alert' || notifType === 'system_alert' || notifType === 'employee_alert_to_admin' || notificationData.alertId) {
-        console.log(`🚀 ${notifType} notification - Navigating to EditAlert`);
+        console.log(`🚀 ${notifType} notification - Triggering popup dialog`);
 
         const alertId = notificationData.alertId || notificationData.reminderId || notification?.id;
         const cleanAlertId = alertId ? String(alertId).replace('alert_', '') : Date.now().toString();
 
+        const popupData = {
+          ...notificationData,
+          fromTap: true,
+          alertId: cleanAlertId,
+          type: notificationData.alertId ? 'admin_reminder' : (notifType || 'alert'),
+          title: notificationData.alertTitle || notificationData.title || notificationData.reminderTitle || notification?.title || (notifType === 'alert' ? 'Alert' : 'Reminder'),
+          note: notificationData.alertReason || notificationData.reason || notificationData.message || notificationData.note || notification?.body || '',
+        };
+
+        if (global.triggerProfessionalReminder) {
+          console.log('✅ Triggering popup directly from NotificationHandler');
+          global.triggerProfessionalReminder(popupData);
+          return;
+        }
+
+        // Store for AppState / onNavigationReady to trigger popup
+        try {
+          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+          await AsyncStorage.setItem('pendingNotificationData', JSON.stringify({
+            triggerReminderPopup: true,
+            data: popupData,
+            timestamp: Date.now()
+          }));
+          return;
+        } catch (_) {}
+
         const params = {
           alertId: cleanAlertId,
-          originalTitle: notificationData.alertTitle || notificationData.title || notificationData.reminderTitle || notification?.title || 'Reminder',
-          originalReason: notificationData.alertReason || notificationData.reason || notificationData.message || notificationData.note || notification?.body || '',
+          originalTitle: popupData.title,
+          originalReason: popupData.note,
           originalDate: notificationData.scheduledDate || notificationData.date || notificationData.reminderTime || '',
           originalTime: notificationData.scheduledTime || notificationData.time || '',
           repeatDaily: (notificationData.repeatDaily === 'true' || notificationData.repeatDaily === true || notificationData.repeatFrequency === 'daily')
         };
 
-        console.log('📤 Alert navigation params:', params);
+        console.log('📤 Alert navigation params (fallback):', params);
         const NavigationService = require('./NavigationService').default;
         NavigationService.navigate('EditAlert', params);
         return;
@@ -513,20 +623,33 @@ class NotificationHandler {
       }
 
       const notifData = notification?.data || {};
+      
+      // 🍎 iOS-SPECIFIC: Check if this is a local fallback notification
+      const isLocalFallback = Platform.OS === 'ios' && (
+        notifData['gharplot.localFallback'] === 1 || 
+        notifData['gharplot.localFallback'] === '1' ||
+        notifData['gharplot.localFallback'] === true ||
+        notifData['gharplot.localFallback'] === 'true'
+      );
+      
       const notifType = notifData.alertId ? 'admin_reminder' : (notifData.type || notifData.notificationType || notifData.category || 'reminder');
-      const isReminder = /reminder|follow/i.test(notifType) || 
-                         /reminder|follow|रिमाइंडर/i.test(notification?.title || '') ||
-                         notifData.alertId;
+      const isReminderOrAlert = /reminder|follow|alert/i.test(notifType) || 
+                                /reminder|follow|alert|रिमाइंडर/i.test(notification?.title || '') ||
+                                notifData.alertId ||
+                                notifData.reminderId ||
+                                isLocalFallback;
 
-      if (isReminder) {
+      if (isReminderOrAlert) {
+         console.log('💾 Storing popup data for:', isLocalFallback ? 'iOS local fallback' : notifType);
          const popupData = {
            triggerReminderPopup: true,
            sourceNotificationId,
            data: {
              ...notifData,
+             fromTap: true,
              type: notifType,
-             title: notification?.title || notifData.title || (notifData.alertId ? 'Alert' : 'Reminder'),
-             note: notification?.body || notifData.note || notifData.message || notifData.reason || ''
+             title: notification?.title || notifData.title || notifData.alertTitle || (notifType === 'alert' ? 'Alert' : 'Reminder'),
+             note: notification?.body || notifData.note || notifData.message || notifData.reason || notifData.alertReason || ''
            },
            timestamp: Date.now()
          };
@@ -690,7 +813,23 @@ class NotificationHandler {
         // 🔥 Event Type 3 = DELIVERED (Background)
         console.log('🚨🚨🚨 [BACKGROUND] Local Notification DELIVERED (Event 3)');
         
-        // � LOCAL NOTIFICATION DISABLED — Only FCM push from backend should show
+        // 🍎 iOS-SPECIFIC: Check if this is a local fallback notification
+        const isLocalFallback = Platform.OS === 'ios' && (
+          notifData['gharplot.localFallback'] === 1 || 
+          notifData['gharplot.localFallback'] === '1' ||
+          notifData['gharplot.localFallback'] === true ||
+          notifData['gharplot.localFallback'] === 'true'
+        );
+        
+        if (isLocalFallback) {
+          console.log('🍎 iOS local fallback notification delivered in background');
+          console.log('📦 Notification will show popup when tapped by user');
+          // Banner already displayed by iOS - no need to store popup data here
+          // Popup will be triggered when user taps the notification (Event Type 1)
+          return;
+        }
+        
+        // LOCAL NOTIFICATION DISABLED — Only FCM push from backend should show
         // No dedup registration or rescheduling needed since local notifications are disabled
         // // 🛡️ Register in dedup so FCM arriving seconds later gets blocked
         // if (notifData.alertId && notifData.isLocalTrigger === 'true') {

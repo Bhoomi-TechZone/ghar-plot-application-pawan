@@ -974,25 +974,62 @@ const ServicesScreen = ({ navigation }) => {
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="dark-content" backgroundColor="#fff" />
             <View style={styles.container}>
-                {/* Enhanced Header */}
-                <LinearGradient
-                    colors={['#FFFFFF', '#F9FAFB']}
-                    style={styles.header}
-                >
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Icon name="arrow-back" size={24} color="#1F2937" />
-                    </TouchableOpacity>
-                    <View style={styles.headerContent}>
-                        <Text style={styles.headerTitle}>Services</Text>
-                        <Text style={styles.headerSubtitle}>Professional home services</Text>
-                    </View>
-                    <TouchableOpacity 
-                        style={styles.searchButton}
-                        onPress={() => setShowSearchInput(!showSearchInput)}
-                    >
-                        <Icon name="search" size={22} color="#1F2937" />
-                    </TouchableOpacity>
-                </LinearGradient>
+                {/* Header */}
+                <View style={styles.header}>
+                    {showSearchInput ? (
+                        <View style={styles.headerSearchRow}>
+                            <TouchableOpacity 
+                                onPress={() => {
+                                    setShowSearchInput(false);
+                                    setSearchQuery('');
+                                }} 
+                                style={styles.iconButton}
+                                activeOpacity={0.7}
+                            >
+                                <Icon name="arrow-back" size={22} color="#1F2937" style={styles.centerIcon} />
+                            </TouchableOpacity>
+                            <View style={styles.headerSearchBar}>
+                                <Icon name="search" size={18} color="#6B7280" style={{ marginRight: 6 }} />
+                                <TextInput
+                                    style={styles.headerSearchInput}
+                                    placeholder="Search services..."
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                    placeholderTextColor="#9CA3AF"
+                                    autoFocus
+                                />
+                                {searchQuery.length > 0 && (
+                                    <TouchableOpacity 
+                                        onPress={() => setSearchQuery('')}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <Icon name="close-circle" size={18} color="#9CA3AF" style={styles.centerIcon} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        </View>
+                    ) : (
+                        <View style={styles.headerRow}>
+                            <TouchableOpacity 
+                                onPress={() => navigation.goBack()} 
+                                style={styles.iconButton}
+                                activeOpacity={0.7}
+                            >
+                                <Icon name="arrow-back" size={22} color="#1F2937" style={styles.centerIcon} />
+                            </TouchableOpacity>
+                            <View style={styles.headerContent}>
+                                <Text style={styles.headerTitle}>Services</Text>
+                            </View>
+                            <TouchableOpacity 
+                                style={styles.iconButton}
+                                onPress={() => setShowSearchInput(true)}
+                                activeOpacity={0.7}
+                            >
+                                <Icon name="search" size={22} color="#1F2937" style={styles.centerIcon} />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
 
                 <Animated.ScrollView 
                     contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 16 }]}
@@ -1022,25 +1059,6 @@ const ServicesScreen = ({ navigation }) => {
                             <Text style={styles.statsLabel}>Customers</Text>
                         </View>
                     </LinearGradient>
-
-                    {/* Search Bar */}
-                    {showSearchInput && (
-                        <View style={styles.searchBarContainer}>
-                            <Icon name="search" size={20} color="#6B7280" />
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder="Search services..."
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                autoFocus
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                    <Icon name="close-circle" size={20} color="#9CA3AF" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    )}
 
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Choose a Service</Text>
@@ -1548,34 +1566,60 @@ const styles = StyleSheet.create({
     },
     // --- Header Styles ---
     header: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
-        borderBottomColor: "#E5E7EB",
-        backgroundColor: '#fff',
+        borderBottomColor: '#E5E7EB',
+        paddingHorizontal: 16,
+        paddingTop: Platform.OS === 'ios' ? 10 : 12,
+        paddingBottom: 16,
     },
-    backButton: {
-        padding: 8,
-        marginRight: 8,
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    iconButton: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    centerIcon: {
+        textAlign: 'center',
+        textAlignVertical: 'center',
     },
     headerContent: {
         flex: 1,
+        justifyContent: 'center',
+        marginHorizontal: 12,
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: "700",
-        color: "#1F2937",
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#1F2937',
+        includeFontPadding: false,
     },
-    headerSubtitle: {
-        fontSize: 12,
-        color: "#6B7280",
-        marginTop: 2,
+    headerSearchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    searchButton: {
-        padding: 8,
-        marginLeft: 8,
+    headerSearchBar: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 21,
+        paddingHorizontal: 12,
+        height: 42,
+        marginLeft: 10,
+    },
+    headerSearchInput: {
+        flex: 1,
+        fontSize: 15,
+        color: '#1F2937',
+        paddingVertical: 0,
     },
     // --- Search Bar Styles ---
     searchBarContainer: {

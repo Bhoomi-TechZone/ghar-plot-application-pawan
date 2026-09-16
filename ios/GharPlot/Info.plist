@@ -22,24 +22,36 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>Gharplot को प्रॉपर्टी की फोटो लेने के लिए कैमरा की आवश्यकता है</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Gharplot को प्रॉपर्टी की फोटो चुनने के लिए फोटो लाइब्रेरी की आवश्यकता है</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Gharplot प्रॉपर्टी की फोटो को आपकी लाइब्रेरी में सेव करना चाहता है</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Gharplot को प्रॉपर्टी की फोटो लेने के लिए कैमरा की आवश्यकता है</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Gharplot आपके आस-पास की प्रॉपर्टी दिखाने के लिए आपकी लोकेशन का उपयोग करता है</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Gharplot आपके आस-पास की प्रॉपर्टी दिखाने के लिए आपकी लोकेशन का उपयोग करता है</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Gharplot आपके आस-पास की प्रॉपर्टी दिखाने के लिए आपकी लोकेशन का उपयोग करता है</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Gharplot प्रॉपर्टी की फोटो को आपकी लाइब्रेरी में सेव करना चाहता है</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Gharplot को प्रॉपर्टी की फोटो चुनने के लिए फोटो लाइब्रेरी की आवश्यकता है</string>
+	<key>RCTNewArchEnabled</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
@@ -54,12 +66,27 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>UIBackgroundModes</key>
+	<key>UIAppFonts</key>
 	<array>
-		<string>remote-notification</string>
-		<string>fetch</string>
+		<string>Fontisto.ttf</string>
+		<string>Octicons.ttf</string>
+		<string>Feather.ttf</string>
+		<string>FontAwesome6_Regular.ttf</string>
+		<string>Entypo.ttf</string>
+		<string>FontAwesome5_Brands.ttf</string>
+		<string>MaterialCommunityIcons.ttf</string>
+		<string>AntDesign.ttf</string>
+		<string>Foundation.ttf</string>
+		<string>Ionicons.ttf</string>
+		<string>FontAwesome5_Solid.ttf</string>
+		<string>FontAwesome5_Regular.ttf</string>
+		<string>FontAwesome.ttf</string>
+		<string>Zocial.ttf</string>
+		<string>EvilIcons.ttf</string>
+		<string>FontAwesome6_Solid.ttf</string>
+		<string>SimpleLineIcons.ttf</string>
+		<string>FontAwesome6_Brands.ttf</string>
+		<string>MaterialIcons.ttf</string>
 	</array>
-	<key>FirebaseAppDelegateProxyEnabled</key>
-	<false/>
 </dict>
 </plist>

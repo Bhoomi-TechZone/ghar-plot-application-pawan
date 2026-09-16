@@ -1394,14 +1394,14 @@ const EmployeeManagementScreen = ({ navigation }) => {
   );
 
  return (
-  <View style={[styles.container, { paddingTop: statusBarTop }]}>
+  <View style={styles.container}>
     <StatusBar
       barStyle="light-content"
       backgroundColor="#1e293b"
       translucent={false}
     />
 
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: statusBarTop + 14 }]}>
       <Text style={styles.headerTitle}>Employee Management</Text>
 
       <TouchableOpacity

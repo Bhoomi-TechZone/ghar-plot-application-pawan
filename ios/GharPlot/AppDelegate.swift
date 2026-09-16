@@ -16,13 +16,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
-    // ✅ STEP 1: Initialize Firebase (CRITICAL for iOS Push Notifications)
     FirebaseApp.configure()
     
     // ✅ STEP 2: Configure notification center BEFORE requesting permissions
     UNUserNotificationCenter.current().delegate = self
     
-    // ✅ STEP 3: Set Firebase Messaging delegate to receive FCM tokens
     Messaging.messaging().delegate = self
     
     // ✅ STEP 4: Request notification permissions
@@ -61,7 +59,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
   func application(_ application: UIApplication,
                    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
     print("✅ APNs device token received")
-    // Forward APNs token to Firebase Messaging
     Messaging.messaging().apnsToken = deviceToken
   }
   
@@ -71,11 +68,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     print("❌ Failed to register for remote notifications: \(error.localizedDescription)")
   }
   
-  // ✅ STEP 8: Firebase Messaging Delegate - Receive FCM token
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
     if let token = fcmToken {
       print("✅ FCM Token received: \(token)")
-      // Send token to JavaScript layer via notification
       NotificationCenter.default.post(
         name: Notification.Name("FCMTokenReceived"),
         object: nil,
@@ -90,12 +85,34 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                              withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
     let userInfo = notification.request.content.userInfo
     print("📩 Foreground notification received: \(userInfo)")
+    Messaging.messaging().appDidReceiveMessage(userInfo)
+
+    // Local fallback notifications should always be shown as banners
+    if isLocalFallback(in: userInfo) {
+      print("✅ Showing local fallback notification as banner")
+      
+      if #available(iOS 14.0, *) {
+        completionHandler([.banner, .sound, .badge, .list])
+      } else {
+        completionHandler([.alert, .sound, .badge])
+      }
+      return
+    }
+
+    // Data-only FCM push (no aps.alert) — schedule a local notification to
+    // show the banner. Suppress the silent push itself (completionHandler([])).
+    if !hasVisibleAlert(in: userInfo) {
+      print("📲 Data-only FCM push in foreground — scheduling local fallback")
+      scheduleLocalNotification(from: userInfo)
+      completionHandler([])
+      return
+    }
     
-    // Show notification even when app is in foreground (banner, sound, badge)
+    // Regular FCM push with alert — show it directly
     if #available(iOS 14.0, *) {
-      completionHandler([[.banner, .sound, .badge, .list]])
+      completionHandler([.banner, .sound, .badge, .list])
     } else {
-      completionHandler([[.alert, .sound, .badge]])
+      completionHandler([.alert, .sound, .badge])
     }
   }
   
@@ -105,9 +122,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                              withCompletionHandler completionHandler: @escaping () -> Void) {
     let userInfo = response.notification.request.content.userInfo
     print("🔔 Notification tapped: \(userInfo)")
-    
-    // Forward to React Native via Firebase Messaging
-    // The JavaScript layer will handle navigation
+    Messaging.messaging().appDidReceiveMessage(userInfo)
     
     completionHandler()
   }
@@ -117,9 +132,75 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
     print("📩 Remote notification received in background: \(userInfo)")
+    Messaging.messaging().appDidReceiveMessage(userInfo)
     
-    // Let Firebase handle the notification
+    // Skip if this is already a local fallback (avoids double-scheduling)
+    guard !isLocalFallback(in: userInfo) else {
+      completionHandler(.noData)
+      return
+    }
+
+    if !hasVisibleAlert(in: userInfo) {
+      print("📲 Data-only FCM push in background — scheduling local fallback")
+      scheduleLocalNotification(from: userInfo)
+    }
+
     completionHandler(.newData)
+  }
+
+  private func hasVisibleAlert(in userInfo: [AnyHashable: Any]) -> Bool {
+    guard let aps = userInfo["aps"] as? [AnyHashable: Any] else { return false }
+    return aps["alert"] != nil
+  }
+
+  /// Returns true for local notifications we synthesised from a data-only FCM push.
+  /// The value is stored as Int 1 (not Bool true) by UNNotificationContent.userInfo,
+  /// so we must check for both.
+  private func isLocalFallback(in userInfo: [AnyHashable: Any]) -> Bool {
+    let val = userInfo["gharplot.localFallback"]
+    if let boolVal = val as? Bool { return boolVal }
+    if let intVal = val as? Int { return intVal == 1 }
+    if let strVal = val as? String { return strVal == "1" || strVal == "true" }
+    return false
+  }
+
+  private func scheduleLocalNotification(from userInfo: [AnyHashable: Any]) {
+    let content = UNMutableNotificationContent()
+    content.title = (userInfo["title"] as? String) ?? "Gharplot Reminder"
+    content.body = (userInfo["body"] as? String) ?? (userInfo["reason"] as? String) ?? "You have a new reminder"
+    content.sound = .default
+    
+    // Prefix the identifier so it never collides with the original FCM message
+    let msgId = (userInfo["gcm.message_id"] as? String) ?? UUID().uuidString
+    let identifier = "local-fallback-\(msgId)"
+
+    // Mark as local fallback so willPresent shows it as a banner
+    // and didReceiveRemoteNotification skips re-processing it
+    var localUserInfo: [AnyHashable: Any] = [:]
+    for (k, v) in userInfo { localUserInfo[k] = v }
+    localUserInfo["gharplot.localFallback"] = 1
+    if localUserInfo["gcm.message_id"] == nil {
+      localUserInfo["gcm.message_id"] = msgId
+    }
+    content.userInfo = localUserInfo
+
+    // Use a slightly longer delay so the app's foreground willPresent can
+    // present it properly as a banner (0.1s is too tight on some devices)
+    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
+
+    let request = UNNotificationRequest(
+      identifier: identifier,
+      content: content,
+      trigger: trigger
+    )
+
+    UNUserNotificationCenter.current().add(request) { error in
+      if let error = error {
+        print("❌ Failed to schedule local fallback notification: \(error.localizedDescription)")
+      } else {
+        print("✅ Local fallback notification scheduled: \(identifier)")
+      }
+    }
   }
 }
 

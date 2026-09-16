@@ -273,9 +273,10 @@ export const setupForegroundNotificationHandler = () => {
           const cleanAlertId = data.alertId ? String(data.alertId).replace(/^(alert_|notif_)/, '') : null;
           const isProcessingAlert = !!cleanAlertId || notificationType === 'alert';
 
+          let isDuplicateTrayAlert = false;
           if (isProcessingAlert && !shouldShowAlert(cleanAlertId)) {
             console.log(`🛡️ [DE-DUP] Skipping tray notification in foreground for duplicate alert: ${cleanAlertId}`);
-            return;
+            isDuplicateTrayAlert = true;
           }
 
           console.log(`📩 [FG] FCM received for alert: ${cleanAlertId || 'no-alertId'}`);
@@ -330,7 +331,12 @@ export const setupForegroundNotificationHandler = () => {
           // 🎯 DEDUPLICATION: In the foreground, prioritize the PROFESSIONAL POPUP.
           // Only show the TRAY notification (Notifee) if it's NOT a reminder/alert
           // (which already shows a massive popup) or if it's explicitly desired.
-          const shouldShowTrayNotif = !isReminderLike || notificationType === 'chat' || notificationType === 'system';
+          const shouldShowTrayNotif =
+            !isDuplicateTrayAlert &&
+            (Platform.OS === 'ios' ||
+            !isReminderLike ||
+            notificationType === 'chat' ||
+            notificationType === 'system');
 
           if (shouldShowTrayNotif) {
             await notifee.displayNotification({
@@ -352,6 +358,15 @@ export const setupForegroundNotificationHandler = () => {
                   text: richBody,
                 },
               },
+              ios: {
+                sound: 'default',
+                critical: false,
+                foregroundPresentationOptions: {
+                  alert: true,
+                  badge: true,
+                  sound: true,
+                },
+              },
               data: { type: popupType, ...data },
             });
             console.log(`✅ [FG] Notification ${unifiedId} displayed (stays until user dismisses)`);
@@ -363,28 +378,47 @@ export const setupForegroundNotificationHandler = () => {
         }
 
         // 2. TRIGGER THE PROFESSIONAL DIALOG (Indigo/Red popup)
-        if (global.triggerProfessionalReminder) {
-          console.log('🚀 Triggering professional popup from FCM:', popupType);
-          console.log('🚀 Popup data:', JSON.stringify({
-            title: data.title || title,
-            body: richBody || body,
-            type: popupType,
-            alertId: data.alertId,
-            reminderId: data.reminderId,
-            scheduledDateTime: data.scheduledDateTime,
-            nextScheduledAt: data.nextScheduledAt,
-          }, null, 2));
-          global.triggerProfessionalReminder({
-            ...data,
-            title: data.title || title || (isIndigo ? 'Reminder' : 'Alert'),
-            body: richBody || body || 'You have a new message',
-            type: popupType,
-            notificationType: popupType
-          });
-          console.log('✅ Professional popup triggered successfully');
-        } else {
-          console.error('❌ global.triggerProfessionalReminder is NOT defined!');
-        }
+        const popupPayload = {
+          ...data,
+          title: data.title || title || (isIndigo ? 'Reminder' : 'Alert'),
+          body: richBody || body || 'You have a new message',
+          type: popupType,
+          notificationType: popupType,
+        };
+
+        const tryTriggerPopup = (attempts = 0) => {
+          if (global.triggerProfessionalReminder) {
+            console.log('🚀 Triggering professional popup from FCM:', popupType);
+            console.log('🚀 Popup data:', JSON.stringify({
+              title: popupPayload.title,
+              body: popupPayload.body,
+              type: popupType,
+              alertId: data.alertId,
+              reminderId: data.reminderId,
+              scheduledDateTime: data.scheduledDateTime,
+              nextScheduledAt: data.nextScheduledAt,
+            }, null, 2));
+            global.triggerProfessionalReminder(popupPayload);
+            console.log('✅ Professional popup triggered successfully');
+          } else if (attempts < 10) {
+            console.log(`⏳ Waiting for global.triggerProfessionalReminder (attempt ${attempts + 1}/10)`);
+            setTimeout(() => tryTriggerPopup(attempts + 1), 300);
+          } else {
+            console.error('❌ global.triggerProfessionalReminder is NOT defined after retries - storing in pendingNotificationData');
+            try {
+              const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+              AsyncStorage.setItem('pendingNotificationData', JSON.stringify({
+                triggerReminderPopup: true,
+                data: popupPayload,
+                timestamp: Date.now()
+              }));
+            } catch (storageErr) {
+              console.error('❌ Failed to store pending popup:', storageErr);
+            }
+          }
+        };
+
+        tryTriggerPopup();
       }
       return;
     }
@@ -436,6 +470,16 @@ export const setupForegroundNotificationHandler = () => {
  */
 export const backgroundMessageHandler = async (remoteMessage) => {
   console.log('📩 FCM: BACKGROUND/KILLED MESSAGE RECEIVED!', remoteMessage.messageId);
+
+  // 🛡️ If app is already in FOREGROUND (active), do not process as background message!
+  // This prevents iOS background fetch / APNs from racing with messaging().onMessage and blocking it.
+  try {
+    const { AppState } = require('react-native');
+    if (AppState.currentState === 'active') {
+      console.log('📱 App is in FOREGROUND (active) - skipping backgroundMessageHandler so foreground handler can process it');
+      return;
+    }
+  } catch (_) {}
 
   // 🛡️ Gate: skip if this exact messageId was already handled (FG+BG race)
   if (!shouldProcessMessage(remoteMessage.messageId)) return;
@@ -655,6 +699,15 @@ export const backgroundMessageHandler = async (remoteMessage) => {
             text: richBody,
           },
         },
+        ios: {
+          sound: 'default',
+          critical: false,
+          foregroundPresentationOptions: {
+            alert: true,
+            badge: true,
+            sound: true,
+          },
+        },
         data: { type: notificationType, ...data },
       });
       console.log(`✅ [BG] Notification ${unifiedId} displayed (stays until user dismisses)`);
@@ -815,17 +868,22 @@ export const checkFCMConfiguration = async () => {
       results.details.token = { error: tokenError.message };
     }
 
-    // Check device capabilities
-    try {
-      const isGooglePlayServicesAvailable = await messaging().hasPermission();
-      results.details.googlePlayServices = isGooglePlayServicesAvailable !== -1;
+    // Google Play Services is an Android-only capability. On iOS, the FCM
+    // token and APNs registration are the relevant delivery checks.
+    if (Platform.OS === 'android') {
+      try {
+        const isGooglePlayServicesAvailable = await messaging().hasPermission();
+        results.details.googlePlayServices = isGooglePlayServicesAvailable !== -1;
 
-      if (!results.details.googlePlayServices) {
-        results.warnings.push('Google Play Services may not be available');
+        if (!results.details.googlePlayServices) {
+          results.warnings.push('Google Play Services may not be available');
+        }
+      } catch (playServicesError) {
+        console.warn('⚠️ Could not check Google Play Services:', playServicesError);
+        results.details.googlePlayServices = 'unknown';
       }
-    } catch (playServicesError) {
-      console.warn('⚠️ Could not check Google Play Services:', playServicesError);
-      results.details.googlePlayServices = 'unknown';
+    } else {
+      results.details.googlePlayServices = 'not-applicable';
     }
 
     // Determine overall configuration status

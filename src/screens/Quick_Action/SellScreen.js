@@ -417,7 +417,7 @@ const SellScreen = ({ navigation }) => {
                 <TouchableOpacity style={styles.emptyButton} onPress={() => navigation.navigate("AddSell")}>
                   <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.emptyButtonGradient}>
                     <Icon name="add" size={18} color={COLORS.white} />
-                    <Text style={styles.emptyButtonText}>Post Property</Text>
+                    <Text style={styles.emptyButtonText} numberOfLines={1}>Post Property</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   filterChipTextActive: { color: COLORS.white },
   searchBox: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.cardBg, padding: 10, borderRadius: 12, gap: 8 },
   searchInput: { flex: 1, fontSize: 14, color: COLORS.dark },
-  listContent: { paddingHorizontal: 16, paddingBottom: 40 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 80 },
   gridRow: {
     justifyContent: 'space-between',
     gap: 16,
@@ -476,12 +476,12 @@ const styles = StyleSheet.create({
   viewsText: { color: COLORS.gray },
   editBtn: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.dark, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 8 },
   editBtnText: { color: COLORS.white, fontWeight: "700" },
-  emptyContainer: { alignItems: "center", justifyContent: "center", padding: 40 },
+  emptyContainer: { alignItems: "center", justifyContent: "center", padding: 40, paddingBottom: 60 },
   emptyTitle: { fontSize: 18, fontWeight: "800", marginTop: 12 },
   emptySubtitle: { color: COLORS.gray, marginTop: 8, textAlign: "center" },
-  emptyButton: { marginTop: 16, borderRadius: 12, overflow: "hidden" },
-  emptyButtonGradient: { paddingHorizontal: 20, paddingVertical: 12, alignItems: "center", flexDirection: "row", gap: 8 },
-  emptyButtonText: { color: COLORS.white, fontWeight: "800" },
+  emptyButton: { width: '100%', maxWidth: 320, alignSelf: 'center', marginTop: 16, borderRadius: 12, overflow: "hidden", minHeight: 52 },
+  emptyButtonGradient: { width: '100%', minHeight: 52, paddingHorizontal: 20, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
+  emptyButtonText: { color: COLORS.white, fontWeight: "800", fontSize: 16, lineHeight: 20, flexShrink: 1, textAlign: 'center' },
   statsWrap: { flexDirection: "row", justifyContent: "space-around", padding: 16 },
   statsBox: { alignItems: "center" },
   statsValue: { fontSize: 20, fontWeight: "800", color: COLORS.dark },
