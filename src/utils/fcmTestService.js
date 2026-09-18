@@ -269,7 +269,7 @@ export const sendTestFCMNotification = async () => {
 
     // Try to send via backend (if available)
     try {
-      const response = await fetch('https://gharplotbackend.gntechnology.de/api/test-notification', {
+      const response = await fetch('https://ghar-plot-backend1.onrender.com/api/test-notification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

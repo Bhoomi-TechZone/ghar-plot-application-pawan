@@ -49,7 +49,7 @@ export const testChatEndpoints = async () => {
   }
 
   const { token } = authResult;
-  const BASE_URL = 'https://gharplotbackend.gntechnology.de/api/chat';
+  const BASE_URL = 'https://ghar-plot-backend1.onrender.com/api/chat';
 
   const endpoints = [
     { name: 'Chat History', url: `${BASE_URL}/history`, method: 'GET' },
@@ -125,7 +125,7 @@ export const testCreateChat = async (receiverId = '673d1234567890abcdef1234') =>
   }
 
   const { token } = authResult;
-  const BASE_URL = 'https://gharplotbackend.gntechnology.de/api/chat';
+  const BASE_URL = 'https://ghar-plot-backend1.onrender.com/api/chat';
 
   try {
     console.log(`🔍 Creating chat with receiver: ${receiverId}`);

@@ -152,7 +152,7 @@ export const formatPrice = (price) => {
 
 /**
  * Fetch recent properties from ALL users including current user's own properties
- * UPDATED: Now uses https://gharplotbackend.gntechnology.de/api/properties/recent/all
+ * UPDATED: Now uses https://ghar-plot-backend1.onrender.com/api/properties/recent/all
  * This ensures user can see their own posted properties in recent listings
  * PUBLIC API: No authentication required for browsing properties
  */
@@ -337,7 +337,7 @@ export async function getSavedPropertiesIds() {
 
 /**
  * Fetch ALL properties from the new API endpoint
- * Endpoint: GET https://gharplotbackend.gntechnology.de/api/properties/recent/all
+ * Endpoint: GET https://ghar-plot-backend1.onrender.com/api/properties/recent/all
  * This replaces the old endpoint to show all available properties
  * PUBLIC API: No authentication required for browsing properties
  */

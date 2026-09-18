@@ -343,18 +343,18 @@ const PropertyManagementScreen = ({ navigation }) => {
             const isPostedByAdmin = item?.isPostedByAdmin || false;
             const cleanPath = imageUrl.replace(/^\/+/, '');
             if (isPostedByAdmin) {
-              return `https://gharplotbackend.gntechnology.de/${cleanPath}`;
+              return `https://ghar-plot-backend1.onrender.com/${cleanPath}`;
             } else {
-              return `https://gharplotbackend.gntechnology.de/${cleanPath}`;
+              return `https://ghar-plot-backend1.onrender.com/${cleanPath}`;
             }
           }
 
           // Handle relative paths without leading slash
           const isPostedByAdmin = item?.isPostedByAdmin || false;
           if (isPostedByAdmin) {
-            return `https://gharplotbackend.gntechnology.de/${imageUrl}`;
+            return `https://ghar-plot-backend1.onrender.com/${imageUrl}`;
           } else {
-            return `https://gharplotbackend.gntechnology.de/${imageUrl}`;
+            return `https://ghar-plot-backend1.onrender.com/${imageUrl}`;
           }
         }
       }
@@ -580,7 +580,7 @@ const PropertyManagementScreen = ({ navigation }) => {
       console.log('Posting property with', formData.photosAndVideo.length, 'files');
 
       // Call backend API - Use admin endpoint
-      const response = await fetch('https://gharplotbackend.gntechnology.de/property/admin/add', {
+      const response = await fetch('https://ghar-plot-backend1.onrender.com/property/admin/add', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -18,7 +18,7 @@ import {
 import Icon from "react-native-vector-icons/Ionicons";
 import { DeviceEventEmitter } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-// NOTE: Make sure formatImageUrl correctly prepends your base URL (e.g., https://gharplotbackend.gntechnology.de/)
+// NOTE: Make sure formatImageUrl correctly prepends your base URL (e.g., https://ghar-plot-backend1.onrender.com/)
 import { formatImageUrl, formatPrice } from '../services/homeApi';
 
 // --- Import the API function from the new service file ---

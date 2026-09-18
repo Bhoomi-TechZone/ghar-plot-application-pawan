@@ -33,7 +33,7 @@ const getCurrentUserId = async () => {
 };
 // --------------------------------------------------------
 
-const BASE_URL = 'https://gharplotbackend.gntechnology.de/api/chat';
+const BASE_URL = 'https://ghar-plot-backend1.onrender.com/api/chat';
 
 /**
  * Initiates or retrieves an existing chat between the current user and a receiver.

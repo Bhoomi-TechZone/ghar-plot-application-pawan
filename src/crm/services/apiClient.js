@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base URL for CRM API
-const BASE_URL = 'https://gharplotbackend.gntechnology.de/api/crm';
+const BASE_URL = 'https://ghar-plot-backend1.onrender.com/api/crm';
 
 // Create axios instance
 const apiClient = axios.create({

@@ -246,6 +246,7 @@ const formatDateTime = (date) => {
     if (frequency === 'custom') {
       setShowCustomInput(true);
     } else {
+      setCustomIntervalMinutes('');
       setShowCustomInput(false);
       setShowCustomManualInput(false);
       setShowRepeatModal(false);
@@ -315,18 +316,20 @@ const formatDateTime = (date) => {
       const minutes = scheduledDate.getMinutes().toString().padStart(2, '0');
 
       // 🔥 UPDATE existing reminder via alerts API
+      const isCustom = repeatFrequency === 'custom';
       const reminderPayload = {
         title: title.trim() || 'Reminder',
         reason: message.trim(),
         date: `${year}-${month}-${day}`, // Local date Format: YYYY-MM-DD
         time: `${hours}:${minutes}`, // Local time Format: HH:mm
-        repeatFrequency: repeatFrequency !== 'none' ? repeatFrequency : 'daily',
+        repeatFrequency: repeatFrequency !== 'none' ? repeatFrequency : 'none',
         repeatDaily: repeatFrequency === 'daily',
-        customRepeatMinutes: customIntervalMinutes || '',
+        customRepeatMinutes: isCustom ? (customIntervalMinutes || '') : '',
+        repeatMetadata: null, // Reset previous metadata so daily does not carry over stale customIntervalMinutes
         isActive: true,
       };
 
-      // 🔥 Build repeatMetadata for weekly/monthly/yearly reminders
+      // 🔥 Build repeatMetadata for weekly/monthly/yearly/custom reminders
       if (repeatFrequency === 'weekly') {
         reminderPayload.repeatMetadata = { dayOfWeek: scheduledDate.getDay() };
       } else if (repeatFrequency === 'monthly') {
@@ -336,8 +339,8 @@ const formatDateTime = (date) => {
           month: scheduledDate.getMonth() + 1,
           dayOfMonth: scheduledDate.getDate(),
         };
-      } else if (repeatFrequency === 'custom' && customIntervalMinutes) {
-        reminderPayload.repeatMetadata = { customIntervalMinutes };
+      } else if (isCustom && customIntervalMinutes) {
+        reminderPayload.repeatMetadata = { customIntervalMinutes: Number(customIntervalMinutes) };
       }
 
       console.log('📤 Updating reminder via alerts API:', reminderPayload);

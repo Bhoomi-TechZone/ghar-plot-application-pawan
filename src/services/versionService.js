@@ -1,7 +1,7 @@
 import DeviceInfo from 'react-native-device-info';
 import { Linking, Platform } from 'react-native';
 
-const CONFIG_API_URL = 'https://gharplotbackend.gntechnology.de/api/config';
+const CONFIG_API_URL = 'https://ghar-plot-backend1.onrender.com/api/config';
 
 // Compare semantic versions (e.g., 1.0.2 < 1.0.10)
 export const compareVersions = (v1, v2) => {

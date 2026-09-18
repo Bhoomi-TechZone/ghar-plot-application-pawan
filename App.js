@@ -60,6 +60,196 @@ const AppMain = () => {
   const [adminPopupVisible, setAdminPopupVisible] = useState(false);
   const [adminPopupData, setAdminPopupData] = useState(null);
 
+  const lastTriggeredIdRef = useRef(null);
+  const lastTriggeredTimeRef = useRef(0);
+
+  // Helper to normalize IDs for consistent deduplication
+  const normalizeId = (id) => {
+    if (!id) return null;
+    return String(id).replace(/^(reminder_|alert_|notif_)/, '');
+  };
+
+  const triggerReminderPopup = (reminder) => {
+    if (!reminder) return;
+    console.log('🚨🚨🚨 [DEBUG APP] triggerReminderPopup entry point with:', JSON.stringify({
+      title: reminder?.title,
+      name: reminder?.name,
+      id: reminder?.reminderId || reminder?._id,
+      type: reminder?.type || reminder?.notificationType
+    }));
+
+    const now = Date.now();
+    const rawId = reminder.reminderId || reminder._id || reminder.id || reminder.alertId;
+    const remId = normalizeId(rawId) || `rem_${now}`;
+
+    // 🔥 Build a composite key that is UNIQUE PER OCCURRENCE.
+    const scheduledMin = reminder.scheduledDateTime
+      ? new Date(reminder.scheduledDateTime).toISOString().slice(0, 16)
+      : (reminder.scheduledAt ? new Date(reminder.scheduledAt).toISOString().slice(0, 16) : '');
+    const occurrenceKey = scheduledMin ? `${remId}_${scheduledMin}` : remId;
+
+    // 🔥 Identify Type FIRST (Priority: Alert > Admin > Standard)
+    const nType = String(reminder.type || reminder.notificationType || reminder.category || '').toLowerCase();
+    const rAll = (
+      nType + " " +
+      String(reminder.title || reminder.reminderTitle || '') + " " +
+      String(reminder.note || reminder.body || reminder.message || '') + " " +
+      String(reminder.employeeName || reminder.senderName || reminder.name || '')
+    ).toLowerCase();
+
+    const isActuallyAlert = nType === 'alert' || ((rAll.includes('alert') || rAll.includes('emergency') || rAll.includes('urgent')) && !rAll.includes('reminder'));
+    const isActuallyAdmin = !isActuallyAlert && (rAll.includes('admin') || nType === 'admin_reminder' || !!reminder.alertId);
+
+    const isFromTap = !!reminder.fromTap;
+    if (!isFromTap && !isActuallyAlert && occurrenceKey && !occurrenceKey.startsWith('rem_') && global.lastGlobalReminderId === occurrenceKey && (now - global.lastGlobalReminderTime < 10000)) {
+      console.log('🛑 Blocking dual-popup (Large Path): Already showing popup for occurrence:', occurrenceKey);
+      return;
+    }
+
+    if (!isFromTap && !isActuallyAlert && occurrenceKey && occurrenceKey === lastTriggeredIdRef.current && (now - lastTriggeredTimeRef.current < 5000)) {
+      console.log('🚨🚨🚨 [DEBUG APP] ⏭️ Skipping local duplicate REMINDER for occurrence:', occurrenceKey);
+      return;
+    }
+
+    if (occurrenceKey && !occurrenceKey.startsWith('rem_')) {
+      global.lastGlobalReminderId = occurrenceKey;
+      global.lastGlobalReminderTime = now;
+    }
+
+    lastTriggeredIdRef.current = occurrenceKey;
+    lastTriggeredTimeRef.current = now;
+
+    // Prepare normalized data for display
+    const normalizedReminder = {
+      ...reminder,
+      name: reminder.name || reminder.clientName || 'Gharplot Client',
+      title: reminder.title || reminder.reminderTitle || (isActuallyAlert ? 'Alert' : 'Reminder'),
+      note: reminder.note || reminder.body || reminder.message || 'Scheduled notification',
+    };
+
+    const handlePopupEdit = () => {
+      console.log('✏️ Edit button pressed in popup for:', normalizedReminder.title);
+
+      if (navigationRef.current) {
+        const rawId = normalizedReminder.reminderId || normalizedReminder.alertId || normalizedReminder._id || normalizedReminder.id;
+        const cleanId = normalizeId(rawId);
+        const nType = String(normalizedReminder.type || normalizedReminder.notificationType || normalizedReminder.category || '').toLowerCase();
+
+        if (isActuallyAlert || nType === 'admin_reminder' || normalizedReminder.alertId) {
+          console.log('🚀 Navigating to EditAlert screen');
+          navigationRef.current.navigate('EditAlert', {
+            alertId: cleanId,
+            originalTitle: normalizedReminder.alertTitle || normalizedReminder.title || normalizedReminder.reminderTitle || 'Reminder',
+            originalReason: normalizedReminder.alertReason || normalizedReminder.reason || normalizedReminder.message || normalizedReminder.note || '',
+            originalDate: normalizedReminder.scheduledDate || normalizedReminder.date || normalizedReminder.reminderTime || '',
+            originalTime: normalizedReminder.scheduledTime || normalizedReminder.time || '',
+            repeatDaily: (normalizedReminder.repeatDaily === 'true' || normalizedReminder.repeatDaily === true || normalizedReminder.repeatFrequency === 'daily')
+          });
+        } else if (nType === 'employee_reminder_to_admin') {
+          console.log('🚀 Navigating to AdminReminderDetailsScreen (Employee-to-Admin)');
+          navigationRef.current.navigate('AdminReminderDetailsScreen', {
+            reminderId: cleanId,
+            employeeName: normalizedReminder.employeeName || '',
+            employeeEmail: normalizedReminder.employeeEmail || '',
+            reminderTitle: normalizedReminder.reminderTitle || normalizedReminder.title || '',
+            clientName: normalizedReminder.clientName || '',
+            phone: normalizedReminder.phone || normalizedReminder.phoneNumber || '',
+            location: normalizedReminder.location || '',
+            note: normalizedReminder.note || normalizedReminder.comment || normalizedReminder.message || '',
+            reminderTime: normalizedReminder.reminderTime || normalizedReminder.scheduledDate || normalizedReminder.timestamp || '',
+            enquiryId: normalizedReminder.enquiryId,
+            fromNotification: true
+          });
+        } else {
+          console.log('🚀 Navigating to EmployeeReminderDetailsScreen');
+          navigationRef.current.navigate('EmployeeReminderDetailsScreen', {
+            reminderId: cleanId,
+            clientName: normalizedReminder.clientName || normalizedReminder.title || '',
+            originalMessage: normalizedReminder.message || normalizedReminder.comment || normalizedReminder.note || '',
+            enquiryId: normalizedReminder.enquiryId,
+            fromNotification: true,
+            phone: normalizedReminder.phone || normalizedReminder.phoneNumber || normalizedReminder.contactNumber || '',
+            email: normalizedReminder.email || '',
+            location: normalizedReminder.location || '',
+            reminderTime: normalizedReminder.reminderTime || normalizedReminder.scheduledDate || normalizedReminder.scheduledTime || (normalizedReminder.date && normalizedReminder.time ? `${normalizedReminder.date} ${normalizedReminder.time}` : (normalizedReminder.date || normalizedReminder.time || '')),
+            isRepeating: normalizedReminder.isRepeating === 'true' || normalizedReminder.isRepeating === true,
+            repeatType: normalizedReminder.repeatType || 'none',
+          });
+        }
+      } else {
+        console.warn('⚠️ Navigation ref not ready for edit action');
+      }
+    };
+
+    if (isActuallyAdmin) {
+      console.log('🚨🚨🚨 [DEBUG APP] 🔔 SHOWING ADMIN POPUP NOW:', normalizedReminder.title);
+      setAdminPopupData({ ...normalizedReminder, onEdit: handlePopupEdit });
+      setAdminPopupVisible(true);
+    } else if (isActuallyAlert) {
+      console.log('🚨🚨🚨 [DEBUG APP] 🔔 SHOWING RED ALERT POPUP NOW:', normalizedReminder.title);
+      setEmployeePopupData({ ...normalizedReminder, onEdit: handlePopupEdit });
+      setEmployeePopupVisible(true);
+    } else {
+      console.log('🚨🚨🚨 [DEBUG APP] 🔔 SHOWING STANDARD REMINDER POPUP NOW:', normalizedReminder.title);
+      setCurrentReminder({ ...normalizedReminder, onEdit: handlePopupEdit });
+      setShowReminderPopup(true);
+    }
+  };
+
+  // Synchronously expose globally on every render so it is NEVER undefined
+  global.triggerProfessionalReminder = triggerReminderPopup;
+
+  // Mount setup for popup callback and draining any pending notifications
+  useEffect(() => {
+    global.triggerProfessionalReminder = triggerReminderPopup;
+
+    setShowPopupCallback((data) => {
+      if (!data) return;
+      const now = Date.now();
+      const rawId = data.reminderId || data.id || data._id || data.alertId;
+      const notificationId = normalizeId(rawId);
+
+      const rType = String(data.type || data.notificationType || data.category || '').toLowerCase();
+      const rTitle = String(data.title || data.reminderTitle || '').toLowerCase();
+      const rNote = String(data.note || data.body || data.message || data.reason || '').toLowerCase();
+      const rAll = (rType + " " + rTitle + " " + rNote).toLowerCase();
+
+      const isActuallyAlert = rAll.includes('alert') || rAll.includes('emergency') || rAll.includes('urgent');
+      const isActuallyAdmin = !isActuallyAlert && (rAll.includes('admin') || rType === 'admin_reminder');
+
+      if (!isActuallyAlert && notificationId && global.lastGlobalReminderId === notificationId && (now - global.lastGlobalReminderTime < 10000)) {
+        console.log('🛑 Blocking duplicate Admin/Reminder popup (Bridge):', notificationId);
+        return;
+      }
+
+      if (isActuallyAdmin) {
+        setAdminPopupData(data);
+        setAdminPopupVisible(true);
+      } else {
+        setEmployeePopupData(data);
+        setEmployeePopupVisible(true);
+      }
+    });
+
+    // Check if any pending notification was stored before triggerProfessionalReminder was ready
+    (async () => {
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        const pending = await AsyncStorage.getItem('pendingNotificationData');
+        if (pending) {
+          const parsed = JSON.parse(pending);
+          if (parsed?.triggerReminderPopup && parsed?.data) {
+            console.log('🚀 Found pending popup on mount - triggering now:', parsed.data.title);
+            await AsyncStorage.removeItem('pendingNotificationData');
+            triggerReminderPopup(parsed.data);
+          }
+        }
+      } catch (err) {
+        console.warn('Pending notification mount check error:', err);
+      }
+    })();
+  }, []);
+
   // 🔥 CRITICAL: AppState listener to handle background -> foreground transition
   useEffect(() => {
     // 🔥 Track if we already processed this transition
@@ -205,250 +395,42 @@ const AppMain = () => {
           return;
         }
 
-        // 🔔 Create notification channels + request permission at startup
-        try {
-          await notifee.requestPermission();
-           // Ensure notification channels exist (idempotent — preserves displayed notifications)
-           await notifee.createChannel({
-            id: 'default_notification_channel',
-            name: 'Notifications',
-            importance: 4, // IMPORTANCE_HIGH
-            sound: 'default',
-            vibration: true,
-            vibrationPattern: [300, 500],
-          });
-          await notifee.createChannel({
-            id: 'enquiry_reminders',
-            name: 'Reminders',
-            importance: 4,
-            sound: 'default',
-            vibration: true,
-            vibrationPattern: [300, 500],
-          });
-          await notifee.createChannel({
-            id: 'gharplot_alerts',
-            name: 'Gharplot Alerts',
-            importance: 4,
-            sound: 'default',
-            vibration: true,
-            vibrationPattern: [300, 500],
-          });
-          console.log('✅ Notification channels recreated with sound + permission granted');
-
-          // 🔔 IMPORTANT: Android stores app-level importance=DEFAULT permanently across reinstalls.
-          // Only user can fix it via Android Settings → Apps → Gharplot → Notifications → set to HIGH.
-          // We open the settings page once so user can fix it.
-          if (Platform.OS === 'android') {
-            const _AsyncStorage = require('@react-native-async-storage/async-storage').default;
-            const settingsPrompted = await _AsyncStorage.getItem('app_notif_settings_prompted_v3');
-            if (!settingsPrompted) {
-              const ch = await notifee.getChannel('default_notification_channel').catch(() => null);
-              const needsFix = !ch || (ch.importance !== undefined && ch.importance < 4);
-              if (needsFix) {
-                await _AsyncStorage.setItem('app_notif_settings_prompted_v3', '1');
-                Alert.alert(
-                  '🔔 Enable Alert Notifications',
-                  'Pop-up reminder notifications require HIGH importance.\n\nTap "Open Settings" → set Gharplot notifications to "High" or "Alert".',
-                  [
-                    { text: 'Later', style: 'cancel' },
-                    { text: 'Open Settings', onPress: () => notifee.openNotificationSettings() },
-                  ],
-                  { cancelable: false }
-                );
-              }
-            }
+        // 🔔 Create notification channels + request permission at startup (non-blocking)
+        (async () => {
+          try {
+            await notifee.requestPermission().catch(() => {});
+            await notifee.createChannel({
+              id: 'default_notification_channel',
+              name: 'Notifications',
+              importance: 4, // IMPORTANCE_HIGH
+              sound: 'default',
+              vibration: true,
+              vibrationPattern: [300, 500],
+            }).catch(() => {});
+            await notifee.createChannel({
+              id: 'enquiry_reminders',
+              name: 'Reminders',
+              importance: 4,
+              sound: 'default',
+              vibration: true,
+              vibrationPattern: [300, 500],
+            }).catch(() => {});
+            await notifee.createChannel({
+              id: 'gharplot_alerts',
+              name: 'Gharplot Alerts',
+              importance: 4,
+              sound: 'default',
+              vibration: true,
+              vibrationPattern: [300, 500],
+            }).catch(() => {});
+            console.log('✅ Notification channels recreated with sound + permission granted');
+          } catch (channelErr) {
+            console.log('⚠️ Channel/permission error (non-critical):', channelErr.message);
           }
-        } catch (channelErr) {
-          console.log('⚠️ Channel/permission error (non-critical):', channelErr.message);
-        }
+        })();
 
         // Initialize Reminder Manager with error handling
         try {
-          let lastTriggeredId = null;
-          let lastTriggeredTime = 0;
-
-          // Helper to normalize IDs for consistent deduplication
-          const normalizeId = (id) => {
-            if (!id) return null;
-            return String(id).replace(/^(reminder_|alert_|notif_)/, '');
-          };
-
-          const triggerReminderPopup = (reminder) => {
-            console.log('🚨🚨🚨 [DEBUG APP] triggerReminderPopup entry point with:', JSON.stringify({
-              title: reminder?.title,
-              name: reminder?.name,
-              id: reminder?.reminderId || reminder?._id,
-              type: reminder?.type || reminder?.notificationType
-            }));
-
-            const now = Date.now();
-            const rawId = reminder.reminderId || reminder._id || reminder.id || reminder.alertId;
-            const remId = normalizeId(rawId) || `rem_${now}`;
-
-            // 🔥 Build a composite key that is UNIQUE PER OCCURRENCE.
-            // Same alertId repeats every minute for recurring reminders, so we add
-            // the scheduledDateTime (rounded to the minute) to distinguish occurrences.
-            const scheduledMin = reminder.scheduledDateTime
-              ? new Date(reminder.scheduledDateTime).toISOString().slice(0, 16) // "2026-07-29T14:41"
-              : (reminder.scheduledAt ? new Date(reminder.scheduledAt).toISOString().slice(0, 16) : '');
-            const occurrenceKey = scheduledMin ? `${remId}_${scheduledMin}` : remId;
-
-            // 🔥 Identify Type FIRST (Priority: Alert > Admin > Standard)
-            const nType = String(reminder.type || reminder.notificationType || reminder.category || '').toLowerCase();
-            const rAll = (
-              nType + " " +
-              String(reminder.title || reminder.reminderTitle || '') + " " +
-              String(reminder.note || reminder.body || reminder.message || '') + " " +
-              String(reminder.employeeName || reminder.senderName || reminder.name || '')
-            ).toLowerCase();
-
-            // 🎯 REFINED DETECTION: 
-            // - Red Alert: If type is 'alert' OR title/body suggests danger/urgent (and NOT a reminder)
-            const isActuallyAlert = nType === 'alert' || ((rAll.includes('alert') || rAll.includes('emergency') || rAll.includes('urgent')) && !rAll.includes('reminder'));
-
-            // - Indigo Admin: Specifically tagged OR has Admin keywords (and NOT a red alert)
-            const isActuallyAdmin = !isActuallyAlert && (rAll.includes('admin') || nType === 'admin_reminder' || !!reminder.alertId);
-
-            // 🛑 DUAL-PATH BRIDGE CHECK: Only block if same OCCURRENCE is already showing.
-            // Uses occurrenceKey (alertId + scheduledMinute) so recurring reminders are NOT blocked.
-            // ALERTS (Red) and explicit notification taps always bypass the bridge to guarantee visibility.
-            const isFromTap = !!reminder.fromTap;
-            if (!isFromTap && !isActuallyAlert && occurrenceKey && !occurrenceKey.startsWith('rem_') && global.lastGlobalReminderId === occurrenceKey && (now - global.lastGlobalReminderTime < 10000)) {
-              console.log('🛑 Blocking dual-popup (Large Path): Already showing popup for occurrence:', occurrenceKey);
-              return;
-            }
-
-            // 🛑 LOCAL RAPID-TRIGGER LOCK: Skip only if it's a duplicate REMINDER.
-            // (Standard alerts and taps should almost always fire)
-            if (!isFromTap && !isActuallyAlert && occurrenceKey && occurrenceKey === lastTriggeredId && (now - lastTriggeredTime < 5000)) {
-              console.log('🚨🚨🚨 [DEBUG APP] ⏭️ Skipping local duplicate REMINDER for occurrence:', occurrenceKey);
-              return;
-            }
-
-            // Global Lockout Bridge Update - use occurrenceKey so next minute's recurrence is NOT blocked
-            if (occurrenceKey && !occurrenceKey.startsWith('rem_')) {
-              global.lastGlobalReminderId = occurrenceKey;
-              global.lastGlobalReminderTime = now;
-            }
-
-            lastTriggeredId = occurrenceKey;
-            lastTriggeredTime = now;
-
-            // Prepare normalized data for display
-            const normalizedReminder = {
-              ...reminder,
-              name: reminder.name || reminder.clientName || 'Gharplot Client',
-              title: reminder.title || reminder.reminderTitle || (isActuallyAlert ? 'Alert' : 'Reminder'),
-              note: reminder.note || reminder.body || reminder.message || 'Scheduled notification',
-            };
-
-            // 🔥 NEW: Navigation handler for 'Edit' button
-            const handlePopupEdit = () => {
-              console.log('✏️ Edit button pressed in popup for:', normalizedReminder.title);
-
-              if (navigationRef.current) {
-                const rawId = normalizedReminder.reminderId || normalizedReminder.alertId || normalizedReminder._id || normalizedReminder.id;
-                const cleanId = normalizeId(rawId);
-                const nType = String(normalizedReminder.type || normalizedReminder.notificationType || normalizedReminder.category || '').toLowerCase();
-
-                // 🎯 Match NotificationHandler.js logic for Alerts/Admin reminders
-                if (isActuallyAlert || nType === 'admin_reminder' || normalizedReminder.alertId) {
-                  console.log('🚀 Navigating to EditAlert screen');
-                  navigationRef.current.navigate('EditAlert', {
-                    alertId: cleanId,
-                    originalTitle: normalizedReminder.alertTitle || normalizedReminder.title || normalizedReminder.reminderTitle || 'Reminder',
-                    originalReason: normalizedReminder.alertReason || normalizedReminder.reason || normalizedReminder.message || normalizedReminder.note || '',
-                    originalDate: normalizedReminder.scheduledDate || normalizedReminder.date || normalizedReminder.reminderTime || '',
-                    originalTime: normalizedReminder.scheduledTime || normalizedReminder.time || '',
-                    repeatDaily: (normalizedReminder.repeatDaily === 'true' || normalizedReminder.repeatDaily === true || normalizedReminder.repeatFrequency === 'daily')
-                  });
-                } else if (nType === 'employee_reminder_to_admin') {
-                  console.log('🚀 Navigating to AdminReminderDetailsScreen (Employee-to-Admin)');
-                  navigationRef.current.navigate('AdminReminderDetailsScreen', {
-                    reminderId: cleanId,
-                    employeeName: normalizedReminder.employeeName || '',
-                    employeeEmail: normalizedReminder.employeeEmail || '',
-                    reminderTitle: normalizedReminder.reminderTitle || normalizedReminder.title || '',
-                    clientName: normalizedReminder.clientName || '',
-                    phone: normalizedReminder.phone || normalizedReminder.phoneNumber || '',
-                    location: normalizedReminder.location || '',
-                    note: normalizedReminder.note || normalizedReminder.comment || normalizedReminder.message || '',
-                    reminderTime: normalizedReminder.reminderTime || normalizedReminder.scheduledDate || normalizedReminder.timestamp || '',
-                    enquiryId: normalizedReminder.enquiryId,
-                    fromNotification: true
-                  });
-                } else {
-                  // Standard Employee Reminder
-                  console.log('🚀 Navigating to EmployeeReminderDetailsScreen');
-                  navigationRef.current.navigate('EmployeeReminderDetailsScreen', {
-                    reminderId: cleanId,
-                    clientName: normalizedReminder.clientName || normalizedReminder.title || '',
-                    originalMessage: normalizedReminder.message || normalizedReminder.comment || normalizedReminder.note || '',
-                    enquiryId: normalizedReminder.enquiryId,
-                    fromNotification: true,
-                    phone: normalizedReminder.phone || normalizedReminder.phoneNumber || normalizedReminder.contactNumber || '',
-                    email: normalizedReminder.email || '',
-                    location: normalizedReminder.location || '',
-                    reminderTime: normalizedReminder.reminderTime || normalizedReminder.scheduledDate || normalizedReminder.scheduledTime || (normalizedReminder.date && normalizedReminder.time ? `${normalizedReminder.date} ${normalizedReminder.time}` : (normalizedReminder.date || normalizedReminder.time || '')),
-                    isRepeating: normalizedReminder.isRepeating === 'true' || normalizedReminder.isRepeating === true,
-                    repeatType: normalizedReminder.repeatType || 'none',
-                  });
-                }
-              } else {
-                console.warn('⚠️ Navigation ref not ready for edit action');
-              }
-            };
-
-            if (isActuallyAdmin) {
-              console.log('🚨🚨🚨 [DEBUG APP] 🔔 SHOWING ADMIN POPUP NOW:', normalizedReminder.title);
-              setAdminPopupData({ ...normalizedReminder, onEdit: handlePopupEdit });
-              setAdminPopupVisible(true);
-            } else if (isActuallyAlert) {
-              console.log('🚨🚨🚨 [DEBUG APP] 🔔 SHOWING RED ALERT POPUP NOW:', normalizedReminder.title);
-              setEmployeePopupData({ ...normalizedReminder, onEdit: handlePopupEdit });
-              setEmployeePopupVisible(true);
-            } else {
-              console.log('🚨🚨🚨 [DEBUG APP] 🔔 SHOWING STANDARD REMINDER POPUP NOW:', normalizedReminder.title);
-              setCurrentReminder({ ...normalizedReminder, onEdit: handlePopupEdit });
-              setShowReminderPopup(true);
-            }
-          };
-
-
-          // Expose globally for fcmService.js to use
-          global.triggerProfessionalReminder = triggerReminderPopup;
-
-          // 🔥 NEW: Improved Popup Manager Callback with global lockout check
-          setShowPopupCallback((data) => {
-            const now = Date.now();
-            const rawId = data.reminderId || data.id || data._id || data.alertId;
-            const notificationId = normalizeId(rawId);
-
-            // 🔥 Identify Type FIRST (Priority: Alert > Admin > Standard)
-            const rType = String(data.type || data.notificationType || data.category || '').toLowerCase();
-            const rTitle = String(data.title || data.reminderTitle || '').toLowerCase();
-            const rNote = String(data.note || data.body || data.message || data.reason || '').toLowerCase();
-            const rAll = (rType + " " + rTitle + " " + rNote).toLowerCase();
-
-            const isActuallyAlert = rAll.includes('alert') || rAll.includes('emergency') || rAll.includes('urgent');
-            const isActuallyAdmin = !isActuallyAlert && (rAll.includes('admin') || rType === 'admin_reminder');
-
-            // BRIDGE CHECK: Only block if it's a REMINDER (to avoid dual Indigo-Indigo popups).
-            // ALERTS (Red) should always show if they are fresh.
-            if (!isActuallyAlert && notificationId && global.lastGlobalReminderId === notificationId && (now - global.lastGlobalReminderTime < 10000)) {
-              console.log('🛑 Blocking duplicate Admin/Reminder popup (Bridge):', notificationId);
-              return;
-            }
-
-            if (isActuallyAdmin) {
-              setAdminPopupData(data);
-              setAdminPopupVisible(true);
-            } else {
-              setEmployeePopupData(data);
-              setEmployeePopupVisible(true);
-            }
-          });
-
           await reminderManager.initialize(triggerReminderPopup);
           console.log('✅ Reminder Manager initialized');
 
@@ -855,7 +837,7 @@ const AppMain = () => {
         // Don't throw error during cleanup
       }
     };
-  }, [currentReminder?.title, showReminderPopup]);
+  }, []);
 
   const handleReminderClose = async (response) => {
     try {

@@ -193,28 +193,28 @@ const getNextScheduledDisplay = (item) => {
         month = nextDay.getUTCMonth() + 1;
         day = nextDay.getUTCDate();
       }
-    } else if ((repeatFrequency === 'custom' || customMins > 0) && customMins > 0) {
+    } else if (repeatFrequency === 'custom' && customMins > 0) {
       // Minutes/custom repeat: find next future occurrence
-      // Build a JS Date for the base scheduled time (treated as IST local)
-      let base = new Date(year, month - 1, day, hours, minutes, 0, 0);
-      const now = new Date();
-      // Convert IST base to UTC: IST = UTC+5:30
+      // Always construct UTC from IST wall clock date+time (independent of DB timezone corruption)
       const istOffsetMs = 5.5 * 60 * 60 * 1000;
-      // Shift base: we stored it as local but it represents IST
-      // To get UTC-equivalent: subtract IST offset
-      const baseUTC = new Date(base.getTime() - istOffsetMs + (new Date().getTimezoneOffset() * 60 * 1000));
+      const baseMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
       const intervalMs = customMins * 60 * 1000;
-      let nextOccurrence = new Date(baseUTC.getTime());
-      while (nextOccurrence <= now) {
-        nextOccurrence = new Date(nextOccurrence.getTime() + intervalMs);
+      const nowMs = Date.now();
+      let nextMs = baseMs;
+      // Advance by intervals until we are in the future
+      while (nextMs <= nowMs) {
+        nextMs += intervalMs;
       }
-      // Convert back to IST for display
-      const nextISTStr = nextOccurrence.toLocaleString('en-IN', {
+      const nextDate = new Date(nextMs);
+      const dateStr = nextDate.toLocaleDateString('en-IN', {
         timeZone: 'Asia/Kolkata',
         day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: true,
       });
-      return nextISTStr.replace(',', ' •');
+      const timeStr = nextDate.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric', minute: '2-digit', hour12: true,
+      }).toLowerCase();
+      return `${dateStr} • ${timeStr}`;
     }
 
     const h = hours;
@@ -440,6 +440,7 @@ const formatDateTime = (iso, reminderTime = null) => {
       scheduledDateTime: item.scheduledDateTime,
       scheduledAt: item.scheduledDateTime || `${item.date}T${item.time}`,
       nextScheduledAt: item.nextScheduledAt,
+      nextScheduledDisplay: getNextScheduledDisplay(item),
       createdAt: item.createdAt || item.date,
       repeatDaily: item.repeatDaily,
       repeatFrequency: item.repeatFrequency,
@@ -571,14 +572,14 @@ const formatDateTime = (iso, reminderTime = null) => {
 
                 if (item.repeatFrequency && item.repeatFrequency !== 'none') {
                   const freq = item.repeatFrequency.toLowerCase();
-                  if (freq === 'custom' || !!mins) {
+                  if (freq === 'custom') {
                     return mins ? `${prefix}${mins} MINS` : `${prefix}CUSTOM`;
                   }
                   return `${prefix}${freq.toUpperCase()}`;
                 }
 
                 if (item.repeatDaily) return `${prefix}DAILY`;
-                if (mins) return `${prefix}${mins} MINS`;
+                if (mins && (!item.repeatFrequency || item.repeatFrequency === 'none')) return `${prefix}${mins} MINS`;
 
                 return `${prefix}NO`;
               })()}

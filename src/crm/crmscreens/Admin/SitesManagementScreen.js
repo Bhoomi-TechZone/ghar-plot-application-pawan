@@ -138,6 +138,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
     amount: '',
     paidTo: '',
     remarks: '',
+    type: '',
   });
 
   // Add Work Status Form State
@@ -942,7 +943,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
         <View style={styles.formCard}>
           <Text style={styles.formSectionTitle}>Expense Details</Text>
 
-          // CLIENT PICKER
+          {/* CLIENT PICKER */}
           <View style={styles.formField}>
             <Text style={styles.formLabel}> Client <Text style={styles.required}>*</Text></Text>
             <View style={styles.pickerBorder}>
@@ -953,14 +954,14 @@ const SitesManagementScreen = ({ route, navigation }) => {
                 dropdownIconColor="#009688"
               >
                 <Picker.Item label="Select Project" value="" />
-                {projects.map((p) => (
+                {apiProjects.map((p) => (
                   <Picker.Item key={p.id} label={p.name} value={p.name} />
                 ))}
               </Picker>
             </View>
           </View>
-         
-          // PROJECT & ASSOCIATE PICKERS SIDE BY SIDE
+          
+          {/* PROJECT & ASSOCIATE PICKERS SIDE BY SIDE */}
           <View style={styles.formField}>
             <Text style={styles.formLabel}>Project / Site <Text style={styles.required}>*</Text></Text>
             <View style={styles.pickerBorder}>
@@ -971,14 +972,14 @@ const SitesManagementScreen = ({ route, navigation }) => {
                 dropdownIconColor="#009688"
               >
                 <Picker.Item label="Select Project" value="" />
-                {projects.map((p) => (
+                {apiProjects.map((p) => (
                   <Picker.Item key={p.id} label={p.name} value={p.name} />
                 ))}
               </Picker>
             </View>
           </View>
 
-          // ASSOCIATE PICKER
+          {/* ASSOCIATE PICKER */}
 
           <View style={styles.formField}>
             <Text style={styles.formLabel}>Business Associate <Text style={styles.required}>*</Text></Text>
@@ -997,7 +998,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
             </View>
           </View>
 
-          // cate
+          {/* Category */}
           <View style={styles.formField}>
             <Text style={styles.formLabel}>Category <Text style={styles.required}>*</Text></Text>
             <View style={styles.pickerBorder}>
@@ -1016,7 +1017,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
             </View>
           </View>
 
-          // Quantity & Unit Fields Side by Side
+          {/* Quantity & Unit Fields Side by Side */}
 
           <View style={styles.formField}>
             <Text style={styles.formLabel}>Quantity <Text style={styles.required}>*</Text></Text>
@@ -1028,7 +1029,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
                 dropdownIconColor="#009688"
               >
                 <Picker.Item label="Select Project" value="" />
-                {projects.map((p) => (
+                {apiProjects.map((p) => (
                   <Picker.Item key={p.id} label={p.name} value={p.name} />
                 ))}
               </Picker>
@@ -1076,8 +1077,8 @@ const SitesManagementScreen = ({ route, navigation }) => {
                 <Text style={styles.formLabel}>Type <Text style={styles.required}>*</Text></Text>
                 <View style={styles.pickerBorder}>
                   <Picker
-                    selectedValue={entry.type}
-                    onValueChange={(val) => updateCashFlowEntry(entry.id, 'type', val)}
+                    selectedValue={expensesForm.type}
+                    onValueChange={(val) => setExpensesForm({ ...expensesForm, type: val })}
                     style={styles.picker}
                     dropdownIconColor="#009688"
                   >

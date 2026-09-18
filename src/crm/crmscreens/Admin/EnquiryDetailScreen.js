@@ -45,7 +45,7 @@ const EnquiryDetailScreen = ({ route, navigation }) => {
       const keys = ['crm_auth_token', 'adminToken', 'admin_token', 'crm_admin_token', 'employee_auth_token', 'authToken'];
       let token = null;
       for (const key of keys) { const t = await AsyncStorage.getItem(key); if (t) { token = t; break; } }
-      const res = await fetch('https://gharplotbackend.gntechnology.de/admin/leads/available-employees', {
+      const res = await fetch('https://ghar-plot-backend1.onrender.com/admin/leads/available-employees', {
         headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : '' },
       });
       const json = await res.json();
@@ -61,7 +61,7 @@ const EnquiryDetailScreen = ({ route, navigation }) => {
       let token = null;
       for (const key of keys) { const t = await AsyncStorage.getItem(key); if (t) { token = t; break; } }
       const enquiryType = enquiry?.source === 'manual' ? 'ManualInquiry' : 'Inquiry';
-      const res = await fetch('https://gharplotbackend.gntechnology.de/admin/leads/assign', {
+      const res = await fetch('https://ghar-plot-backend1.onrender.com/admin/leads/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : '' },
         body: JSON.stringify({ employeeId: selectedEmployee._id, enquiries: [{ enquiryId, enquiryType }] }),
@@ -182,7 +182,7 @@ const EnquiryDetailScreen = ({ route, navigation }) => {
 
       console.log('💾 Creating reminder in backend database first...');
 
-      const createResponse = await fetch('https://gharplotbackend.gntechnology.de/api/reminder/create', {
+      const createResponse = await fetch('https://ghar-plot-backend1.onrender.com/api/reminder/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -267,7 +267,7 @@ const EnquiryDetailScreen = ({ route, navigation }) => {
       }
 
       const response = await fetch(
-        `https://gharplotbackend.gntechnology.de/api/inquiry/comment/${enquiryId}`,
+        `https://ghar-plot-backend1.onrender.com/api/inquiry/comment/${enquiryId}`,
         {
           method: 'POST',
           headers: {

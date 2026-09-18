@@ -256,6 +256,7 @@ const AdminNotificationPopup = ({
   onEdit,
 
   // Repeat configuration props
+  nextScheduledDisplay = '',
   repeatFrequency = '',
   repeatDaily = false,
   repeatMetadata = {},           // 🔥 object or JSON string
@@ -279,8 +280,8 @@ const AdminNotificationPopup = ({
     : 'admin created a reminder';
 
   // ============================================================
-  // FORMAT ISO DATE/TIME -> IST
-  // Used for Created At only
+  // FORMAT ISO DATE/TIME -> IST (12-hour AM/PM)
+  // Used for Created At and Next Scheduled
   // ============================================================
 
   const formatDateTime = (isoStr) => {
@@ -291,25 +292,29 @@ const AdminNotificationPopup = ({
 
       if (isNaN(d.getTime())) return null;
 
-      return d
-        .toLocaleString('en-IN', {
-          timeZone: 'Asia/Kolkata',
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        })
-        .replace(',', ' •');
+      const dateStr = d.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+
+      const timeStr = d.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }).toLowerCase();
+
+      return `${dateStr} • ${timeStr}`;
     } catch (_) {
       return null;
     }
   };
 
   // ============================================================
-  // FORMAT REMINDER TIME
-  // Example: 20:55 -> 20:55
+  // FORMAT REMINDER TIME -> 12-hour AM/PM
+  // Example: 16:51 -> 4:51 pm, 05:12 -> 5:12 am
   // ============================================================
 
   const formatTime = (timeStr) => {
@@ -321,9 +326,9 @@ const AdminNotificationPopup = ({
         .split(':')
         .map(Number);
 
-      return `${String(hours).padStart(2, '0')}:${String(
-        minutes
-      ).padStart(2, '0')}`;
+      const period = hours >= 12 ? 'pm' : 'am';
+      const hour12 = hours % 12 || 12;
+      return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
     }
 
     // If ISO timestamp was supplied
@@ -334,10 +339,10 @@ const AdminNotificationPopup = ({
 
       return d.toLocaleTimeString('en-IN', {
         timeZone: 'Asia/Kolkata',
-        hour: '2-digit',
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: false,
-      });
+        hour12: true,
+      }).toLowerCase();
     } catch (_) {
       return null;
     }
@@ -469,7 +474,7 @@ const AdminNotificationPopup = ({
         0
       );
       const isCustomMinutes =
-        (String(repeatFrequency).toLowerCase() === 'custom' || customMins > 0) &&
+        String(repeatFrequency).toLowerCase() === 'custom' &&
         customMins > 0;
 
       // ========================================================
@@ -508,43 +513,82 @@ const AdminNotificationPopup = ({
           nextMs += intervalMs;
         }
         const nextDate = new Date(nextMs);
-        // Format in IST
-        const nextISTStr = nextDate.toLocaleString('en-IN', {
+        // Format in IST 12-hour AM/PM
+        const dateStr = nextDate.toLocaleDateString('en-IN', {
           timeZone: 'Asia/Kolkata',
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
+          day: '2-digit', month: '2-digit', year: 'numeric',
         });
-        return nextISTStr.replace(',', ' •');
+        const timeStr = nextDate.toLocaleTimeString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          hour: 'numeric', minute: '2-digit', hour12: true,
+        }).toLowerCase();
+        return `${dateStr} • ${timeStr}`;
       }
 
       // ========================================================
-      // DAILY REMINDER
+      // DAILY / HOURLY / WEEKLY / MONTHLY REMINDER
       // ========================================================
 
-      if (isDaily) {
-        // If today's scheduled time has already passed,
-        // move to next day.
+      const freq = String(repeatFrequency).toLowerCase();
+      if (isDaily || freq === 'daily') {
         if (candidateValue <= nowValue) {
-          const nextDay = new Date(
-            Date.UTC(year, month - 1, day)
-          );
-
-          nextDay.setUTCDate(
-            nextDay.getUTCDate() + 1
-          );
-
+          const nextDay = new Date(Date.UTC(year, month - 1, day));
+          nextDay.setUTCDate(nextDay.getUTCDate() + 1);
           year = nextDay.getUTCFullYear();
           month = nextDay.getUTCMonth() + 1;
           day = nextDay.getUTCDate();
         }
+      } else if (freq === 'hourly') {
+        const istOffsetMs = 5.5 * 60 * 60 * 1000;
+        let nextMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
+        const nowMs = Date.now();
+        while (nextMs <= nowMs) {
+          nextMs += 60 * 60 * 1000;
+        }
+        const nextDate = new Date(nextMs);
+        const dateStr = nextDate.toLocaleDateString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit', month: '2-digit', year: 'numeric',
+        });
+        const timeStr = nextDate.toLocaleTimeString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          hour: 'numeric', minute: '2-digit', hour12: true,
+        }).toLowerCase();
+        return `${dateStr} • ${timeStr}`;
+      } else if (freq === 'weekly') {
+        const istOffsetMs = 5.5 * 60 * 60 * 1000;
+        let nextMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
+        const nowMs = Date.now();
+        while (nextMs <= nowMs) {
+          nextMs += 7 * 24 * 60 * 60 * 1000;
+        }
+        const nextDate = new Date(nextMs);
+        const dateStr = nextDate.toLocaleDateString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit', month: '2-digit', year: 'numeric',
+        });
+        const timeStr = nextDate.toLocaleTimeString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          hour: 'numeric', minute: '2-digit', hour12: true,
+        }).toLowerCase();
+        return `${dateStr} • ${timeStr}`;
+      } else if (freq === 'monthly') {
+        const nextMonth = new Date(Date.UTC(year, month - 1, day));
+        while (year * 100000000 + month * 1000000 + day * 10000 + hours * 100 + minutes <= nowValue) {
+          nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+          year = nextMonth.getUTCFullYear();
+          month = nextMonth.getUTCMonth() + 1;
+          day = nextMonth.getUTCDate();
+        }
+      }
+
+      // If one-time alert has already passed, there is NO next occurrence
+      if (candidateValue <= nowValue && !isDaily && freq !== 'daily' && !isCustomMinutes && freq !== 'hourly' && freq !== 'weekly' && freq !== 'monthly') {
+        return null;
       }
 
       // ========================================================
-      // FORMAT FINAL DATE
+      // FORMAT FINAL DATE (12-hour AM/PM)
       // ========================================================
 
       const formattedDate =
@@ -552,9 +596,9 @@ const AdminNotificationPopup = ({
         `${String(month).padStart(2, '0')}/` +
         `${year}`;
 
-      const formattedTime =
-        `${String(hours).padStart(2, '0')}:` +
-        `${String(minutes).padStart(2, '0')}`;
+      const period = hours >= 12 ? 'pm' : 'am';
+      const hour12 = hours % 12 || 12;
+      const formattedTime = `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
 
       return `${formattedDate} • ${formattedTime}`;
     } catch (error) {
@@ -571,48 +615,40 @@ const AdminNotificationPopup = ({
   // FINAL DISPLAY VALUES
   // ============================================================
 
-  // Scheduled time should come from original reminder time
+  // Scheduled time display
   const scheduledTimeDisplay =
-    time
-      ? typeof time === 'object'
-        ? `${String(time.hour || 0).padStart(
-            2,
-            '0'
-          )}:${String(time.minute || 0).padStart(
-            2,
-            '0'
-          )}`
-        : formatTime(time)
-      : scheduledAt
-        ? formatTime(scheduledAt)
+    scheduledAt
+      ? formatTime(scheduledAt)
+      : time
+        ? typeof time === 'object'
+          ? `${String(time.hour || 0).padStart(2, '0')}:${String(time.minute || 0).padStart(2, '0')}`
+          : formatTime(time)
         : null;
 
-  // Created At can safely be converted from UTC to IST
+  // Created At formatted as IST 12-hour AM/PM
   const formattedCreated = formatDateTime(createdAt);
 
   // ============================================================
   // NEXT SCHEDULED:
   //
-  // Priority 1: Use nextScheduledAt from FCM/backend data if present.
-  //             The backend already sends the correct next occurrence time.
-  //             Format it from ISO → IST display.
-  //
-  // Priority 2: Calculate from date + time + repeat info (fallback).
+  // Priority 1: Use nextScheduledDisplay prop if passed from parent (e.g. Alerts.js card)
+  // Priority 2: Use nextScheduledAt from FCM/backend if present (exact next occurrence)
+  // Priority 3: Calculate from date + time + repeat info (fallback)
   // ============================================================
 
-  let formattedNext = null;
+  let formattedNext = nextScheduledDisplay || null;
 
-  // Try nextScheduledAt prop first (comes from FCM data.nextScheduledAt)
-  if (nextScheduledAt) {
+  // Priority 2: calculate from date + time + repeat settings
+  if (!formattedNext) {
+    formattedNext = getNextScheduledDisplay();
+  }
+
+  // Priority 3: use nextScheduledAt from FCM/backend if above couldn't calculate
+  if (!formattedNext && nextScheduledAt) {
     const parsed = formatDateTime(nextScheduledAt);
     if (parsed) {
       formattedNext = parsed;
     }
-  }
-
-  // Fallback: calculate from date + time
-  if (!formattedNext) {
-    formattedNext = getNextScheduledDisplay();
   }
 
   return (
@@ -756,7 +792,18 @@ const AdminNotificationPopup = ({
                     </Text>
 
                     <Text style={styles.detailValue}>
-                      {note || reason}
+                      {(() => {
+                        const raw = String(note || reason || '').trim();
+                        const cleaned = raw
+                          .split('\n')
+                          .filter(line => {
+                            const l = line.trim();
+                            return !l.startsWith('⏰ Scheduled:') && !l.startsWith('🔁 Next:') && !l.startsWith('⏳ In ');
+                          })
+                          .join('\n')
+                          .trim();
+                        return cleaned || 'N/A';
+                      })()}
 
                       {scheduledTimeDisplay
                         ? `\n⏰ Scheduled: ${scheduledTimeDisplay}`

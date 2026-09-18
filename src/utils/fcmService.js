@@ -56,6 +56,11 @@ export const getFCMToken = async () => {
     if (token) {
       console.log('✅ FCM Token retrieved:', token);
 
+      const prevToken = await AsyncStorage.getItem(FCM_TOKEN_KEY);
+      if (prevToken && prevToken !== token) {
+        await AsyncStorage.setItem('@fcm_token_prev', prevToken);
+      }
+
       // Store token in AsyncStorage
       await AsyncStorage.setItem(FCM_TOKEN_KEY, token);
       console.log('💾 FCM Token saved to AsyncStorage');
@@ -283,17 +288,17 @@ export const setupForegroundNotificationHandler = () => {
 
           // 🔥 RICH FORMATTING: Add scheduled time & next scheduled time at bottom
 
-          // Format time as h:mm AM/PM
+          // 🔥 FIX: Format time as h:mm AM/PM in IST (not device local timezone)
           const _fmtTime = (isoStr) => {
             try {
               const d = new Date(isoStr);
               if (isNaN(d.getTime())) return null;
-              let h = d.getHours();
-              const m = String(d.getMinutes()).padStart(2, '0');
-              const ampm = h >= 12 ? 'PM' : 'AM';
-              h = h % 12;
-              if (h === 0) h = 12;
-              return `${h}:${m} ${ampm}`;
+              return d.toLocaleTimeString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              });
             } catch (_) { return null; }
           };
 
@@ -334,9 +339,9 @@ export const setupForegroundNotificationHandler = () => {
           const shouldShowTrayNotif =
             !isDuplicateTrayAlert &&
             (Platform.OS === 'ios' ||
-            !isReminderLike ||
-            notificationType === 'chat' ||
-            notificationType === 'system');
+              !isReminderLike ||
+              notificationType === 'chat' ||
+              notificationType === 'system');
 
           if (shouldShowTrayNotif) {
             await notifee.displayNotification({
@@ -378,10 +383,13 @@ export const setupForegroundNotificationHandler = () => {
         }
 
         // 2. TRIGGER THE PROFESSIONAL DIALOG (Indigo/Red popup)
+        const cleanNote = data.note || data.reason || body || '';
         const popupPayload = {
           ...data,
           title: data.title || title || (isIndigo ? 'Reminder' : 'Alert'),
           body: richBody || body || 'You have a new message',
+          note: cleanNote,
+          reason: cleanNote,
           type: popupType,
           notificationType: popupType,
         };
@@ -400,9 +408,9 @@ export const setupForegroundNotificationHandler = () => {
             }, null, 2));
             global.triggerProfessionalReminder(popupPayload);
             console.log('✅ Professional popup triggered successfully');
-          } else if (attempts < 10) {
-            console.log(`⏳ Waiting for global.triggerProfessionalReminder (attempt ${attempts + 1}/10)`);
-            setTimeout(() => tryTriggerPopup(attempts + 1), 300);
+          } else if (attempts < 25) {
+            console.log(`⏳ Waiting for global.triggerProfessionalReminder (attempt ${attempts + 1}/25)`);
+            setTimeout(() => tryTriggerPopup(attempts + 1), 200);
           } else {
             console.error('❌ global.triggerProfessionalReminder is NOT defined after retries - storing in pendingNotificationData');
             try {
@@ -479,7 +487,7 @@ export const backgroundMessageHandler = async (remoteMessage) => {
       console.log('📱 App is in FOREGROUND (active) - skipping backgroundMessageHandler so foreground handler can process it');
       return;
     }
-  } catch (_) {}
+  } catch (_) { }
 
   // 🛡️ Gate: skip if this exact messageId was already handled (FG+BG race)
   if (!shouldProcessMessage(remoteMessage.messageId)) return;
@@ -936,14 +944,28 @@ export const sendTokenToBackend = async (userId, token) => {
     const adminId = await AsyncStorage.getItem('adminId');
     const isAdminUser = !!adminId;
 
+    let deviceId = await AsyncStorage.getItem('@device_id');
+    if (!deviceId) {
+      deviceId = `dev_${Platform.OS}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      await AsyncStorage.setItem('@device_id', deviceId);
+    }
+    const oldToken = await AsyncStorage.getItem('@fcm_token_prev');
+    const deviceInfo = `${Platform.OS} App`;
+
     if (isAdminUser) {
       // 1️⃣ Admin: ONLY save to Admin model — never call save-employee-token
       // (save-employee-token clears Admin tokens, causing missed push notifications)
       try {
-        const adminResponse = await fetch('https://gharplotbackend.gntechnology.de/api/save-admin-token', {
+        const adminResponse = await fetch('https://ghar-plot-backend1.onrender.com/api/save-admin-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ adminId: adminId, fcmToken: token }),
+          body: JSON.stringify({
+            adminId: adminId,
+            fcmToken: token,
+            oldToken: oldToken || undefined,
+            deviceId: deviceId,
+            deviceInfo: deviceInfo
+          }),
           signal: controller.signal
         });
         if (adminResponse.ok) {
@@ -957,7 +979,7 @@ export const sendTokenToBackend = async (userId, token) => {
     } else {
       // 1️⃣ User/Employee: Save to User model
       try {
-        const userResponse = await fetch('https://gharplotbackend.gntechnology.de/api/save-token', {
+        const userResponse = await fetch('https://ghar-plot-backend1.onrender.com/api/save-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: userId, fcmToken: token, platform: Platform.OS }),
@@ -972,10 +994,16 @@ export const sendTokenToBackend = async (userId, token) => {
 
       // 2️⃣ Save to Employee model
       try {
-        const employeeResponse = await fetch('https://gharplotbackend.gntechnology.de/api/save-employee-token', {
+        const employeeResponse = await fetch('https://ghar-plot-backend1.onrender.com/api/save-employee-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employeeId: userId, fcmToken: token }),
+          body: JSON.stringify({
+            employeeId: userId,
+            fcmToken: token,
+            oldToken: oldToken || undefined,
+            deviceId: deviceId,
+            deviceInfo: deviceInfo
+          }),
         });
         if (employeeResponse.ok) {
           console.log('✅ FCM token saved to Employee model');

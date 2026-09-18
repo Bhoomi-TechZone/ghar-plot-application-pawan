@@ -527,7 +527,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
             try {
                 const token = await getAuthToken();
                 if (token) {
-                    await fetch(`https://gharplotbackend.gntechnology.de/api/chat/message/${msgId}`, {
+                    await fetch(`https://ghar-plot-backend1.onrender.com/api/chat/message/${msgId}`, {
                         method: 'PATCH',
                         headers: {
                             'Content-Type': 'application/json',
@@ -649,7 +649,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                             try {
                                 const token = await getAuthToken();
                                 if (token) {
-                                    await fetch(`https://gharplotbackend.gntechnology.de/api/chat/message/${item.id}`, {
+                                    await fetch(`https://ghar-plot-backend1.onrender.com/api/chat/message/${item.id}`, {
                                         method: 'DELETE',
                                         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
                                     });

@@ -386,7 +386,7 @@ const AddSellScreen = ({ navigation }) => {
 
       // Make API call
       // Note: Don't set Content-Type for multipart/form-data - fetch will set it automatically with boundary
-      const response = await fetch('https://gharplotbackend.gntechnology.de/property/add', {
+      const response = await fetch('https://ghar-plot-backend1.onrender.com/property/add', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${userToken}`,

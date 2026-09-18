@@ -144,7 +144,7 @@ const EnquiriesScreen = ({ navigation, route }) => {
       }
 
       const response = await fetch(
-        `https://gharplotbackend.gntechnology.de/api/inquiry/comment/${selectedEnquiry._id}`,
+        `https://ghar-plot-backend1.onrender.com/api/inquiry/comment/${selectedEnquiry._id}`,
         {
           method: 'POST',
           headers: {

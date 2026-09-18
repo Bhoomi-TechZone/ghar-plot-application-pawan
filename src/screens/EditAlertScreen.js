@@ -237,6 +237,7 @@ const EditAlertScreen = ({ route, navigation }) => {
     if (frequency === 'custom') {
       setShowCustomInput(true);
     } else {
+      setCustomIntervalMinutes('');
       setShowCustomInput(false);
       setShowRepeatModal(false);
     }
@@ -322,14 +323,15 @@ const EditAlertScreen = ({ route, navigation }) => {
         repeatMetadata = origRepeatMetadata;
       }
 
+      const isCustom = repeatFrequency === 'custom';
       const updateData = {
         title: title.trim(),
         reason: reason.trim(),
         date: `${year}-${month}-${day}`,
         time: `${hours}:${minutes}`,
         repeatFrequency: repeatFrequency, // Use repeatFrequency as backend expects
-        repeatMetadata: repeatMetadata, // Store day/month info for weekly/monthly/yearly/custom
-        customRepeatMinutes: customIntervalMinutes, // 🔥 Fix: Renamed for backend compatibility
+        repeatMetadata: isCustom ? repeatMetadata : (['weekly', 'monthly', 'yearly'].includes(repeatFrequency) ? repeatMetadata : null), // Store day/month info for weekly/monthly/yearly/custom, null for daily
+        customRepeatMinutes: isCustom ? customIntervalMinutes : '', // 🔥 Fix: Only pass for custom
         repeatDaily: repeatFrequency === 'daily', // 🔥 FIX: Only true for daily, NOT for custom
         isActive: true, // Ensure alert stays active
       };

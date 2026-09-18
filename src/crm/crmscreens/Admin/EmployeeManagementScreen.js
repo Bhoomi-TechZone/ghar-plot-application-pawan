@@ -645,7 +645,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
       }
 
       const response = await fetch(
-        `https://gharplotbackend.gntechnology.de/api/reminder/employee/${employeeId}`,
+        `https://ghar-plot-backend1.onrender.com/api/reminder/employee/${employeeId}`,
         {
           method: 'GET',
           headers: {
@@ -709,7 +709,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
         }
 
         const response = await fetch(
-          `https://gharplotbackend.gntechnology.de/api/reminder/employee/${selectedEmployee._id || selectedEmployee.id}`,
+          `https://ghar-plot-backend1.onrender.com/api/reminder/employee/${selectedEmployee._id || selectedEmployee.id}`,
           {
             method: 'GET',
             headers: {
@@ -760,7 +760,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
 
               // Call backend to schedule FCM notification at reminder time
               const scheduleResponse = await fetch(
-                'https://gharplotbackend.gntechnology.de/api/reminder/schedule-notification',
+                'https://ghar-plot-backend1.onrender.com/api/reminder/schedule-notification',
                 {
                   method: 'POST',
                   headers: {
