@@ -28,7 +28,7 @@ import { updateReminder } from '../../../services/api';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const { width } = Dimensions.get('window');
-const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const AdminReminderDetailsScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();

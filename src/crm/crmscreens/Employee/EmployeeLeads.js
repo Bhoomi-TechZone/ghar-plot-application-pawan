@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Employee Leads Screen
  * Unified view for both Enquiry Leads and Client Leads
  * With permission-based action controls
@@ -28,7 +28,7 @@ import PermissionGate, { usePermissionCheck } from '../../../components/Permissi
 import { MODULES } from '../../../context/PermissionContext';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const EmployeeLeads = ({ navigation, openDrawer }) => {
   // ============================================
@@ -128,7 +128,7 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
         const newViewedLeads = [...viewedLeads, leadId];
         setViewedLeads(newViewedLeads);
         await AsyncStorage.setItem('employeeViewedLeads', JSON.stringify(newViewedLeads));
-        console.log('✅ Lead marked as viewed:', leadId);
+        console.log('? Lead marked as viewed:', leadId);
       }
     } catch (error) {
       console.error('Error marking lead as viewed:', error);
@@ -183,7 +183,7 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
         return;
       }
 
-      console.log('🔄 Fetching both enquiry and client leads...');
+      console.log('?? Fetching both enquiry and client leads...');
 
       // Fetch both lead types in parallel
       const [enquiryResponse, clientResponse] = await Promise.all([
@@ -213,24 +213,24 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
         const enquiryText = await enquiryResponse.text();
         try {
           enquiryData = JSON.parse(enquiryText);
-          console.log('✅ Enquiry leads fetched:', enquiryData?.data?.assignments?.length || 0);
+          console.log('? Enquiry leads fetched:', enquiryData?.data?.assignments?.length || 0);
         } catch (error) {
           console.error('Failed to parse enquiry JSON:', error);
         }
       } else {
-        console.log('⚠️ Enquiry leads endpoint returned:', enquiryResponse.status);
+        console.log('?? Enquiry leads endpoint returned:', enquiryResponse.status);
       }
 
       if (clientResponse.ok) {
         const clientText = await clientResponse.text();
         try {
           clientData = JSON.parse(clientText);
-          console.log('✅ Client leads fetched:', clientData?.data?.assignments?.length || 0);
+          console.log('? Client leads fetched:', clientData?.data?.assignments?.length || 0);
         } catch (error) {
           console.error('Failed to parse client JSON:', error);
         }
       } else {
-        console.log('⚠️ Client leads endpoint returned:', clientResponse.status);
+        console.log('?? Client leads endpoint returned:', clientResponse.status);
       }
 
       // Transform and combine leads
@@ -327,10 +327,10 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
         completed: transformedLeads.filter(l => l.status === 'completed').length,
       });
 
-      console.log('📊 Total leads loaded:', transformedLeads.length);
+      console.log('?? Total leads loaded:', transformedLeads.length);
 
     } catch (error) {
-      console.error('❌ Error loading leads:', error);
+      console.error('? Error loading leads:', error);
       CrossPlatformAlert.alert('Error', 'Failed to load leads. Please try again.');
     } finally {
       setIsLoading(false);
@@ -392,9 +392,9 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
     try {
       const token = await getToken();
 
-      console.log(`🔄 Updating ${lead.leadType} lead status to:`, newStatus);
-      console.log('🔑 Token present:', token ? 'Yes' : 'No');
-      console.log('📌 Assignment ID:', lead.assignmentId || lead._id);
+      console.log(`?? Updating ${lead.leadType} lead status to:`, newStatus);
+      console.log('?? Token present:', token ? 'Yes' : 'No');
+      console.log('?? Assignment ID:', lead.assignmentId || lead._id);
 
       if (!token) {
         CrossPlatformAlert.alert('Error', 'Authentication token not found. Please login again.');
@@ -406,8 +406,8 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
         ? `${API_BASE_URL}/employee/leads/status/${lead.assignmentId}`
         : `${API_BASE_URL}/employee/user-leads/status/${lead.assignmentId}`;
 
-      console.log('📡 Request URL:', endpoint);
-      console.log('📤 Request Body:', { status: newStatus });
+      console.log('?? Request URL:', endpoint);
+      console.log('?? Request Body:', { status: newStatus });
 
       const response = await fetch(endpoint, {
         method: 'PUT',
@@ -418,25 +418,25 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      console.log('📡 Response Status:', response.status);
-      console.log('📡 Response OK:', response.ok);
+      console.log('?? Response Status:', response.status);
+      console.log('?? Response OK:', response.ok);
 
       let result;
       const responseText = await response.text();
 
-      console.log('📄 Raw Response Text:', responseText.substring(0, 300));
+      console.log('?? Raw Response Text:', responseText.substring(0, 300));
 
       try {
         result = JSON.parse(responseText);
       } catch (parseError) {
-        console.error('⚠️ Failed to parse JSON:', parseError.message);
-        console.error('⚠️ Raw text was:', responseText.substring(0, 500));
+        console.error('?? Failed to parse JSON:', parseError.message);
+        console.error('?? Raw text was:', responseText.substring(0, 500));
         result = { success: false, message: 'Invalid server response: ' + responseText.substring(0, 100) };
       }
 
-      console.log('📥 Parsed Response Data:', result);
-      console.log('📥 Response Success Field:', result.success);
-      console.log('📥 Response OK from HTTP:', response.ok);
+      console.log('?? Parsed Response Data:', result);
+      console.log('?? Response Success Field:', result.success);
+      console.log('?? Response OK from HTTP:', response.ok);
 
       // Check both success flag and HTTP status
       const isSuccess = result.success === true || (response.ok && response.status < 300);
@@ -448,18 +448,18 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
             l._id === lead._id ? { ...l, status: newStatus } : l
           )
         );
-        console.log('✅ Status updated successfully');
+        console.log('? Status updated successfully');
         CrossPlatformAlert.alert('Success', 'Lead status updated successfully');
         // Refresh the list to sync with backend
         setTimeout(() => loadLeads(), 500);
       } else {
-        console.log('❌ Status update failed:', result.message);
-        console.log('❌ Full error response:', result);
+        console.log('? Status update failed:', result.message);
+        console.log('? Full error response:', result);
         CrossPlatformAlert.alert('Error', result.message || `Failed to update status (${response.status})`);
       }
     } catch (error) {
-      console.error('❌ Status update error:', error);
-      console.error('❌ Error details:', error.message);
+      console.error('? Status update error:', error);
+      console.error('? Error details:', error.message);
       CrossPlatformAlert.alert('Error', 'Failed to update lead status: ' + error.message);
     }
   };
@@ -485,13 +485,13 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
       source: lead.leadType,
     };
 
-    console.log('📞 Setting reminder for lead:', enquiryData);
+    console.log('?? Setting reminder for lead:', enquiryData);
     setSelectedLead(enquiryData);
     setReminderModalVisible(true);
   };
 
   const handleReminderSuccess = (lead) => {
-    console.log('✅ Reminder set successfully for lead:', lead.clientName);
+    console.log('? Reminder set successfully for lead:', lead.clientName);
     // You can add additional logic here if needed
   };
 
@@ -524,13 +524,13 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
       source: lead.leadType,
     };
 
-    console.log('📋 Creating follow-up for lead:', enquiryData);
+    console.log('?? Creating follow-up for lead:', enquiryData);
     setSelectedLead(enquiryData);
     setFollowUpModalVisible(true);
   };
 
   const handleFollowUpSuccess = (lead) => {
-    console.log('✅ Follow-up created successfully for lead:', lead.clientName);
+    console.log('? Follow-up created successfully for lead:', lead.clientName);
     // You can add additional logic here if needed
   };
 
@@ -781,7 +781,7 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
             {item.propertyPrice > 0 && (
               <>
                 <Text style={styles.propertyLabel}>Price:</Text>
-                <Text style={styles.propertyValue}>₹{(item.propertyPrice / 100000).toFixed(2)}L</Text>
+                <Text style={styles.propertyValue}>?{(item.propertyPrice / 100000).toFixed(2)}L</Text>
               </>
             )}
           </View>

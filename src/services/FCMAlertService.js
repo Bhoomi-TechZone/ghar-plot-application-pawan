@@ -6,7 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 class FCMAlertService {
   /**

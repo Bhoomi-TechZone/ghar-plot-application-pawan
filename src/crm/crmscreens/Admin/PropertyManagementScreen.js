@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -60,13 +60,13 @@ const PropertyManagementScreen = ({ navigation }) => {
     if (imageData.startsWith('uploads/') || imageData.startsWith('/uploads/')) {
       // Admin properties use .us domain
       if (isPostedByAdmin) {
-        const baseUrl = 'https://gharplotbackend.gntechnology.de';
+        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       }
       // User properties use .com domain
       else {
-        const baseUrl = 'https://gharplotbackend.gntechnology.de';
+        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       }
@@ -250,11 +250,11 @@ const PropertyManagementScreen = ({ navigation }) => {
     if (isNaN(numPrice)) return price;
 
     if (numPrice >= 10000000) {
-      return `₹${(numPrice / 10000000).toFixed(1)} Cr`;
+      return `?${(numPrice / 10000000).toFixed(1)} Cr`;
     } else if (numPrice >= 100000) {
-      return `₹${(numPrice / 100000).toFixed(1)} L`;
+      return `?${(numPrice / 100000).toFixed(1)} L`;
     } else {
-      return `₹${numPrice.toLocaleString()}`;
+      return `?${numPrice.toLocaleString()}`;
     }
   };
 
@@ -400,7 +400,7 @@ const PropertyManagementScreen = ({ navigation }) => {
         <TouchableOpacity
           style={[StyleSheet.absoluteFill, { zIndex: 0 }]}
           onPress={() => {
-            console.log('🔍 Navigating to property details:', item._id || item.id);
+            console.log('?? Navigating to property details:', item._id || item.id);
             navigation.navigate('PropertyDetailsScreen', { property: item });
           }}
           activeOpacity={0.7}
@@ -425,7 +425,7 @@ const PropertyManagementScreen = ({ navigation }) => {
           </Text>
 
           <Text style={styles.cardMeta}>
-            {item.area || item.size || item.sqft || item.square_feet || 'Area not specified'} • {formatPrice(item.price || item.cost || item.rent || item.amount)}
+            {item.area || item.size || item.sqft || item.square_feet || 'Area not specified'} � {formatPrice(item.price || item.cost || item.rent || item.amount)}
           </Text>
 
           <View style={styles.cardFooter}>
@@ -540,7 +540,7 @@ const PropertyManagementScreen = ({ navigation }) => {
         return;
       }
 
-      console.log('🔐 Using token for property post:', token.substring(0, 20) + '...');
+      console.log('?? Using token for property post:', token.substring(0, 20) + '...');
 
       // Prepare FormData for file upload
       const apiFormData = new FormData();
@@ -589,9 +589,9 @@ const PropertyManagementScreen = ({ navigation }) => {
         body: apiFormData,
       });
 
-      console.log('📥 Response status:', response.status);
+      console.log('?? Response status:', response.status);
       const result = await response.json();
-      console.log('📥 Response data:', result);
+      console.log('?? Response data:', result);
 
       if (response.ok) {
         CrossPlatformAlert.alert('Success', result.message || 'Property posted successfully!');
@@ -622,11 +622,11 @@ const PropertyManagementScreen = ({ navigation }) => {
         });
       } else {
         const errorMsg = result.message || result.error || 'Failed to post property';
-        console.error('❌ API Error:', errorMsg);
+        console.error('? API Error:', errorMsg);
         CrossPlatformAlert.alert('Error', errorMsg);
       }
     } catch (error) {
-      console.error('❌ Exception posting property:', error);
+      console.error('? Exception posting property:', error);
       CrossPlatformAlert.alert('Error', error.message || 'Network error. Please try again.');
     } finally {
       setLoading(false);

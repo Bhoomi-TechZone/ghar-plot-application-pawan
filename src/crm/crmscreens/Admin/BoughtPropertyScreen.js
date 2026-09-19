@@ -53,7 +53,7 @@ const BoughtPropertyScreen = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Constants
-  const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+  const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
   // Authentication Helper
   const getAuthHeaders = async () => {

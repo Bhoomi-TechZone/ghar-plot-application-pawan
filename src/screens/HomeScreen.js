@@ -909,13 +909,13 @@ const Homescreen = ({ navigation }) => {
         if (imageData.startsWith('uploads/') || imageData.startsWith('/uploads/')) {
             // Admin properties use .us domain
             if (isPostedByAdmin) {
-                const baseUrl = 'https://gharplotbackend.gntechnology.de';
+                const baseUrl = 'https://ghar-plot-backend1.onrender.com';
                 const cleanPath = imageData.replace(/^\/+/, '');
                 return `${baseUrl}/${cleanPath}`;
             }
             // User properties use .com domain
             else {
-                const baseUrl = 'https://gharplotbackend.gntechnology.de';
+                const baseUrl = 'https://ghar-plot-backend1.onrender.com';
                 const cleanPath = imageData.replace(/^\/+/, '');
                 return `${baseUrl}/${cleanPath}`;
             }

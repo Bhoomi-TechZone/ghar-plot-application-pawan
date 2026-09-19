@@ -173,7 +173,7 @@ export const testSocketConnection = async () => {
   try {
     // Dynamically import socket.io-client
     const io = (await import('socket.io-client')).default;
-    const SOCKET_URL = 'https://gharplotbackend.gntechnology.de';
+    const SOCKET_URL = 'https://ghar-plot-backend1.onrender.com';
 
     console.log(`🔌 Connecting to socket: ${SOCKET_URL}`);
 

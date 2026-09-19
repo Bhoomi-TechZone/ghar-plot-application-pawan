@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Admin Popup Notification Settings Screen
  * Admin can enable/disable popup notifications for their own reminders
  * and globally enable popup notifications for all employee reminders
@@ -22,7 +22,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const AdminPopupSettings = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
@@ -51,7 +51,7 @@ const AdminPopupSettings = ({ navigation }) => {
 
       setAdminToken(token);
 
-      console.log('📡 Fetching admin popup settings from backend...');
+      console.log('?? Fetching admin popup settings from backend...');
 
       // Try to fetch from backend
       try {
@@ -65,7 +65,7 @@ const AdminPopupSettings = ({ navigation }) => {
 
         if (response.ok) {
           const data = await response.json();
-          console.log('✅ Backend settings:', data);
+          console.log('? Backend settings:', data);
 
           if (data.success && data.settings) {
             setSettings(data.settings);
@@ -75,7 +75,7 @@ const AdminPopupSettings = ({ navigation }) => {
           }
         }
       } catch (apiError) {
-        console.log('⚠️ Backend fetch failed, using local storage:', apiError.message);
+        console.log('?? Backend fetch failed, using local storage:', apiError.message);
       }
 
       // Fallback to local storage
@@ -96,7 +96,7 @@ const AdminPopupSettings = ({ navigation }) => {
       const newSettings = { ...settings, [key]: value };
       setSettings(newSettings);
 
-      console.log(`🔄 Updating ${key} to ${value} on backend...`);
+      console.log(`?? Updating ${key} to ${value} on backend...`);
 
       // Save to backend
       try {
@@ -114,15 +114,15 @@ const AdminPopupSettings = ({ navigation }) => {
         const data = await response.json();
 
         if (response.ok && data.success) {
-          console.log('✅ Backend updated successfully');
+          console.log('? Backend updated successfully');
           // Save to local storage as backup
           await AsyncStorage.setItem('adminPopupSettings', JSON.stringify(newSettings));
         } else {
-          console.log('⚠️ Backend update failed, saving locally only');
+          console.log('?? Backend update failed, saving locally only');
           await AsyncStorage.setItem('adminPopupSettings', JSON.stringify(newSettings));
         }
       } catch (apiError) {
-        console.log('⚠️ Backend API error, saving locally:', apiError.message);
+        console.log('?? Backend API error, saving locally:', apiError.message);
         await AsyncStorage.setItem('adminPopupSettings', JSON.stringify(newSettings));
       }
     } catch (error) {
@@ -147,7 +147,7 @@ const AdminPopupSettings = ({ navigation }) => {
         'Content-Type': 'application/json',
       };
 
-      console.log('🔄 Enabling all popups on backend...');
+      console.log('?? Enabling all popups on backend...');
 
       // Save admin's own popup settings
       try {
@@ -160,10 +160,10 @@ const AdminPopupSettings = ({ navigation }) => {
         });
 
         if (adminResponse.ok) {
-          console.log('✅ Admin settings enabled');
+          console.log('? Admin settings enabled');
         }
       } catch (adminError) {
-        console.log('⚠️ Admin settings save failed:', adminError.message);
+        console.log('?? Admin settings save failed:', adminError.message);
       }
 
       // Enable all employee popups
@@ -176,17 +176,17 @@ const AdminPopupSettings = ({ navigation }) => {
         const employeeData = await employeeResponse.json();
 
         if (employeeResponse.ok && employeeData.success) {
-          console.log(`✅ Employee popups enabled for ${employeeData.updatedCount || 'all'} employees`);
+          console.log(`? Employee popups enabled for ${employeeData.updatedCount || 'all'} employees`);
 
           CrossPlatformAlert.alert(
             'Success',
-            `All notifications enabled!\n• Admin settings: ✓\n• Employee popups: ${employeeData.updatedCount || 'all'} employees`
+            `All notifications enabled!\n� Admin settings: ?\n� Employee popups: ${employeeData.updatedCount || 'all'} employees`
           );
         } else {
           throw new Error('Employee popup update failed');
         }
       } catch (employeeError) {
-        console.log('⚠️ Employee popup enable failed:', employeeError.message);
+        console.log('?? Employee popup enable failed:', employeeError.message);
 
         CrossPlatformAlert.alert(
           'Partial Success',

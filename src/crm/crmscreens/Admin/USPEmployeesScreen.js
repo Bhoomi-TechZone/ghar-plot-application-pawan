@@ -20,7 +20,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const USPEmployeesScreen = ({ navigation }) => {
   // Main Data States

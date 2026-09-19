@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Employee Leads Screen
  * Unified view for both Enquiry Leads and Client Leads
  * Matches web CRM UnifiedLeadsPage functionality
@@ -23,7 +23,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const EmployeeLeads = ({ navigation }) => {
   const [leads, setLeads] = useState([]);
@@ -113,7 +113,7 @@ const EmployeeLeads = ({ navigation }) => {
         return;
       }
 
-      console.log('🔄 Fetching both enquiry and client leads...');
+      console.log('?? Fetching both enquiry and client leads...');
 
       // Fetch both lead types in parallel
       const [enquiryResponse, clientResponse] = await Promise.all([
@@ -135,8 +135,8 @@ const EmployeeLeads = ({ navigation }) => {
         }),
       ]);
 
-      console.log('📡 Enquiry Response Status:', enquiryResponse.status);
-      console.log('📡 Client Response Status:', clientResponse.status);
+      console.log('?? Enquiry Response Status:', enquiryResponse.status);
+      console.log('?? Client Response Status:', clientResponse.status);
 
       // Parse JSON responses safely
       let enquiryData = { success: false, data: { assignments: [] } };
@@ -144,38 +144,38 @@ const EmployeeLeads = ({ navigation }) => {
 
       // Handle enquiry response
       const enquiryText = await enquiryResponse.text();
-      console.log('📄 Enquiry Response Text (first 300 chars):', enquiryText.substring(0, 300));
+      console.log('?? Enquiry Response Text (first 300 chars):', enquiryText.substring(0, 300));
 
       if (enquiryResponse.ok) {
         try {
           enquiryData = JSON.parse(enquiryText);
         } catch (error) {
-          console.error('❌ Failed to parse enquiry JSON:', error.message);
+          console.error('? Failed to parse enquiry JSON:', error.message);
           console.error('Response was:', enquiryText.substring(0, 500));
         }
       } else {
-        console.error('❌ Enquiry API returned error:', enquiryResponse.status);
+        console.error('? Enquiry API returned error:', enquiryResponse.status);
         console.error('Error response:', enquiryText.substring(0, 500));
       }
 
       // Handle client response
       const clientText = await clientResponse.text();
-      console.log('📄 Client Response Text (first 300 chars):', clientText.substring(0, 300));
+      console.log('?? Client Response Text (first 300 chars):', clientText.substring(0, 300));
 
       if (clientResponse.ok) {
         try {
           clientData = JSON.parse(clientText);
         } catch (error) {
-          console.error('❌ Failed to parse client JSON:', error.message);
+          console.error('? Failed to parse client JSON:', error.message);
           console.error('Response was:', clientText.substring(0, 500));
         }
       } else {
-        console.error('❌ Client API returned error:', clientResponse.status);
+        console.error('? Client API returned error:', clientResponse.status);
         console.error('Error response:', clientText.substring(0, 500));
       }
 
-      console.log('📊 Enquiry Leads Parsed:', enquiryData.success ? 'Success' : 'Failed');
-      console.log('📊 Client Leads Parsed:', clientData.success ? 'Success' : 'Failed');
+      console.log('?? Enquiry Leads Parsed:', enquiryData.success ? 'Success' : 'Failed');
+      console.log('?? Client Leads Parsed:', clientData.success ? 'Success' : 'Failed');
 
       // Transform and combine leads
       const transformedLeads = [];
@@ -212,7 +212,7 @@ const EmployeeLeads = ({ navigation }) => {
           rawData: assignment,
         }));
         transformedLeads.push(...enquiryLeads);
-        console.log(`✅ Transformed ${enquiryLeads.length} enquiry leads`);
+        console.log(`? Transformed ${enquiryLeads.length} enquiry leads`);
       }
 
       // Process Client Leads
@@ -256,7 +256,7 @@ const EmployeeLeads = ({ navigation }) => {
           rawData: assignment,
         }));
         transformedLeads.push(...clientLeads);
-        console.log(`✅ Transformed ${clientLeads.length} client leads`);
+        console.log(`? Transformed ${clientLeads.length} client leads`);
       }
 
       // Sort by assigned date (newest first)
@@ -264,7 +264,7 @@ const EmployeeLeads = ({ navigation }) => {
         new Date(b.assignedDate) - new Date(a.assignedDate)
       );
 
-      console.log(`🎯 Total Combined Leads: ${transformedLeads.length}`);
+      console.log(`?? Total Combined Leads: ${transformedLeads.length}`);
 
       setLeads(transformedLeads);
 
@@ -278,7 +278,7 @@ const EmployeeLeads = ({ navigation }) => {
       });
 
     } catch (error) {
-      console.error('❌ Error loading leads:', error);
+      console.error('? Error loading leads:', error);
       console.error('Error details:', {
         message: error.message,
         stack: error.stack,
@@ -346,7 +346,7 @@ const EmployeeLeads = ({ navigation }) => {
       if (!token) token = await AsyncStorage.getItem('employee_token');
       if (!token) token = await AsyncStorage.getItem('employeeToken');
 
-      console.log(`🔄 Updating ${lead.leadType} lead status to:`, newStatus);
+      console.log(`?? Updating ${lead.leadType} lead status to:`, newStatus);
 
       // Different endpoints for different lead types
       const endpoint = lead.leadType === 'enquiry'
@@ -363,7 +363,7 @@ const EmployeeLeads = ({ navigation }) => {
       });
 
       const result = await response.json();
-      console.log('📝 Status update response:', result);
+      console.log('?? Status update response:', result);
 
       if (result.success) {
         // Update local state
@@ -377,7 +377,7 @@ const EmployeeLeads = ({ navigation }) => {
         CrossPlatformAlert.alert('Error', result.message || 'Failed to update status');
       }
     } catch (error) {
-      console.error('❌ Status update error:', error);
+      console.error('? Status update error:', error);
       CrossPlatformAlert.alert('Error', 'Failed to update lead status');
     }
   };
@@ -469,7 +469,7 @@ const EmployeeLeads = ({ navigation }) => {
             {item.propertyPrice > 0 && (
               <>
                 <Text style={styles.propertyLabel}>Price:</Text>
-                <Text style={styles.propertyValue}>₹{(item.propertyPrice / 100000).toFixed(2)}L</Text>
+                <Text style={styles.propertyValue}>?{(item.propertyPrice / 100000).toFixed(2)}L</Text>
               </>
             )}
           </View>

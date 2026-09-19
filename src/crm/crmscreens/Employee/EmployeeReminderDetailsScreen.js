@@ -1,4 +1,4 @@
-﻿/**
+/**
  * EmployeeReminderDetailsScreen.js
  * Premium detailed view for employee reminder notifications
  * Features: View Details, Edit, Cancel, Complete, Add Comment
@@ -27,7 +27,7 @@ import { updateReminder } from '../../../services/api';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const { width } = Dimensions.get('window');
-const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
   const {
@@ -103,11 +103,11 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
           if (details.comment || details.note) {
             setNote(details.comment || details.note || originalMessage || '');
           }
-          console.log('✅ Fetched reminder details from backend');
+          console.log('? Fetched reminder details from backend');
         }
       }
     } catch (err) {
-      console.log('⚠️ Could not fetch details, using notification data:', err.message);
+      console.log('?? Could not fetch details, using notification data:', err.message);
     }
   }, [reminderId]);
 
@@ -167,7 +167,7 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
       phone,
       email,
       location,
-      // 🔥 Pass the scheduled date/time so EditReminder can show the correct date
+      // ?? Pass the scheduled date/time so EditReminder can show the correct date
       scheduledDateTime: fetchedDetails?.reminderDateTime || fetchedDetails?.nextOccurrence || reminderTime,
       isRepeating,
       repeatType,
@@ -176,7 +176,7 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
 
   const handleCancel = () => {
     CrossPlatformAlert.alert(
-      '❌ Cancel Reminder',
+      '? Cancel Reminder',
       'Are you sure you want to cancel this reminder? It will be marked as cancelled and won\'t trigger again.',
       [
         { text: 'No, Keep It', style: 'cancel' },
@@ -216,7 +216,7 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
 
   const handleComplete = () => {
     CrossPlatformAlert.alert(
-      '✅ Complete Reminder',
+      '? Complete Reminder',
       'Mark this reminder as completed? This confirms the task is done.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -231,7 +231,7 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
               });
               if (result?.success !== false) {
                 setReminderStatus('completed');
-                CrossPlatformAlert.alert('🎉 Done!', 'Reminder marked as completed.', [
+                CrossPlatformAlert.alert('?? Done!', 'Reminder marked as completed.', [
                   { text: 'OK', onPress: () => navigation.goBack() },
                 ]);
               } else {
@@ -261,8 +261,8 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
     try {
       const timestamp = new Date().toLocaleString('en-IN', { hour12: true });
       const updatedNote = note
-        ? `${note}\n\n📝 [${timestamp}]: ${newComment.trim()}`
-        : `📝 [${timestamp}]: ${newComment.trim()}`;
+        ? `${note}\n\n?? [${timestamp}]: ${newComment.trim()}`
+        : `?? [${timestamp}]: ${newComment.trim()}`;
 
       const result = await updateReminder(reminderId, {
         comment: updatedNote,
@@ -273,7 +273,7 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
         setNote(updatedNote);
         setShowCommentModal(false);
         setNewComment('');
-        CrossPlatformAlert.alert('✅ Saved', 'Comment added successfully.');
+        CrossPlatformAlert.alert('? Saved', 'Comment added successfully.');
       } else {
         CrossPlatformAlert.alert('Error', result.message || 'Failed to add comment');
       }
@@ -295,10 +295,10 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
 
   const getStatusLabel = () => {
     switch (reminderStatus) {
-      case 'completed': return '✅ Completed';
-      case 'cancelled': return '❌ Cancelled';
-      case 'overdue': return '⚠️ Overdue';
-      default: return '🔔 Pending';
+      case 'completed': return '? Completed';
+      case 'cancelled': return '? Cancelled';
+      case 'overdue': return '?? Overdue';
+      default: return '?? Pending';
     }
   };
 
@@ -395,7 +395,7 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
               <View style={styles.infoItemText}>
                 <Text style={styles.infoLabel}>Repeat</Text>
                 <Text style={[styles.infoValue, { color: '#10B981' }]}>
-                  🔁 Repeats {repeatType}
+                  ?? Repeats {repeatType}
                 </Text>
               </View>
             </View>
@@ -590,7 +590,7 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>💬 Add Comment</Text>
+            <Text style={styles.modalTitle}>?? Add Comment</Text>
             <TextInput
               style={styles.commentInput}
               placeholder="Write your comment here..."

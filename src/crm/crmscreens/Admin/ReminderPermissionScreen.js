@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Reminder Permission Management Screen
  * Admin can grant/revoke permission to senior/managers to view employee reminders
  * 
@@ -31,7 +31,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const ReminderPermissionScreen = ({ navigation }) => {
   const [employees, setEmployees] = useState([]);
@@ -62,7 +62,7 @@ const ReminderPermissionScreen = ({ navigation }) => {
   const fetchEmployees = async (token = adminToken) => {
     try {
       setLoading(true);
-      console.log('📋 Fetching employees for permission management...');
+      console.log('?? Fetching employees for permission management...');
 
       const response = await fetch(`${API_BASE_URL}/admin/employees`, {
         method: 'GET',
@@ -84,7 +84,7 @@ const ReminderPermissionScreen = ({ navigation }) => {
       }
 
       const data = await response.json();
-      console.log('✅ Employees Response:', data);
+      console.log('? Employees Response:', data);
 
       if (data.success && data.data) {
         // Filter out admin role, only show employees and seniors/managers
@@ -99,7 +99,7 @@ const ReminderPermissionScreen = ({ navigation }) => {
         setEmployees(filteredEmployees);
       }
     } catch (error) {
-      console.error('❌ Error fetching employees:', error);
+      console.error('? Error fetching employees:', error);
       if (error.message.includes('Network request failed')) {
         CrossPlatformAlert.alert('Network Error', 'Unable to connect. Please check your internet connection.');
       } else {
@@ -129,8 +129,8 @@ const ReminderPermissionScreen = ({ navigation }) => {
     );
 
     try {
-      console.log(`🔄 Toggling permission for employee: ${employeeId}`);
-      console.log(`📤 Setting canViewReminders: ${newStatus}`);
+      console.log(`?? Toggling permission for employee: ${employeeId}`);
+      console.log(`?? Setting canViewReminders: ${newStatus}`);
 
       const response = await fetch(
         `${API_BASE_URL}/admin/employees/${employeeId}/reminder-permission`,
@@ -147,7 +147,7 @@ const ReminderPermissionScreen = ({ navigation }) => {
       );
 
       const data = await response.json();
-      console.log('✅ Permission update response:', data);
+      console.log('? Permission update response:', data);
 
       if (response.ok && data.success) {
         CrossPlatformAlert.alert(
@@ -158,7 +158,7 @@ const ReminderPermissionScreen = ({ navigation }) => {
         throw new Error(data.message || 'Failed to update permission');
       }
     } catch (error) {
-      console.error('❌ Error toggling permission:', error);
+      console.error('? Error toggling permission:', error);
 
       // Revert UI on error
       setEmployees(prevEmployees =>
@@ -194,7 +194,7 @@ const ReminderPermissionScreen = ({ navigation }) => {
 
           <Text style={styles.employeeEmail}>{employee.email}</Text>
           <Text style={styles.employeeDepartment}>
-            {employee.department} • {employee.role?.name || 'N/A'}
+            {employee.department} � {employee.role?.name || 'N/A'}
           </Text>
 
           {!canGivePermission && (

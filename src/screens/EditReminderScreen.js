@@ -26,7 +26,7 @@ import { sendTokenToBackend, getFCMToken } from '../utils/fcmService';
 //import ReminderNotificationService from '../services/ReminderNotificationService';
 import CrossPlatformAlert from '../utils/crossPlatformAlert';
 
-//const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+//const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const EditReminderScreen = ({ route, navigation }) => {
   const { 

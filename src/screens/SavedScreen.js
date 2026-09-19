@@ -45,8 +45,8 @@ const getPropertyImageUrl = (imageData, isPostedByAdmin) => {
 
     // Route to correct domain based on property source
     const domain = isPostedByAdmin
-        ? 'https://gharplotbackend.gntechnology.de'
-        : 'https://gharplotbackend.gntechnology.de';
+        ? 'https://ghar-plot-backend1.onrender.com'
+        : 'https://ghar-plot-backend1.onrender.com';
 
     // Remove leading slash if present
     const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;

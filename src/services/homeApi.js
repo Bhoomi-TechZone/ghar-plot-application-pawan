@@ -4,7 +4,7 @@ import { get as apiGet, BASE_URL } from './api.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Property API Base URL (different from CRM base URL)
-const PROPERTY_API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const PROPERTY_API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 // --- MOCK DATA FALLBACKS (Kept for Robustness) ---
 const generateMockProperty = (id, isNearby = false) => {
@@ -105,7 +105,7 @@ export const formatImageUrl = (imageData) => {
     // 2. If it's a server file path (like "uploads/123.jpeg" or "/uploads/123.jpeg")
     // Use the correct property image base URL (abc.ridealmobility.com)
     if (/^\/?uploads\//.test(imageData)) {
-        const propertyImageBaseUrl = 'https://gharplotbackend.gntechnology.de';
+        const propertyImageBaseUrl = 'https://ghar-plot-backend1.onrender.com';
         const baseUrlClean = propertyImageBaseUrl.endsWith('/') ? propertyImageBaseUrl.slice(0, -1) : propertyImageBaseUrl;
         // remove leading slash from imageData so we don't double\/join
         const cleanPath = imageData.replace(/^\/+/, '');

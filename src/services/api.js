@@ -51,8 +51,8 @@ async function handleTokenExpiry() {
     }
 }
 
-// Local development server mapped via adb reverse
-export const BASE_URL = 'https://gharplotbackend.gntechnology.de';
+// Backend Server URL
+export const BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 // --- HELPER FUNCTION TO CONSTRUCT QUERY STRING ---
 const buildQuery = (params) => {

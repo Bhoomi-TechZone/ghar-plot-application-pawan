@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Admin Reminder Control Screen
  * Comprehensive management dashboard for reminder functionality across organization
  * Features: Overview Dashboard, Employee Management, Due Reminders Monitor, Popup Control
@@ -51,12 +51,12 @@ const AdminReminderControlScreen = () => {
   const [filterStatus, setFilterStatus] = useState('');
 
   // Constants
-  const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+  const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
   // Authentication Helper
   const getAuthHeaders = async () => {
     const adminToken = await AsyncStorage.getItem('adminToken');
-    console.log('🔑 Retrieved adminToken:', adminToken ? `${adminToken.substring(0, 20)}...` : 'NULL');
+    console.log('?? Retrieved adminToken:', adminToken ? `${adminToken.substring(0, 20)}...` : 'NULL');
 
     if (!adminToken) {
       CrossPlatformAlert.alert('Error', 'Admin authentication required. Please login again.');
@@ -75,15 +75,15 @@ const AdminReminderControlScreen = () => {
       const headers = await getAuthHeaders();
       if (!headers) return;
 
-      console.log('📊 Fetching admin reminder statistics...');
-      console.log('🔗 API URL:', `${API_BASE_URL}/admin/reminders/stats`);
+      console.log('?? Fetching admin reminder statistics...');
+      console.log('?? API URL:', `${API_BASE_URL}/admin/reminders/stats`);
 
       const response = await fetch(`${API_BASE_URL}/admin/reminders/stats`, {
         method: 'GET',
         headers
       });
 
-      console.log('📊 Response Status:', response.status);
+      console.log('?? Response Status:', response.status);
 
       // Handle authentication errors
       if (response.status === 401 || response.status === 403) {
@@ -102,16 +102,16 @@ const AdminReminderControlScreen = () => {
       }
 
       const data = await response.json();
-      console.log('📊 Stats API Response:', data);
+      console.log('?? Stats API Response:', data);
 
       if (data.success) {
         setStats(data.data);
-        console.log('✅ Stats loaded:', data.data);
+        console.log('? Stats loaded:', data.data);
       } else {
         throw new Error(data.message || 'Failed to fetch statistics');
       }
     } catch (error) {
-      console.error('❌ Error fetching stats:', error);
+      console.error('? Error fetching stats:', error);
       if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
         CrossPlatformAlert.alert(
           'Network Error',
@@ -130,8 +130,8 @@ const AdminReminderControlScreen = () => {
       const headers = await getAuthHeaders();
       if (!headers) return;
 
-      console.log('📋 Fetching employees with reminder status...');
-      console.log('🔗 API URL:', `${API_BASE_URL}/admin/employees`);
+      console.log('?? Fetching employees with reminder status...');
+      console.log('?? API URL:', `${API_BASE_URL}/admin/employees`);
 
       const queryParams = new URLSearchParams({
         page: page.toString(),
@@ -163,7 +163,7 @@ const AdminReminderControlScreen = () => {
           return;
         }
       } catch (error) {
-        console.warn('⚠️ Dedicated endpoint failed, trying fallback...');
+        console.warn('?? Dedicated endpoint failed, trying fallback...');
         response = await fetch(
           `${API_BASE_URL}/admin/employees?${queryParams}`,
           { method: 'GET', headers }
@@ -187,7 +187,7 @@ const AdminReminderControlScreen = () => {
       }
 
       const data = await response.json();
-      console.log('✅ Employees Response:', data);
+      console.log('? Employees Response:', data);
 
       if (data.success && data.data) {
         // Ensure adminReminderPopupEnabled exists
@@ -211,7 +211,7 @@ const AdminReminderControlScreen = () => {
         });
       }
     } catch (error) {
-      console.error('❌ Error fetching employees:', error);
+      console.error('? Error fetching employees:', error);
       CrossPlatformAlert.alert('Error', 'Failed to fetch employees: ' + error.message);
     } finally {
       setLoading(false);
@@ -223,7 +223,7 @@ const AdminReminderControlScreen = () => {
       const headers = await getAuthHeaders();
       if (!headers) return;
 
-      console.log('⏰ Fetching all due reminders...');
+      console.log('? Fetching all due reminders...');
 
       const response = await fetch(`${API_BASE_URL}/admin/reminders/due-all`, {
         method: 'GET',
@@ -231,16 +231,16 @@ const AdminReminderControlScreen = () => {
       });
 
       const data = await response.json();
-      console.log('✅ Due reminders response:', data);
-      console.log('📊 Total due:', data.count, 'for', data.totalEmployees, 'employees');
+      console.log('? Due reminders response:', data);
+      console.log('?? Total due:', data.count, 'for', data.totalEmployees, 'employees');
 
       if (data.success) {
         const remindersData = Array.isArray(data.data) ? data.data : [];
-        console.log('🔔 Due reminders loaded:', remindersData.length);
+        console.log('?? Due reminders loaded:', remindersData.length);
         setDueReminders(remindersData);
       }
     } catch (error) {
-      console.error('❌ Error fetching due reminders:', error);
+      console.error('? Error fetching due reminders:', error);
     }
   };
 
@@ -262,13 +262,13 @@ const AdminReminderControlScreen = () => {
       );
 
       const data = await response.json();
-      console.log('📋 Employee reminders response:', data);
+      console.log('?? Employee reminders response:', data);
 
       if (data.success) {
         setEmployeeReminders(data.data || []);
       }
     } catch (error) {
-      console.error('❌ Error fetching employee reminders:', error);
+      console.error('? Error fetching employee reminders:', error);
       CrossPlatformAlert.alert('Error', 'Failed to fetch reminders');
     } finally {
       setLoading(false);
@@ -291,8 +291,8 @@ const AdminReminderControlScreen = () => {
             text: 'Confirm',
             onPress: async () => {
               try {
-                console.log('🔄 Toggling popup for employee:', employeeId);
-                console.log('📤 Setting adminReminderPopupEnabled:', newStatus);
+                console.log('?? Toggling popup for employee:', employeeId);
+                console.log('?? Setting adminReminderPopupEnabled:', newStatus);
 
                 // Update local UI immediately for better UX
                 setEmployees(prev => prev.map(emp =>
@@ -319,11 +319,11 @@ const AdminReminderControlScreen = () => {
                     const data = await dedicatedResponse.json();
                     if (data.success) {
                       updateSuccess = true;
-                      console.log('✅ Updated via dedicated endpoint');
+                      console.log('? Updated via dedicated endpoint');
                     }
                   }
                 } catch (dedicatedError) {
-                  console.log('⚠️ Dedicated endpoint not available, trying general update...');
+                  console.log('?? Dedicated endpoint not available, trying general update...');
                 }
 
                 // Fallback to general employee update endpoint
@@ -359,11 +359,11 @@ const AdminReminderControlScreen = () => {
                       const updateData = await updateResponse.json();
                       if (updateData.success) {
                         updateSuccess = true;
-                        console.log('✅ Updated via general endpoint');
+                        console.log('? Updated via general endpoint');
                       }
                     }
                   } catch (generalError) {
-                    console.warn('⚠️ General update endpoint failed:', generalError);
+                    console.warn('?? General update endpoint failed:', generalError);
                   }
                 }
 
@@ -392,7 +392,7 @@ const AdminReminderControlScreen = () => {
                   );
                 }
               } catch (error) {
-                console.error('❌ Toggle error:', error);
+                console.error('? Toggle error:', error);
                 // Revert local UI on complete failure
                 setEmployees(prev => prev.map(emp =>
                   emp._id === employeeId
@@ -406,7 +406,7 @@ const AdminReminderControlScreen = () => {
         ]
       );
     } catch (error) {
-      console.error('❌ Toggle preparation error:', error);
+      console.error('? Toggle preparation error:', error);
       CrossPlatformAlert.alert('Error', 'Failed to prepare toggle: ' + error.message);
     }
   };
@@ -414,9 +414,9 @@ const AdminReminderControlScreen = () => {
   const clearReminderCache = async () => {
     try {
       await AsyncStorage.removeItem('checkedReminders');
-      CrossPlatformAlert.alert('Success', '✅ Reminder cache cleared! Restart app to see popups again.');
+      CrossPlatformAlert.alert('Success', '? Reminder cache cleared! Restart app to see popups again.');
     } catch (error) {
-      console.error('❌ Error clearing cache:', error);
+      console.error('? Error clearing cache:', error);
       CrossPlatformAlert.alert('Error', 'Failed to clear cache');
     }
   };
@@ -455,7 +455,7 @@ const AdminReminderControlScreen = () => {
           return;
         }
 
-        console.log('🚀 Initializing Admin Reminder Control...');
+        console.log('?? Initializing Admin Reminder Control...');
         await Promise.all([
           fetchStats(),
           fetchEmployees(),
@@ -469,7 +469,7 @@ const AdminReminderControlScreen = () => {
 
         return () => clearInterval(interval);
       } catch (error) {
-        console.error('❌ Initialization error:', error);
+        console.error('? Initialization error:', error);
         CrossPlatformAlert.alert('Error', 'Failed to initialize screen');
       }
     };
@@ -500,7 +500,7 @@ const AdminReminderControlScreen = () => {
         await fetchDueReminders();
       }
     } catch (error) {
-      console.error('❌ Refresh error:', error);
+      console.error('? Refresh error:', error);
     } finally {
       setRefreshing(false);
     }
@@ -573,7 +573,7 @@ const AdminReminderControlScreen = () => {
           {/* Top Employees */}
           {stats.topEmployees && stats.topEmployees.length > 0 && (
             <View style={styles.topEmployees}>
-              <Text style={styles.sectionTitle}>📈 Top Employees by Reminders</Text>
+              <Text style={styles.sectionTitle}>?? Top Employees by Reminders</Text>
               {stats.topEmployees.map((emp, index) => (
                 <View key={emp.employeeId} style={styles.topEmployeeItem}>
                   <View style={styles.topEmployeeRank}>
@@ -584,7 +584,7 @@ const AdminReminderControlScreen = () => {
                     <Text style={styles.topEmployeeEmail}>{emp.email}</Text>
                   </View>
                   <View style={styles.topEmployeeCount}>
-                    <Text style={styles.reminderCount}>🔔 {emp.reminderCount}</Text>
+                    <Text style={styles.reminderCount}>?? {emp.reminderCount}</Text>
                   </View>
                 </View>
               ))}
@@ -600,7 +600,7 @@ const AdminReminderControlScreen = () => {
       <View style={styles.employeeInfo}>
         <Text style={styles.employeeName}>{item.name}</Text>
         <Text style={styles.employeeEmail}>{item.email}</Text>
-        <Text style={styles.employeeDepartment}>{item.department} • {item.role?.name || 'N/A'}</Text>
+        <Text style={styles.employeeDepartment}>{item.department} � {item.role?.name || 'N/A'}</Text>
       </View>
 
       <View style={styles.employeeStats}>
@@ -714,7 +714,7 @@ const AdminReminderControlScreen = () => {
       <View style={styles.employeeHeader}>
         <View style={styles.employeeHeaderInfo}>
           <Text style={styles.employeeHeaderName}>{item.employee.name}</Text>
-          <Text style={styles.employeeHeaderEmail}>{item.employee.email} • {item.employee.department}</Text>
+          <Text style={styles.employeeHeaderEmail}>{item.employee.email} � {item.employee.department}</Text>
         </View>
         <View style={styles.dueCountBadge}>
           <Text style={styles.dueCountText}>{item.reminders.length} Due</Text>
@@ -729,13 +729,13 @@ const AdminReminderControlScreen = () => {
           <View key={reminder._id} style={styles.reminderCard}>
             <Text style={styles.reminderTitle}>{reminder.title}</Text>
             <Text style={[styles.reminderTime, isOverdue && styles.overdueTime]}>
-              ⏰ {date} at {time}
+              ? {date} at {time}
             </Text>
             <Text style={styles.reminderComment}>{reminder.comment}</Text>
             {reminder.clientName && (
               <Text style={styles.reminderClient}>
-                Client: {reminder.clientName} • {reminder.phone || 'N/A'}
-                {reminder.location && ` • ${reminder.location}`}
+                Client: {reminder.clientName} � {reminder.phone || 'N/A'}
+                {reminder.location && ` � ${reminder.location}`}
               </Text>
             )}
           </View>
@@ -755,7 +755,7 @@ const AdminReminderControlScreen = () => {
           <View style={styles.emptyState}>
             <Icon name="check-circle" size={48} color="#10b981" />
             <Text style={styles.emptyText}>No Due Reminders</Text>
-            <Text style={styles.emptySubtext}>All reminders are up to date! 🎉</Text>
+            <Text style={styles.emptySubtext}>All reminders are up to date! ??</Text>
           </View>
         }
       />
@@ -828,11 +828,11 @@ const AdminReminderControlScreen = () => {
                 <Text style={styles.modalReminderComment}>{item.comment}</Text>
                 <Text style={styles.modalReminderDateTime}>
                   {date} at {time}
-                  {item.clientName && ` • ${item.clientName}`}
+                  {item.clientName && ` � ${item.clientName}`}
                 </Text>
                 {item.status === 'completed' && item.completionResponse && (
                   <Text style={styles.completionResponse}>
-                    ✅ {item.completionResponse}
+                    ? {item.completionResponse}
                   </Text>
                 )}
               </View>
@@ -866,12 +866,12 @@ const AdminReminderControlScreen = () => {
           >
             <Icon name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>🔔 Admin Reminder Management</Text>
+          <Text style={styles.headerTitle}>?? Admin Reminder Management</Text>
         </View>
         <View style={styles.headerRight}>
           {getTotalDueCount() > 0 && (
             <View style={styles.dueAlertBadge}>
-              <Text style={styles.dueAlertText}>⚠️ {getTotalDueCount()} Due Now</Text>
+              <Text style={styles.dueAlertText}>?? {getTotalDueCount()} Due Now</Text>
             </View>
           )}
           <TouchableOpacity
@@ -890,7 +890,7 @@ const AdminReminderControlScreen = () => {
           onPress={() => setActiveTab('overview')}
         >
           <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
-            📊 Overview
+            ?? Overview
           </Text>
         </TouchableOpacity>
 
@@ -899,7 +899,7 @@ const AdminReminderControlScreen = () => {
           onPress={() => setActiveTab('employees')}
         >
           <Text style={[styles.tabText, activeTab === 'employees' && styles.activeTabText]}>
-            👥 Employees ({employees.length})
+            ?? Employees ({employees.length})
           </Text>
         </TouchableOpacity>
 
@@ -908,7 +908,7 @@ const AdminReminderControlScreen = () => {
           onPress={() => setActiveTab('due-reminders')}
         >
           <Text style={[styles.tabText, activeTab === 'due-reminders' && styles.activeTabText]}>
-            ⏰ Due Reminders ({getTotalDueCount()})
+            ? Due Reminders ({getTotalDueCount()})
           </Text>
         </TouchableOpacity>
       </View>

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -50,10 +50,10 @@ const EmployeeManagementScreen = ({ navigation }) => {
 
   // Load employees and stats on component mount
   useEffect(() => {
-    console.log('⚡ Component mounted');
+    console.log('? Component mounted');
 
     // Add test data FIRST to bypass API calls for testing
-    console.log('🧪 Setting TEST employee data');
+    console.log('?? Setting TEST employee data');
     const testEmployees = [
       {
         id: 'test-1',
@@ -95,7 +95,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
 
     setEmployees(testEmployees);
     setLoading(false);
-    console.log('✅ Test data set successfully:', testEmployees.length, 'employees');
+    console.log('? Test data set successfully:', testEmployees.length, 'employees');
 
     // Then load real data from API
     loadEmployees();
@@ -116,10 +116,10 @@ const EmployeeManagementScreen = ({ navigation }) => {
 
       const { employees: fetchedEmployees, pagination: newPagination } = await getAllEmployees(params);
 
-      console.log('📦 Fetched Employees:', fetchedEmployees);
+      console.log('?? Fetched Employees:', fetchedEmployees);
 
       if (fetchedEmployees.length === 0) {
-        console.warn('⚠️ WARNING: No employees returned from API');
+        console.warn('?? WARNING: No employees returned from API');
       }
 
       setEmployees(fetchedEmployees.map(emp => ({
@@ -137,7 +137,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
 
       setPagination(newPagination);
     } catch (error) {
-      console.error('❌ Load employees error:', error);
+      console.error('? Load employees error:', error);
       CrossPlatformAlert.alert('Error', 'Failed to load employees. Please try again.');
 
       // Fallback to empty array
@@ -159,7 +159,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
         avgPerformance: stats.avgPerformance || 0,
       });
     } catch (error) {
-      console.error('❌ Load stats error:', error);
+      console.error('? Load stats error:', error);
       // Keep default stats on error
     }
   };
@@ -179,7 +179,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
         return;
       }
 
-      const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+      const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
       // Fetch reminders for this employee
       const response = await fetch(`${CRM_BASE_URL}/api/reminder/employee/${employeeId}`, {
@@ -202,7 +202,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
         setEmployeeReminders([]);
       }
     } catch (error) {
-      console.error('❌ Load reminders error:', error);
+      console.error('? Load reminders error:', error);
       CrossPlatformAlert.alert('Error', 'Failed to load employee reminders');
       setEmployeeReminders([]);
     } finally {
@@ -294,7 +294,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
               CrossPlatformAlert.alert('Success', `${employee.name} has been deleted.`);
               loadEmployees(); // Refresh list
             } catch (error) {
-              console.error('❌ Delete error:', error);
+              console.error('? Delete error:', error);
               CrossPlatformAlert.alert('Error', 'Failed to delete employee. Please try again.');
             }
           },
@@ -539,7 +539,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
       <View style={styles.content}>
         <View style={{ padding: 10, backgroundColor: '#fff3cd', borderRadius: 8, marginBottom: 10 }}>
           <Text style={{ color: '#000', fontSize: 14, fontWeight: 'bold' }}>
-            🧪 DEBUG: {employees.length} employees loaded | Loading: {loading.toString()}
+            ?? DEBUG: {employees.length} employees loaded | Loading: {loading.toString()}
           </Text>
         </View>
 

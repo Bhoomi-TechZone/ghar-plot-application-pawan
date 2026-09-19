@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const AdminServiceManagementScreen = ({ navigation }) => {
   // Main Data States
@@ -552,7 +552,7 @@ const AdminServiceManagementScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Distance Rate Per Km (₹)</Text>
+            <Text style={styles.label}>Distance Rate Per Km (?)</Text>
             <TextInput
               style={styles.input}
               placeholder="10"
@@ -644,13 +644,13 @@ const AdminServiceManagementScreen = ({ navigation }) => {
                         .map(([key, value]) => (
                           <View key={key} style={styles.chargeRow}>
                             <Text style={styles.chargeKey}>{key}:</Text>
-                            <Text style={styles.chargeValue}>₹{value}</Text>
+                            <Text style={styles.chargeValue}>?{value}</Text>
                           </View>
                         ))}
                       <View style={styles.chargeRow}>
                         <Text style={styles.chargeKey}>Distance Rate:</Text>
                         <Text style={styles.chargeValue}>
-                          ₹{type.adminConfig?.distanceRatePerKm}/km
+                          ?{type.adminConfig?.distanceRatePerKm}/km
                         </Text>
                       </View>
                     </View>
@@ -797,7 +797,7 @@ const AdminServiceManagementScreen = ({ navigation }) => {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Distance Rate Per Km (₹)</Text>
+                <Text style={styles.label}>Distance Rate Per Km (?)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="10"

@@ -2,7 +2,7 @@ import io from 'socket.io-client';
 import { getAuthToken } from '../services/chatApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SOCKET_URL = 'https://gharplotbackend.gntechnology.de';
+const SOCKET_URL = 'https://ghar-plot-backend1.onrender.com';
 let socket = null;
 
 export const getSocket = () => {

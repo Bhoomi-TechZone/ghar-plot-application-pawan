@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DailyReminderReport.js
  * Admin report: aaj kitne reminders lagaye gaye, kitne due aaye, kitne handle huye
  */
@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 const { width } = Dimensions.get('window');
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -21,7 +21,7 @@ const pad = n => String(n).padStart(2, '0');
 const toISO = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const fmtDate = d => `${DAYS[d.getDay()]}, ${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 const fmtTime = iso => {
-    if (!iso) return '—';
+    if (!iso) return '�';
     const d = new Date(iso);
     let h = d.getHours(), m = pad(d.getMinutes());
     const ampm = h >= 12 ? 'PM' : 'AM';
@@ -34,20 +34,20 @@ const STATUS_COLOR = {
     snoozed: '#6366f1', dismissed: '#ef4444',
 };
 const STATUS_ICON = {
-    completed: '✅', pending: '⏳', snoozed: '😴', dismissed: '❌',
+    completed: '?', pending: '?', snoozed: '??', dismissed: '?',
 };
 
-// ── Employee Row (Minimal) ───────────────────────────────────────────────────
+// -- Employee Row (Minimal) ---------------------------------------------------
 const EmpRow = ({ emp, expanded, onToggle }) => (
     <View style={styles.empCard}>
         <TouchableOpacity style={styles.empHeader} onPress={onToggle} activeOpacity={0.7}>
             <View style={{ flex: 1 }}>
                 <Text style={styles.empName}>{emp.employeeName}</Text>
                 <Text style={styles.empDept}>
-                    {emp.due} Due  •  {emp.completed} Done  •  {emp.pending} Pending
+                    {emp.due} Due  �  {emp.completed} Done  �  {emp.pending} Pending
                 </Text>
             </View>
-            <Text style={styles.chevron}>{expanded ? '▲' : '▼'}</Text>
+            <Text style={styles.chevron}>{expanded ? '?' : '?'}</Text>
         </TouchableOpacity>
 
         {expanded && (
@@ -57,7 +57,7 @@ const EmpRow = ({ emp, expanded, onToggle }) => (
                         <Text style={styles.timeTxt}>{fmtTime(r.reminderDateTime)}</Text>
                         <View style={styles.remContent}>
                             <View style={styles.remTitleRow}>
-                                <Text style={styles.remTitle} numberOfLines={1}>{r.title || '—'}</Text>
+                                <Text style={styles.remTitle} numberOfLines={1}>{r.title || '�'}</Text>
                                 <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[r.status] }]} />
                             </View>
                             {r.clientName ? <Text style={styles.remClient}>{r.clientName}</Text> : null}
@@ -70,7 +70,7 @@ const EmpRow = ({ emp, expanded, onToggle }) => (
     </View>
 );
 
-// ── Main Screen ──────────────────────────────────────────────────────────────
+// -- Main Screen --------------------------------------------------------------
 const DailyReminderReport = ({ hideHeader = false }) => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [data, setData] = useState(null);
@@ -79,7 +79,7 @@ const DailyReminderReport = ({ hideHeader = false }) => {
     const [showPicker, setShowPicker] = useState(false);
     const [pickerDate, setPickerDate] = useState(new Date());
 
-    // ── Fetch ──────────────────────────────────────────────────────────────────
+    // -- Fetch ------------------------------------------------------------------
     const fetchSummary = useCallback(async (date) => {
         setLoading(true);
         setData(null);
@@ -129,28 +129,28 @@ const DailyReminderReport = ({ hideHeader = false }) => {
 
     const isToday = toISO(selectedDate) === toISO(new Date());
 
-    // ── Render ─────────────────────────────────────────────────────────────────
+    // -- Render -----------------------------------------------------------------
     return (
         <View style={styles.container}>
             <StatusBar backgroundColor="#0f2545" barStyle="light-content" />
 
-            {/* Header — hide when parent provides it */}
+            {/* Header � hide when parent provides it */}
             {!hideHeader && (
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>📈 Daily Reminder Report</Text>
-                    <Text style={styles.headerSub}>Placements • Due • Handled</Text>
+                    <Text style={styles.headerTitle}>?? Daily Reminder Report</Text>
+                    <Text style={styles.headerSub}>Placements � Due � Handled</Text>
                 </View>
             )}
 
             {/* Date Navigator */}
             <View style={styles.dateNav}>
                 <TouchableOpacity style={styles.navArrow} onPress={() => shiftDate(-1)}>
-                    <Text style={styles.navArrowTxt}>‹</Text>
+                    <Text style={styles.navArrowTxt}>�</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.dateSelector} onPress={() => { setPickerDate(selectedDate); setShowPicker(true); }}>
                     <Text style={styles.dateSelectorTxt}>
-                        {fmtDate(selectedDate)} {isToday ? '  •  Today' : ''}
+                        {fmtDate(selectedDate)} {isToday ? '  �  Today' : ''}
                     </Text>
                 </TouchableOpacity>
 
@@ -159,7 +159,7 @@ const DailyReminderReport = ({ hideHeader = false }) => {
                     onPress={() => !isToday && shiftDate(1)}
                     disabled={isToday}
                 >
-                    <Text style={[styles.navArrowTxt, isToday && { color: '#cbd5e1' }]}>›</Text>
+                    <Text style={[styles.navArrowTxt, isToday && { color: '#cbd5e1' }]}>�</Text>
                 </TouchableOpacity>
             </View>
 
@@ -174,7 +174,7 @@ const DailyReminderReport = ({ hideHeader = false }) => {
             ) : (
                 <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 50 }} showsVerticalScrollIndicator={false}>
 
-                    {/* ── Compact Overview ── */}
+                    {/* -- Compact Overview -- */}
                     <Text style={styles.sectionTitle}>Overview</Text>
 
                     <View style={styles.overviewCard}>
@@ -195,14 +195,14 @@ const DailyReminderReport = ({ hideHeader = false }) => {
                             </View>
                         </View>
                         <View style={styles.overviewBottom}>
-                            <Text style={styles.botStat}>✅ {data.summary.completed}</Text>
-                            <Text style={styles.botStat}>⏳ {data.summary.pending}</Text>
-                            <Text style={styles.botStat}>😴 {data.summary.snoozed}</Text>
-                            <Text style={styles.botStat}>❌ {data.summary.dismissed}</Text>
+                            <Text style={styles.botStat}>? {data.summary.completed}</Text>
+                            <Text style={styles.botStat}>? {data.summary.pending}</Text>
+                            <Text style={styles.botStat}>?? {data.summary.snoozed}</Text>
+                            <Text style={styles.botStat}>? {data.summary.dismissed}</Text>
                         </View>
                     </View>
 
-                    {/* ── Placed by Employee ── */}
+                    {/* -- Placed by Employee -- */}
                     {data.placedByEmployee?.length > 0 && (
                         <>
                             <Text style={styles.sectionTitle}>Placements by Employee</Text>
@@ -226,10 +226,10 @@ const DailyReminderReport = ({ hideHeader = false }) => {
                         </>
                     )}
 
-                    {/* ── Due reminders by Employee ── */}
+                    {/* -- Due reminders by Employee -- */}
                     {data.dueByEmployee?.length > 0 ? (
                         <>
-                            <Text style={styles.sectionTitle}>Due Reminders — Employee Wise</Text>
+                            <Text style={styles.sectionTitle}>Due Reminders � Employee Wise</Text>
 
                             {data.dueByEmployee.map(emp => (
                                 <EmpRow
@@ -242,14 +242,14 @@ const DailyReminderReport = ({ hideHeader = false }) => {
                         </>
                     ) : (
                         <View style={styles.noData}>
-                            <Text style={styles.noDataIcon}>🎉</Text>
+                            <Text style={styles.noDataIcon}>??</Text>
                             <Text style={styles.noDataTxt}>No reminders were due on this day</Text>
                         </View>
                     )}
                 </ScrollView>
             )}
 
-            {/* ── Mini Date Picker overlay ── */}
+            {/* -- Mini Date Picker overlay -- */}
             {showPicker && (
                 <View style={styles.pickerOverlay}>
                     <View style={styles.pickerBox}>
@@ -257,18 +257,18 @@ const DailyReminderReport = ({ hideHeader = false }) => {
                         <Text style={styles.pickerDisplay}>{fmtDate(pickerDate)}</Text>
                         <View style={styles.pickerBtnRow}>
                             <TouchableOpacity style={styles.pickerArrow} onPress={() => { const d = new Date(pickerDate); d.setDate(d.getDate() - 1); setPickerDate(d); }}>
-                                <Text style={styles.pickerArrowTxt}>◀  -1 day</Text>
+                                <Text style={styles.pickerArrowTxt}>?  -1 day</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.pickerArrow} onPress={() => { const d = new Date(pickerDate); d.setDate(d.getDate() + 1); setPickerDate(d); }}>
-                                <Text style={styles.pickerArrowTxt}>+1 day  ▶</Text>
+                                <Text style={styles.pickerArrowTxt}>+1 day  ?</Text>
                             </TouchableOpacity>
                         </View>
                         <View style={styles.pickerBtnRow}>
                             <TouchableOpacity style={styles.pickerArrow} onPress={() => { const d = new Date(pickerDate); d.setDate(d.getDate() - 7); setPickerDate(d); }}>
-                                <Text style={styles.pickerArrowTxt}>◀◀  -7 days</Text>
+                                <Text style={styles.pickerArrowTxt}>??  -7 days</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.pickerArrow} onPress={() => { const d = new Date(pickerDate); d.setDate(d.getDate() + 7); setPickerDate(d); }}>
-                                <Text style={styles.pickerArrowTxt}>+7 days  ▶▶</Text>
+                                <Text style={styles.pickerArrowTxt}>+7 days  ??</Text>
                             </TouchableOpacity>
                         </View>
                         <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
@@ -276,7 +276,7 @@ const DailyReminderReport = ({ hideHeader = false }) => {
                                 <Text style={{ color: '#fff', fontWeight: '600' }}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.pickerConfirm} onPress={applyPickerDate}>
-                                <Text style={{ color: '#fff', fontWeight: '600' }}>✓ Apply</Text>
+                                <Text style={{ color: '#fff', fontWeight: '600' }}>? Apply</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -286,7 +286,7 @@ const DailyReminderReport = ({ hideHeader = false }) => {
     );
 };
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// -- Styles --------------------------------------------------------------------
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fcfcfc' },
 

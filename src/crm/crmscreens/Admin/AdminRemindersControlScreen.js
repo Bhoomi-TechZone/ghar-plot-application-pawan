@@ -1,4 +1,4 @@
-ï»¿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const AdminRemindersControlScreen = ({ navigation }) => {
   // Main Data States
@@ -391,7 +391,7 @@ const AdminRemindersControlScreen = ({ navigation }) => {
         {/* Top Employees */}
         {stats.topEmployees && stats.topEmployees.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ðŸ“ˆ Top Employees by Reminders</Text>
+            <Text style={styles.sectionTitle}>?? Top Employees by Reminders</Text>
             {stats.topEmployees.map((emp, index) => (
               <View key={emp.employeeId} style={styles.topEmployeeCard}>
                 <View style={styles.rankBadge}>
@@ -575,7 +575,7 @@ const AdminRemindersControlScreen = ({ navigation }) => {
               <View>
                 <Text style={styles.dueEmployeeName}>{item.employee?.name}</Text>
                 <Text style={styles.dueEmployeeInfo}>
-                  {item.employee?.email} â€¢ {item.employee?.department}
+                  {item.employee?.email} • {item.employee?.department}
                 </Text>
               </View>
               <View style={styles.dueCountBadge}>
@@ -599,8 +599,8 @@ const AdminRemindersControlScreen = ({ navigation }) => {
                       <Icon name="person" size={14} color="#6b7280" />
                       <Text style={styles.clientInfoText}>
                         {reminder.clientName}
-                        {reminder.phone && ` â€¢ ${reminder.phone}`}
-                        {reminder.location && ` â€¢ ${reminder.location}`}
+                        {reminder.phone && ` • ${reminder.phone}`}
+                        {reminder.location && ` • ${reminder.location}`}
                       </Text>
                     </View>
                   )}
@@ -696,7 +696,7 @@ const AdminRemindersControlScreen = ({ navigation }) => {
                       )}
                       <Text style={styles.modalReminderTime}>
                         {date} at {time}
-                        {reminder.clientName && ` â€¢ ${reminder.clientName}`}
+                        {reminder.clientName && ` • ${reminder.clientName}`}
                       </Text>
                     </View>
                   );

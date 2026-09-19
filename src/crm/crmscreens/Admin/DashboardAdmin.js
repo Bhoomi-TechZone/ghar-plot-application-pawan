@@ -791,6 +791,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
                       { name: 'Add Cash Flow', viewType: 'add_cash_flow' },
                       { name: 'Cash Flow', viewType: 'cash_flow' },
                       { name: 'All Expenses', viewType: 'all_expenses' },
+                      { name: 'Daily Project Sheet', viewType: 'daily_project_sheet' },
                       { name: 'Add Expenses', viewType: 'add_expenses' },
                       { name: 'Work Status', viewType: 'work_status' },
                       { name: 'Add Work Status', viewType: 'add_work_status' },

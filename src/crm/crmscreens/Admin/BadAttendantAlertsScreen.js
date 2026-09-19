@@ -20,7 +20,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE = 'https://gharplotbackend.gntechnology.de';
+const API_BASE = 'https://ghar-plot-backend1.onrender.com';
 const { width, height } = Dimensions.get('window');
 
 const BadAttendantAlertsScreen = ({ navigation }) => {

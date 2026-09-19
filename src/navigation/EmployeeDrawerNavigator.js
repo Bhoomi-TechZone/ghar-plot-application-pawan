@@ -38,6 +38,7 @@ import EmployeeFollowUps from "../crm/crmscreens/Employee/EmployeeFollowUps";
 import Alerts from "../crm/crmscreens/Employee/Alerts";
 import CreateAlertScreen from "../crm/crmscreens/Employee/CreateAlertScreen";
 import EmployeeProfile from "../crm/crmscreens/Employee/EmployeeProfile";
+import EmployeeExpensesScreen from "../crm/crmscreens/Employee/EmployeeExpensesScreen";
 
 // Admin Screens that employees might have access to based on permissions
 import EnquiriesScreen from "../crm/crmscreens/Admin/EnquiriesScreen";
@@ -100,6 +101,12 @@ const BOTTOM_TAB_ITEMS = [
 
 // Drawer Menu items - Only screens NOT in bottom tabs
 const DRAWER_MENU_ITEMS = [
+  {
+    name: 'Site Expenses',
+    route: 'EmployeeExpenses',
+    icon: 'receipt-outline',
+    color: '#0f766e',
+  },
   {
     name: 'Alerts',
     route: 'EmployeeAlerts',
@@ -358,6 +365,7 @@ const DashboardWithMenu = ({ navigation }) => {
     }
 
     const filtered = DRAWER_MENU_ITEMS.filter(item => {
+      if (!item.module) return true;
       const hasAccess = canAccess(item.module, item.action);
       console.log(`  📋 Menu "${item.name}" (${item.module}:${item.action}): ${hasAccess ? '✅' : '❌'}`);
       return hasAccess;
@@ -510,6 +518,7 @@ const EmployeeBottomTabs = ({ navigation: parentNavigation, route }) => {
     }
     
     const filtered = DRAWER_MENU_ITEMS.filter(item => {
+      if (!item.module) return true;
       const hasAccess = canAccess(item.module, item.action);
       console.log(`   📋 Menu "${item.name}" (${item.module}:${item.action}): ${hasAccess ? '✅' : '❌'}`);
       return hasAccess;
@@ -597,6 +606,7 @@ const EmployeeDrawerNavigator = () => {
       <Stack.Screen name="EmployeeHome" component={EmployeeBottomTabs} />
       
       {/* Additional Screens from Drawer */}
+      <Stack.Screen name="EmployeeExpenses" component={EmployeeExpensesScreen} />
       <Stack.Screen name="EmployeeAlerts" component={Alerts} />
       <Stack.Screen name="CreateAlert" component={CreateAlertScreen} />
       <Stack.Screen name="EmployeeProfile" component={EmployeeProfile} />

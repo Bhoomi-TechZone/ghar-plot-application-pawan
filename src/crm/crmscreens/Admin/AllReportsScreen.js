@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AllReportsScreen.js
  * Date-range based reminder report for Admin
  * Shows all reminders set between start & end date
@@ -21,10 +21,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 const { width } = Dimensions.get('window');
 
-// ── Date Picker helpers (no library needed) ──────────────────────────────────
+// -- Date Picker helpers (no library needed) ----------------------------------
 const MONTHS = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
@@ -43,13 +43,13 @@ const STATUS_COLOR = {
 };
 
 const STATUS_LABEL = {
-    pending: '⏳ Pending',
-    completed: '✅ Completed',
-    snoozed: '😴 Snoozed',
-    dismissed: '❌ Dismissed',
+    pending: '? Pending',
+    completed: '? Completed',
+    snoozed: '?? Snoozed',
+    dismissed: '? Dismissed',
 };
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// -- Main Component ------------------------------------------------------------
 const AllReportsScreen = ({ navigation, hideHeader = false }) => {
     const today = new Date();
     const monthAgo = new Date(today);
@@ -66,7 +66,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
     const [pickerFor, setPickerFor] = useState(null); // 'start' | 'end' | null
     const [pickerDate, setPickerDate] = useState(new Date());
 
-    // ── API Call ──────────────────────────────────────────────────────────────
+    // -- API Call --------------------------------------------------------------
     const fetchReport = useCallback(async () => {
         setLoading(true);
         setHasSearched(true);
@@ -100,7 +100,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
         }
     }, [startDate, endDate]);
 
-    // ── Navigate to client profile ────────────────────────────────────────────
+    // -- Navigate to client profile --------------------------------------------
     const openClientProfile = (reminder) => {
         const manualInquiry = reminder.manualInquiryId;
         if (manualInquiry && manualInquiry._id) {
@@ -111,7 +111,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
         } else if (reminder.clientName || reminder.phone) {
             // Show info if no enquiry linked
             CrossPlatformAlert.alert(
-                '👤 Client Info',
+                '?? Client Info',
                 `Name: ${reminder.clientName || 'N/A'}\nPhone: ${reminder.phone || 'N/A'}\nEmail: ${reminder.email || 'N/A'}\nLocation: ${reminder.location || 'N/A'}`,
                 [{ text: 'OK' }]
             );
@@ -120,7 +120,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
         }
     };
 
-    // ── Inline Date Picker ────────────────────────────────────────────────────
+    // -- Inline Date Picker ----------------------------------------------------
     const openPicker = (forWhat) => {
         setPickerDate(forWhat === 'start' ? startDate : endDate);
         setPickerFor(forWhat);
@@ -149,9 +149,9 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
         setPickerDate(d);
     };
 
-    // ── Render single reminder card (Minimal) ─────────────────────────────────
+    // -- Render single reminder card (Minimal) ---------------------------------
     const renderItem = ({ item }) => {
-        const employeeName = item.employeeId?.name || '—';
+        const employeeName = item.employeeId?.name || '�';
         const status = item.status || 'pending';
         const clientName = item.clientName || item.manualInquiryId?.clientName || 'Unknown Client';
         const phone = item.phone || item.manualInquiryId?.contactNumber || '';
@@ -169,14 +169,14 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
                 </View>
 
                 <View style={styles.cardDetailRow}>
-                    <Text style={styles.cardClientTxt}>{clientName}{phone ? ` • ${phone}` : ''}</Text>
+                    <Text style={styles.cardClientTxt}>{clientName}{phone ? ` � ${phone}` : ''}</Text>
                 </View>
 
                 <View style={styles.cardFooterRow}>
-                    <Text style={styles.cardSubTxt}>👔 {employeeName}</Text>
+                    <Text style={styles.cardSubTxt}>?? {employeeName}</Text>
                     {reminderTime ? (
                         <Text style={styles.cardSubTxt}>
-                            {pad(reminderTime.getDate())} {MONTHS[reminderTime.getMonth()]} • {pad(reminderTime.getHours())}:{pad(reminderTime.getMinutes())}
+                            {pad(reminderTime.getDate())} {MONTHS[reminderTime.getMonth()]} � {pad(reminderTime.getHours())}:{pad(reminderTime.getMinutes())}
                         </Text>
                     ) : (<Text style={styles.cardSubTxt}>No time</Text>)}
                 </View>
@@ -184,7 +184,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
         );
     };
 
-    // ── Summary cards (Minimal) ───────────────────────────────────────────────
+    // -- Summary cards (Minimal) -----------------------------------------------
     const renderSummary = () => {
         if (!summary) return null;
         const items = [
@@ -206,7 +206,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
         );
     };
 
-    // ── Inline Date Picker UI ─────────────────────────────────────────────────
+    // -- Inline Date Picker UI -------------------------------------------------
     const renderDatePicker = () => {
         if (!pickerFor) return null;
         return (
@@ -219,18 +219,18 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
 
                     <View style={styles.pickerBtnRow}>
                         <TouchableOpacity style={styles.pickerArrow} onPress={() => changePickerDateBy(-1)}>
-                            <Text style={styles.pickerArrowTxt}>◀  -1 day</Text>
+                            <Text style={styles.pickerArrowTxt}>?  -1 day</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.pickerArrow} onPress={() => changePickerDateBy(1)}>
-                            <Text style={styles.pickerArrowTxt}>+1 day  ▶</Text>
+                            <Text style={styles.pickerArrowTxt}>+1 day  ?</Text>
                         </TouchableOpacity>
                     </View>
                     <View style={styles.pickerBtnRow}>
                         <TouchableOpacity style={styles.pickerArrow} onPress={() => changePickerDateBy(-7)}>
-                            <Text style={styles.pickerArrowTxt}>◀◀  -7 days</Text>
+                            <Text style={styles.pickerArrowTxt}>??  -7 days</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.pickerArrow} onPress={() => changePickerDateBy(7)}>
-                            <Text style={styles.pickerArrowTxt}>+7 days  ▶▶</Text>
+                            <Text style={styles.pickerArrowTxt}>+7 days  ??</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -239,7 +239,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
                             <Text style={{ color: '#fff', fontWeight: '600' }}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.pickerConfirm} onPress={applyDate}>
-                            <Text style={{ color: '#fff', fontWeight: '600' }}>✓ Apply</Text>
+                            <Text style={{ color: '#fff', fontWeight: '600' }}>? Apply</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -247,15 +247,15 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
         );
     };
 
-    // ── Main render ───────────────────────────────────────────────────────────
+    // -- Main render -----------------------------------------------------------
     return (
         <View style={styles.container}>
             <StatusBar backgroundColor="#0f2545" barStyle="light-content" />
 
-            {/* Header — hidden when embedded in AllReportsHome */}
+            {/* Header � hidden when embedded in AllReportsHome */}
             {!hideHeader && (
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>📊 Reminder Report</Text>
+                    <Text style={styles.headerTitle}>?? Reminder Report</Text>
                     <Text style={styles.headerSubtitle}>Filter reminders by date range</Text>
                 </View>
             )}
@@ -266,7 +266,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
                     <Text style={styles.dateSelectorTxt}>{fmt(startDate)}</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.toText}>→</Text>
+                <Text style={styles.toText}>?</Text>
 
                 <TouchableOpacity style={styles.dateSelector} onPress={() => openPicker('end')}>
                     <Text style={styles.dateSelectorTxt}>{fmt(endDate)}</Text>
@@ -287,7 +287,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
             {/* List */}
             {!hasSearched ? (
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyIcon}>📋</Text>
+                    <Text style={styles.emptyIcon}>??</Text>
                     <Text style={styles.emptyTitle}>Select date range to view report</Text>
                     <Text style={styles.emptySubtitle}>Choose start & end date then tap Search</Text>
                 </View>
@@ -298,7 +298,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
                 </View>
             ) : reminders.length === 0 ? (
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyIcon}>🔍</Text>
+                    <Text style={styles.emptyIcon}>??</Text>
                     <Text style={styles.emptyTitle}>No reminders found</Text>
                     <Text style={styles.emptySubtitle}>No reminders were set in this date range</Text>
                 </View>
@@ -319,7 +319,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
     );
 };
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// -- Styles --------------------------------------------------------------------
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fcfcfc' },
     header: { backgroundColor: '#0f2545', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 48, paddingBottom: 16, paddingHorizontal: 20 },

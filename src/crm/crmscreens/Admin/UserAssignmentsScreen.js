@@ -13,7 +13,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const getToken = async () => {
   const keys = ['crm_auth_token', 'adminToken', 'admin_token', 'crm_admin_token', 'employee_auth_token', 'authToken'];

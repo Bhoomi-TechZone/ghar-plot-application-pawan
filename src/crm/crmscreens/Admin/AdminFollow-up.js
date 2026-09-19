@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const AdminFollowUps = ({ navigation }) => {
   // Data States
@@ -69,21 +69,21 @@ const AdminFollowUps = ({ navigation }) => {
 
   // Action Types Configuration
   const actionTypes = [
-    { icon: '📞', label: 'Call', value: 'call', color: '#3b82f6' },
-    { icon: '📧', label: 'Email', value: 'email', color: '#8b5cf6' },
-    { icon: '👥', label: 'Meeting', value: 'meeting', color: '#10b981' },
-    { icon: '🏠', label: 'Site Visit', value: 'site_visit', color: '#f59e0b' },
-    { icon: '📄', label: 'Document', value: 'document_sent', color: '#6b7280' },
-    { icon: '📅', label: 'Follow-up', value: 'follow_up_scheduled', color: '#ec4899' },
-    { icon: '📝', label: 'Other', value: 'other', color: '#64748b' },
+    { icon: '??', label: 'Call', value: 'call', color: '#3b82f6' },
+    { icon: '??', label: 'Email', value: 'email', color: '#8b5cf6' },
+    { icon: '??', label: 'Meeting', value: 'meeting', color: '#10b981' },
+    { icon: '??', label: 'Site Visit', value: 'site_visit', color: '#f59e0b' },
+    { icon: '??', label: 'Document', value: 'document_sent', color: '#6b7280' },
+    { icon: '??', label: 'Follow-up', value: 'follow_up_scheduled', color: '#ec4899' },
+    { icon: '??', label: 'Other', value: 'other', color: '#64748b' },
   ];
 
   // Filter Options
   const statusOptions = [
-    { label: 'All Status', value: 'all', icon: '📋', color: '#3b82f6' },
-    { label: 'Open', value: 'open', icon: '🟢', color: '#10b981' },
-    { label: 'Closed', value: 'close', icon: '✅', color: '#6b7280' },
-    { label: 'Not Interested', value: 'not-interested', icon: '❌', color: '#ef4444' },
+    { label: 'All Status', value: 'all', icon: '??', color: '#3b82f6' },
+    { label: 'Open', value: 'open', icon: '??', color: '#10b981' },
+    { label: 'Closed', value: 'close', icon: '?', color: '#6b7280' },
+    { label: 'Not Interested', value: 'not-interested', icon: '?', color: '#ef4444' },
   ];
 
   const priorityOptions = [
@@ -135,14 +135,14 @@ const AdminFollowUps = ({ navigation }) => {
       }
 
       if (!token) {
-        console.error('❌ No authentication token found');
+        console.error('? No authentication token found');
         CrossPlatformAlert.alert('Error', 'Please login again');
         setLoading(false);
         return;
       }
 
       const useAdminEndpoint = !!await AsyncStorage.getItem('adminToken');
-      console.log('🔄 Fetching follow-ups with admin endpoint:', useAdminEndpoint, 'token:', token.substring(0, 20) + '...');
+      console.log('?? Fetching follow-ups with admin endpoint:', useAdminEndpoint, 'token:', token.substring(0, 20) + '...');
 
       const params = new URLSearchParams({
         page: page.toString(),
@@ -159,30 +159,30 @@ const AdminFollowUps = ({ navigation }) => {
 
       const endpoint = useAdminEndpoint ? '/admin/follow-ups' : '/employee/follow-ups';
 
-      console.log('🌐 Fetching from:', `${API_BASE_URL}${endpoint}?${params}`);
+      console.log('?? Fetching from:', `${API_BASE_URL}${endpoint}?${params}`);
 
       const response = await axios.get(`${API_BASE_URL}${endpoint}?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log('✅ Follow-ups response success:', response.data.success);
-      console.log('📋 Count:', response.data.data?.followUps?.length || 0);
+      console.log('? Follow-ups response success:', response.data.success);
+      console.log('?? Count:', response.data.data?.followUps?.length || 0);
 
       if (response.data.success) {
         const followUpsData = response.data.data.followUps || [];
-        console.log('✅ Follow-ups fetched successfully:', followUpsData.length);
-        console.log('📋 Sample follow-up:', followUpsData[0] ? JSON.stringify(followUpsData[0], null, 2) : 'No data');
+        console.log('? Follow-ups fetched successfully:', followUpsData.length);
+        console.log('?? Sample follow-up:', followUpsData[0] ? JSON.stringify(followUpsData[0], null, 2) : 'No data');
 
         setFollowUps(followUpsData);
         setPagination(response.data.data.pagination || { currentPage: 1, totalPages: 1, totalItems: 0, limit: 10 });
         setStatistics(response.data.data.statistics || { total: 0, open: 0, close: 0, notInterested: 0 });
       } else {
-        console.error('❌ API returned success:false', response.data.message);
+        console.error('? API returned success:false', response.data.message);
         CrossPlatformAlert.alert('Error', response.data.message || 'Failed to fetch follow-ups');
         setFollowUps([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching follow-ups:', error.message);
+      console.error('? Error fetching follow-ups:', error.message);
       console.error('Status:', error.response?.status);
       console.error('Response:', error.response?.data);
       CrossPlatformAlert.alert('Error', error.response?.data?.message || 'Failed to fetch follow-ups. Please check your connection.');
@@ -202,25 +202,25 @@ const AdminFollowUps = ({ navigation }) => {
       }
 
       if (!token) {
-        console.error('❌ No token found for employees fetch');
+        console.error('? No token found for employees fetch');
         return;
       }
 
-      console.log('👥 Fetching employees for filter dropdown...');
+      console.log('?? Fetching employees for filter dropdown...');
 
       const response = await axios.get(`${API_BASE_URL}/admin/employees`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log('✅ Employees response success:', response.data.success);
+      console.log('? Employees response success:', response.data.success);
       console.log('Count:', response.data.data?.length || 0);
 
       if (response.data.success) {
-        console.log('✅ Employees loaded for filter');
+        console.log('? Employees loaded for filter');
         setEmployees(response.data.data);
       }
     } catch (error) {
-      console.error('❌ Error fetching employees:', error.message);
+      console.error('? Error fetching employees:', error.message);
       console.error('Status:', error.response?.status);
     }
   };
@@ -308,14 +308,14 @@ const AdminFollowUps = ({ navigation }) => {
   // Initial Load
   useEffect(() => {
     const initializeData = async () => {
-      console.log('🚀 AdminFollowUps initializing...');
+      console.log('?? AdminFollowUps initializing...');
 
       const role = await checkUserRole();
-      console.log('✅ User role checked:', role ? 'Admin' : 'Employee');
+      console.log('? User role checked:', role ? 'Admin' : 'Employee');
 
       // Small delay to ensure state is updated
       setTimeout(() => {
-        console.log('⏳ Starting follow-ups fetch...');
+        console.log('? Starting follow-ups fetch...');
         fetchFollowUps();
       }, 100);
     };
@@ -326,7 +326,7 @@ const AdminFollowUps = ({ navigation }) => {
   // Fetch employees when admin role is confirmed
   useEffect(() => {
     if (isAdmin) {
-      console.log('✅ Admin role confirmed, loading employees...');
+      console.log('? Admin role confirmed, loading employees...');
       fetchEmployees();
     }
   }, [isAdmin]);
@@ -366,10 +366,10 @@ const AdminFollowUps = ({ navigation }) => {
   // Render Priority Badge
   const renderPriorityBadge = (priority) => {
     const config = {
-      low: { color: '#10b981', label: 'Low', icon: '🟢' },
-      medium: { color: '#f59e0b', label: 'Medium', icon: '🟡' },
-      high: { color: '#ef4444', label: 'High', icon: '🔴' },
-      urgent: { color: '#dc2626', label: 'Urgent', icon: '🚨' },
+      low: { color: '#10b981', label: 'Low', icon: '??' },
+      medium: { color: '#f59e0b', label: 'Medium', icon: '??' },
+      high: { color: '#ef4444', label: 'High', icon: '??' },
+      urgent: { color: '#dc2626', label: 'Urgent', icon: '??' },
     };
 
     const style = config[priority] || config.medium;
@@ -386,9 +386,9 @@ const AdminFollowUps = ({ navigation }) => {
   // Render Status Badge
   const renderStatusBadge = (status) => {
     const config = {
-      open: { color: '#10b981', label: 'Open', icon: '🟢' },
-      close: { color: '#6b7280', label: 'Closed', icon: '✅' },
-      'not-interested': { color: '#ef4444', label: 'Not Interested', icon: '❌' },
+      open: { color: '#10b981', label: 'Open', icon: '??' },
+      close: { color: '#6b7280', label: 'Closed', icon: '?' },
+      'not-interested': { color: '#ef4444', label: 'Not Interested', icon: '?' },
     };
 
     const style = config[status] || config.open;
@@ -408,7 +408,7 @@ const AdminFollowUps = ({ navigation }) => {
       {/* Header */}
       <View style={styles.cardHeader}>
         <View style={styles.headerLeft}>
-          <Text style={styles.clientName}>👤 {followUp.clientName}</Text>
+          <Text style={styles.clientName}>?? {followUp.clientName}</Text>
           {renderPriorityBadge(followUp.priority)}
         </View>
         {renderStatusBadge(followUp.caseStatus)}
@@ -465,12 +465,12 @@ const AdminFollowUps = ({ navigation }) => {
       {/* Latest Comment */}
       {followUp.comments && followUp.comments.length > 0 && (
         <View style={styles.commentPreview}>
-          <Text style={styles.commentLabel}>💬 Latest Comment:</Text>
+          <Text style={styles.commentLabel}>?? Latest Comment:</Text>
           <Text style={styles.commentText} numberOfLines={2}>
             {followUp.comments[0].text}
           </Text>
           <Text style={styles.commentMeta}>
-            By {followUp.comments[0].addedBy?.name} • {formatDate(followUp.comments[0].createdAt)}
+            By {followUp.comments[0].addedBy?.name} � {formatDate(followUp.comments[0].createdAt)}
           </Text>
         </View>
       )}
@@ -488,7 +488,7 @@ const AdminFollowUps = ({ navigation }) => {
       {/* Result (Closed) */}
       {followUp.caseStatus === 'close' && followUp.result && (
         <View style={styles.resultSection}>
-          <Text style={styles.resultLabel}>✅ Result:</Text>
+          <Text style={styles.resultLabel}>? Result:</Text>
           <Text style={styles.resultText}>{followUp.result}</Text>
         </View>
       )}
@@ -548,10 +548,10 @@ const AdminFollowUps = ({ navigation }) => {
 
       {/* Statistics */}
       <View style={styles.statsContainer}>
-        {renderStatCard('📊', 'Total', statistics.total, '#3b82f6')}
-        {renderStatCard('🟢', 'Open', statistics.open, '#10b981')}
-        {renderStatCard('✅', 'Closed', statistics.close, '#6b7280')}
-        {renderStatCard('❌', 'Not Interested', statistics.notInterested, '#ef4444')}
+        {renderStatCard('??', 'Total', statistics.total, '#3b82f6')}
+        {renderStatCard('??', 'Open', statistics.open, '#10b981')}
+        {renderStatCard('?', 'Closed', statistics.close, '#6b7280')}
+        {renderStatCard('?', 'Not Interested', statistics.notInterested, '#ef4444')}
       </View>
 
       {/* Filters */}
@@ -805,7 +805,7 @@ const AdminFollowUps = ({ navigation }) => {
               ) : null}
 
               <Text style={styles.helpText}>
-                💡 Examples: "Deal closed", "Client purchased property", "Client not interested", etc.
+                ?? Examples: "Deal closed", "Client purchased property", "Client not interested", etc.
               </Text>
             </ScrollView>
 
@@ -896,13 +896,13 @@ const AdminFollowUps = ({ navigation }) => {
                     selectedFollowUp.enquiryId.reminders.length > 0 && (
                       <View style={styles.detailSection}>
                         <Text style={styles.detailSectionTitle}>
-                          📅 Reminder History ({selectedFollowUp.enquiryId.reminders.length})
+                          ?? Reminder History ({selectedFollowUp.enquiryId.reminders.length})
                         </Text>
                         {selectedFollowUp.enquiryId.reminders.map((reminder, index) => (
                           <View key={reminder._id || index} style={styles.reminderHistoryItem}>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                               <Text style={styles.reminderDateTime}>
-                                📅 {new Date(reminder.reminderDateTime).toLocaleString('en-IN', {
+                                ?? {new Date(reminder.reminderDateTime).toLocaleString('en-IN', {
                                   day: '2-digit',
                                   month: 'short',
                                   year: 'numeric',
@@ -917,10 +917,10 @@ const AdminFollowUps = ({ navigation }) => {
                               </Text>
                             </View>
                             {reminder.note && (
-                              <Text style={styles.reminderNote}>💬 {reminder.note}</Text>
+                              <Text style={styles.reminderNote}>?? {reminder.note}</Text>
                             )}
                             <Text style={styles.reminderMeta}>
-                              Set by: {reminder.createdBy?.fullName || reminder.createdBy?.name || 'Unknown'} • {new Date(reminder.createdAt).toLocaleDateString('en-IN')}
+                              Set by: {reminder.createdBy?.fullName || reminder.createdBy?.name || 'Unknown'} � {new Date(reminder.createdAt).toLocaleDateString('en-IN')}
                             </Text>
                           </View>
                         ))}

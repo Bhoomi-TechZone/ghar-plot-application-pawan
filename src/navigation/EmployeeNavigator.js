@@ -19,6 +19,7 @@ import EmployeeFollowUps from '../crm/crmscreens/Employee/EmployeeFollowUps';
 import EmployeeReminderAcceptScreen from '../screens/Employee/EmployeeReminderAcceptScreen';
 import EmployeeProfile from '../crm/crmscreens/Employee/EmployeeProfile';
 import CreateAlertScreen from '../crm/crmscreens/Employee/CreateAlertScreen';
+import EmployeeExpensesScreen from '../crm/crmscreens/Employee/EmployeeExpensesScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -43,15 +44,20 @@ const DashboardStack = () => (
       options={{ title: 'My Dashboard', headerShown: false }}
     />
     <Stack.Screen 
+      name="EmployeeExpenses" 
+      component={EmployeeExpensesScreen}
+      options={{ title: 'Site Expenses', headerShown: false }}
+    />
+    <Stack.Screen 
       name="EmployeeProfile" 
       component={EmployeeProfile}
       options={{ title: 'Profile', headerShown: false }}
     />
-      <Stack.Screen
-        name="CreateAlert"
-        component={CreateAlertScreen}
-        options={{ title: 'Create Reminder', headerShown: false }}
-      />
+    <Stack.Screen
+      name="CreateAlert"
+      component={CreateAlertScreen}
+      options={{ title: 'Create Reminder', headerShown: false }}
+    />
   </Stack.Navigator>
 );
 

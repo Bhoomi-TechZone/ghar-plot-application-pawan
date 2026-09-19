@@ -11,7 +11,7 @@ import { getToken } from './authApi';
 // 1. BASE_URL for API calls (includes /api)
 // 2. SERVER_ROOT for static assets (images, uploads)
 const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com/api';
-const SERVER_ROOT = 'https://gharplotbackend.gntechnology.de'; // Root URL for image assets
+const SERVER_ROOT = 'https://ghar-plot-backend1.onrender.com'; // Root URL for image assets
 
 // Helper function to ensure URL is absolute using the SERVER_ROOT for assets
 const makeAbsoluteUrl = (path) => {

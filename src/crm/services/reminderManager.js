@@ -8,7 +8,7 @@ import { Alert } from 'react-native';
 const REMINDERS_KEY = 'app_reminders';
 const CHECKED_REMINDERS_KEY = 'checked_reminders'; // Persist checked reminders
 const CHECK_INTERVAL = 30000; // Check every 30 seconds (reduced from 5 to avoid spam)
-const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 class ReminderManager {
   constructor() {

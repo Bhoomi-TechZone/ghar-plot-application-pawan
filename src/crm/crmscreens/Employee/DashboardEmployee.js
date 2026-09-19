@@ -411,6 +411,37 @@ const DashboardEmployee = ({ navigation, openDrawer }) => {
           </View>
         </View>
 
+        {/* Site Expenses Quick Card */}
+        <TouchableOpacity
+          style={[styles.whiteCard, { marginTop: 12 }]}
+          onPress={() => navigation.navigate('EmployeeExpenses')}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 10 }}>
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  backgroundColor: '#ccfbf1',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 14,
+                }}
+              >
+                <Icon name="receipt" size={24} color="#0f766e" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a' }}>Site Expenses</Text>
+                <Text style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                  Log today's site expenses & view project sheet
+                </Text>
+              </View>
+            </View>
+            <Icon name="chevron-forward" size={20} color="#94a3b8" />
+          </View>
+        </TouchableOpacity>
+
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>

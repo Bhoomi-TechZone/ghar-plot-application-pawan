@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const EmployeeReminders = ({ navigation, openDrawer }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,19 +56,19 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
       if (!token) token = await AsyncStorage.getItem('token');
 
       if (!token) {
-        console.error('❌ No authentication token found');
+        console.error('? No authentication token found');
         CrossPlatformAlert.alert('Authentication Error', 'Please login again.');
         return;
       }
 
-      console.log('🔑 Using token for reminders fetch');
+      console.log('?? Using token for reminders fetch');
 
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       };
 
-      console.log('📡 Fetching employee/admin reminders...');
+      console.log('?? Fetching employee/admin reminders...');
 
       const isAdmin = !!(await AsyncStorage.getItem('adminToken') || await AsyncStorage.getItem('admin_token'));
 
@@ -81,7 +81,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
         const listUrl = isAdmin ? `${API_BASE_URL}/api/reminder/list` : `${API_BASE_URL}/employee/reminders/list`;
         const statsUrl = isAdmin ? `${API_BASE_URL}/api/reminder/stats` : `${API_BASE_URL}/employee/reminders/stats`;
 
-        console.log(`📤 Fetching from: ${listUrl} (isAdmin: ${isAdmin})`);
+        console.log(`?? Fetching from: ${listUrl} (isAdmin: ${isAdmin})`);
 
         const [remindersResponse, statsResponse] = await Promise.all([
           axios.get(listUrl, {
@@ -100,7 +100,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
 
         if (remindersResponse.data.success) {
           finalRemindersList = remindersResponse.data.data?.reminders || remindersResponse.data.reminders || [];
-          console.log('✅ Loaded', finalRemindersList.length, 'reminders from API');
+          console.log('? Loaded', finalRemindersList.length, 'reminders from API');
         }
 
         if (statsResponse.data.success) {
@@ -113,16 +113,16 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
           };
         }
 
-        // 🚀 NEW: Load local reminders from AsyncStorage (synced with ReminderModal.js)
+        // ?? NEW: Load local reminders from AsyncStorage (synced with ReminderModal.js)
         let localRemindersList = [];
         try {
           const localData = await AsyncStorage.getItem('localReminders');
           if (localData) {
             localRemindersList = JSON.parse(localData);
-            console.log('📱 Loaded', localRemindersList.length, 'reminders from local storage');
+            console.log('?? Loaded', localRemindersList.length, 'reminders from local storage');
           }
         } catch (localError) {
-          console.error('❌ Error loading local reminders:', localError);
+          console.error('? Error loading local reminders:', localError);
         }
 
         // Merge API reminders with local reminders
@@ -158,12 +158,12 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
         setStatsData(finalStatsData);
 
       } catch (error) {
-        console.error('❌ Error fetching reminders list/stats:', error.message);
+        console.error('? Error fetching reminders list/stats:', error.message);
         throw error;
       }
 
     } catch (error) {
-      console.error('❌ Reminders fetch error:', error);
+      console.error('? Reminders fetch error:', error);
 
       let errorMessage = 'Failed to load reminders data. Please try again.';
       if (error.message?.includes('Network request failed')) {
@@ -224,7 +224,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
   // Refresh when coming back to this screen
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      console.log('🔄 EmployeeReminders focused - refreshing...');
+      console.log('?? EmployeeReminders focused - refreshing...');
       fetchReminders(false);
     });
     return unsubscribe;
@@ -232,7 +232,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
 
   // Load data on component mount
   useEffect(() => {
-    console.log('🚀 EmployeeReminders component mounted');
+    console.log('?? EmployeeReminders component mounted');
     fetchReminders();
   }, []);
 
@@ -262,7 +262,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
                 ? `${API_BASE_URL}/api/reminder/${reminder._id}/complete`
                 : `${API_BASE_URL}/employee/reminders/${reminder._id}/complete`;
               
-              console.log('📤 Complete reminder URL:', url, '| isAdmin:', isAdmin);
+              console.log('?? Complete reminder URL:', url, '| isAdmin:', isAdmin);
 
               const result = await fetch(url, {
                 method: 'PUT',
@@ -275,7 +275,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
 
               if (!result.ok) {
                 const errorText = await result.text();
-                console.error('❌ Error response:', errorText);
+                console.error('? Error response:', errorText);
                 try {
                   const errorData = JSON.parse(errorText);
                   CrossPlatformAlert.alert('Error', errorData.message || 'Failed to complete reminder');
@@ -287,7 +287,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
                 fetchReminders(false);
               }
             } catch (error) {
-              console.error('❌ Complete reminder error:', error);
+              console.error('? Complete reminder error:', error);
               CrossPlatformAlert.alert('Error', error.message || 'Failed to complete reminder');
             }
           }
@@ -326,7 +326,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
         ? `${API_BASE_URL}/api/reminder/snooze/${reminderId}`
         : `${API_BASE_URL}/employee/reminders/snooze/${reminderId}`;
       
-      console.log('📤 Snooze URL:', url, '| isAdmin:', isAdmin);
+      console.log('?? Snooze URL:', url, '| isAdmin:', isAdmin);
 
       const response = await fetch(url, {
         method: 'PUT',
@@ -347,7 +347,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
         fetchReminders(false);
       }
     } catch (error) {
-      console.error('❌ Snooze reminder error:', error);
+      console.error('? Snooze reminder error:', error);
       CrossPlatformAlert.alert('Error', error.message || 'Failed to snooze reminder');
     }
   };
@@ -374,12 +374,12 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
                 return;
               }
 
-              // Use correct route based on role — admin uses /api/reminder, employee uses /employee/reminders
+              // Use correct route based on role � admin uses /api/reminder, employee uses /employee/reminders
               const url = isAdmin
                 ? `${API_BASE_URL}/api/reminder/dismiss/${reminder._id}`
                 : `${API_BASE_URL}/employee/reminders/dismiss/${reminder._id}`;
               
-              console.log('📤 Dismiss URL:', url, '| isAdmin:', isAdmin);
+              console.log('?? Dismiss URL:', url, '| isAdmin:', isAdmin);
 
               const response = await fetch(url, {
                 method: 'PUT',
@@ -399,7 +399,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
                 fetchReminders(false);
               }
             } catch (error) {
-              console.error('❌ Dismiss reminder error:', error);
+              console.error('? Dismiss reminder error:', error);
               CrossPlatformAlert.alert('Error', error.message || 'Failed to dismiss reminder');
             }
           }
@@ -509,7 +509,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
               <Icon name="person-outline" size={14} color="#6b7280" />
               <Text style={styles.clientText}>
                 {reminder.clientName || reminder.clientInfo?.name}
-                {(reminder.phone || reminder.clientInfo?.phone) && ` • ${reminder.phone || reminder.clientInfo.phone}`}
+                {(reminder.phone || reminder.clientInfo?.phone) && ` � ${reminder.phone || reminder.clientInfo.phone}`}
               </Text>
             </View>
           )}
@@ -624,11 +624,11 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
                 <View style={styles.detailSection}>
                   <Text style={styles.detailSectionTitle}>Client Information</Text>
                   <Text style={styles.detailSectionContent}>
-                    👤 {selectedReminder.clientName || selectedReminder.clientInfo?.name}
+                    ?? {selectedReminder.clientName || selectedReminder.clientInfo?.name}
                   </Text>
                   {(selectedReminder.phone || selectedReminder.clientInfo?.phone) && (
                     <Text style={styles.detailSectionContent}>
-                      📞 {selectedReminder.phone || selectedReminder.clientInfo.phone}
+                      ?? {selectedReminder.phone || selectedReminder.clientInfo.phone}
                     </Text>
                   )}
                 </View>

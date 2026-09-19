@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
 const AdminMyReminders = ({ navigation }) => {
   // Main Data States
@@ -63,7 +63,7 @@ const AdminMyReminders = ({ navigation }) => {
       let token = adminToken || employeeToken;
 
       if (!token) {
-        console.error('❌ No token found for stats fetch');
+        console.error('? No token found for stats fetch');
         // Set fallback stats instead of throwing error
         setStats({
           employees: { total: 0, withPopupEnabled: 0 },
@@ -73,11 +73,11 @@ const AdminMyReminders = ({ navigation }) => {
         return;
       }
 
-      console.log('📊 Fetching admin reminder stats...');
+      console.log('?? Fetching admin reminder stats...');
       if (adminToken) {
-        console.log('🔑 Using admin token');
+        console.log('?? Using admin token');
       } else {
-        console.log('⚠️ Using employee token as fallback');
+        console.log('?? Using employee token as fallback');
       }
 
       const response = await axios.get(`${API_BASE_URL}/admin/reminders/stats`, {
@@ -88,13 +88,13 @@ const AdminMyReminders = ({ navigation }) => {
         timeout: 15000 // 15 second timeout (longer than web for mobile)
       });
 
-      console.log('📊 Stats API Response:', response.data);
+      console.log('?? Stats API Response:', response.data);
 
       if (response.data.success && response.data.data) {
-        console.log('✅ Stats loaded:', response.data.data);
+        console.log('? Stats loaded:', response.data.data);
         setStats(response.data.data);
       } else {
-        console.warn('⚠️ Stats API returned success:false', response.data.message);
+        console.warn('?? Stats API returned success:false', response.data.message);
         // Set fallback data when API returns success: false
         setStats({
           employees: { total: 0, withPopupEnabled: 0 },
@@ -103,8 +103,8 @@ const AdminMyReminders = ({ navigation }) => {
         });
       }
     } catch (error) {
-      console.error('❌ Error fetching stats:', error.message);
-      console.error('📛 Error details:', error.response?.data);
+      console.error('? Error fetching stats:', error.message);
+      console.error('?? Error details:', error.response?.data);
 
       // Always set fallback data instead of showing error
       setStats({
@@ -131,20 +131,20 @@ const AdminMyReminders = ({ navigation }) => {
       }
 
       if (!token) {
-        console.error('❌ No token found for employees fetch');
+        console.error('? No token found for employees fetch');
         setLoading(false);
         return;
       }
 
-      console.log('📋 Fetching employees with reminder status...');
-      console.log('🔍 Page:', page, 'Search:', search);
-      console.log('🔑 Token preview:', token.substring(0, 30) + '...');
+      console.log('?? Fetching employees with reminder status...');
+      console.log('?? Page:', page, 'Search:', search);
+      console.log('?? Token preview:', token.substring(0, 30) + '...');
 
       let employeeData = [];
 
       // Try dedicated endpoint first (exactly like web version)
       try {
-        console.log('🔍 Trying endpoint: /admin/reminders/employees-status');
+        console.log('?? Trying endpoint: /admin/reminders/employees-status');
         const response = await axios.get(`${API_BASE_URL}/admin/reminders/employees-status`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -154,11 +154,11 @@ const AdminMyReminders = ({ navigation }) => {
           timeout: 15000
         });
 
-        console.log('✅ employees-status Response:', response.data);
+        console.log('? employees-status Response:', response.data);
 
         if (response.data.success && response.data.data && response.data.data.length > 0) {
           employeeData = response.data.data;
-          console.log('👥 Loaded from reminder endpoint:', employeeData.length);
+          console.log('?? Loaded from reminder endpoint:', employeeData.length);
 
           setEmployees(employeeData);
           setPagination(response.data.pagination || {
@@ -171,11 +171,11 @@ const AdminMyReminders = ({ navigation }) => {
           return;
         }
       } catch (err) {
-        console.log('⚠️ Reminder endpoint failed, using fallback:', err.message);
+        console.log('?? Reminder endpoint failed, using fallback:', err.message);
       }
 
       // Fallback to regular employee endpoint (exactly like web version)
-      console.log('🔄 Trying fallback: /admin/employees');
+      console.log('?? Trying fallback: /admin/employees');
       const fallbackResponse = await axios.get(`${API_BASE_URL}/admin/employees`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -185,14 +185,14 @@ const AdminMyReminders = ({ navigation }) => {
         timeout: 15000
       });
 
-      console.log('✅ Regular employees Response:', fallbackResponse.data);
+      console.log('? Regular employees Response:', fallbackResponse.data);
 
       if (fallbackResponse.data.success) {
         employeeData = Array.isArray(fallbackResponse.data.data)
           ? fallbackResponse.data.data
           : (fallbackResponse.data.employees || []);
 
-        console.log('👥 Loaded from employee endpoint:', employeeData.length);
+        console.log('?? Loaded from employee endpoint:', employeeData.length);
 
         // Manually set adminReminderPopupEnabled to false if not present (like web version)
         employeeData = employeeData.map(emp => ({
@@ -213,8 +213,8 @@ const AdminMyReminders = ({ navigation }) => {
         });
       }
     } catch (error) {
-      console.error('❌ Error fetching employees:', error.message);
-      console.error('📛 Error details:', error.response?.data);
+      console.error('? Error fetching employees:', error.message);
+      console.error('?? Error details:', error.response?.data);
       CrossPlatformAlert.alert('Error Loading Employees', error.response?.data?.message || error.message);
     } finally {
       setLoading(false);
@@ -230,17 +230,17 @@ const AdminMyReminders = ({ navigation }) => {
       let token = adminToken || employeeToken;
 
       if (!token) {
-        console.error('❌ No token found for due reminders fetch');
+        console.error('? No token found for due reminders fetch');
         // Set empty array instead of return
         setDueReminders([]);
         return;
       }
 
-      console.log('⏰ Fetching all due reminders...');
+      console.log('? Fetching all due reminders...');
       if (adminToken) {
-        console.log('🔑 Using admin token for due reminders');
+        console.log('?? Using admin token for due reminders');
       } else {
-        console.log('⚠️ Using employee token as fallback');
+        console.log('?? Using employee token as fallback');
       }
 
       const response = await axios.get(`${API_BASE_URL}/admin/reminders/due-all`, {
@@ -251,24 +251,24 @@ const AdminMyReminders = ({ navigation }) => {
         timeout: 15000 // 15 second timeout
       });
 
-      console.log('✅ Due reminders response:', response.data);
+      console.log('? Due reminders response:', response.data);
 
       let finalDueReminders = [];
       if (response.data.success) {
         finalDueReminders = Array.isArray(response.data.data) ? response.data.data : [];
-        console.log('🔔 Due reminders loaded:', finalDueReminders.length, 'groups');
+        console.log('?? Due reminders loaded:', finalDueReminders.length, 'groups');
       }
 
-      // 🚀 NEW: Load local reminders from AsyncStorage (synced with ReminderModal.js)
+      // ?? NEW: Load local reminders from AsyncStorage (synced with ReminderModal.js)
       let localRemindersList = [];
       try {
         const localData = await AsyncStorage.getItem('localReminders');
         if (localData) {
           localRemindersList = JSON.parse(localData);
-          console.log('📱 Loaded', localRemindersList.length, 'reminders from local storage');
+          console.log('?? Loaded', localRemindersList.length, 'reminders from local storage');
         }
       } catch (localError) {
-        console.error('❌ Error loading local reminders:', localError);
+        console.error('? Error loading local reminders:', localError);
       }
 
       // Merge logic for AdminMyReminders (groups by employee, but we can add local ones as a special group or individual items)
@@ -295,8 +295,8 @@ const AdminMyReminders = ({ navigation }) => {
       setDueReminders(finalDueReminders);
 
     } catch (error) {
-      console.error('❌ Error fetching due reminders:', error.message);
-      console.error('📛 Error details:', error.response?.data);
+      console.error('? Error fetching due reminders:', error.message);
+      console.error('?? Error details:', error.response?.data);
 
       // Even on error, try to show local reminders
       try {
@@ -423,7 +423,7 @@ const AdminMyReminders = ({ navigation }) => {
     try {
       await AsyncStorage.removeItem('checkedReminders');
       CrossPlatformAlert.alert('Success', 'Reminder cache cleared! Restart app to see popups again.');
-      console.log('🗑️ Cleared checkedReminders from AsyncStorage');
+      console.log('??? Cleared checkedReminders from AsyncStorage');
     } catch (error) {
       console.error('Error clearing cache:', error);
       CrossPlatformAlert.alert('Error', 'Failed to clear cache');
@@ -439,7 +439,7 @@ const AdminMyReminders = ({ navigation }) => {
 
       // Check if date is valid
       if (isNaN(date.getTime())) {
-        console.warn('⚠️ Invalid date string:', dateString);
+        console.warn('?? Invalid date string:', dateString);
         return { date: 'Invalid Date', time: 'Invalid Time' };
       }
 
@@ -456,7 +456,7 @@ const AdminMyReminders = ({ navigation }) => {
 
       return { date: dateStr, time: timeStr };
     } catch (error) {
-      console.error('❌ Error formatting date:', error.message);
+      console.error('? Error formatting date:', error.message);
       return { date: 'Error', time: 'Error' };
     }
   };
@@ -467,54 +467,54 @@ const AdminMyReminders = ({ navigation }) => {
   // Initial Load
   useEffect(() => {
     const init = async () => {
-      console.log('🚀 AdminMyReminders initializing...');
+      console.log('?? AdminMyReminders initializing...');
 
       // Prioritize adminToken for admin features (like web version)
       const adminToken = await AsyncStorage.getItem('adminToken');
       const employeeToken = await AsyncStorage.getItem('employeeToken');
 
-      console.log('🔑 Admin Token:', adminToken ? 'Found ✅' : 'Missing ❌');
-      console.log('🔑 Employee Token:', employeeToken ? 'Found ✅' : 'Missing ❌');
+      console.log('?? Admin Token:', adminToken ? 'Found ?' : 'Missing ?');
+      console.log('?? Employee Token:', employeeToken ? 'Found ?' : 'Missing ?');
 
       let token = adminToken || employeeToken;
 
       if (!token) {
-        console.error('❌ No token found - cannot initialize');
+        console.error('? No token found - cannot initialize');
         CrossPlatformAlert.alert('Error', 'Authentication required. Please login again.');
         return;
       }
 
       if (adminToken) {
-        console.log('🔑 Using admin token for admin features');
-        console.log('🔑 Admin token preview:', adminToken.substring(0, 30) + '...');
+        console.log('?? Using admin token for admin features');
+        console.log('?? Admin token preview:', adminToken.substring(0, 30) + '...');
       } else {
-        console.log('⚠️ Using employee token as fallback (may have limited access)');
-        console.log('🔑 Employee token preview:', employeeToken.substring(0, 30) + '...');
+        console.log('?? Using employee token as fallback (may have limited access)');
+        console.log('?? Employee token preview:', employeeToken.substring(0, 30) + '...');
       }
 
       try {
         setLoading(true);
 
-        console.log('1️⃣ Fetching stats...');
+        console.log('1?? Fetching stats...');
         await fetchStats();
 
-        console.log('2️⃣ Fetching employees with reminder status...');
+        console.log('2?? Fetching employees with reminder status...');
         await fetchEmployees(1, '');
 
-        console.log('3️⃣ Fetching all due reminders...');
+        console.log('3?? Fetching all due reminders...');
         await fetchDueReminders();
 
-        console.log('✅ All data loaded successfully');
+        console.log('? All data loaded successfully');
 
         // Start polling for due reminders every 1 minute (like web version)
         const interval = setInterval(() => {
-          console.log('🔄 Polling for due reminders...');
+          console.log('?? Polling for due reminders...');
           fetchDueReminders();
         }, 60000);
 
         setPollingInterval(interval);
       } catch (error) {
-        console.error('❌ Error during initialization:', error.message);
+        console.error('? Error during initialization:', error.message);
       } finally {
         setLoading(false);
       }
@@ -532,7 +532,7 @@ const AdminMyReminders = ({ navigation }) => {
   // Refresh when coming back to this screen
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      console.log('🔄 AdminMyReminders focused - refreshing...');
+      console.log('?? AdminMyReminders focused - refreshing...');
       fetchStats();
       fetchEmployees(currentPage, searchTerm);
       fetchDueReminders();
@@ -637,7 +637,7 @@ const AdminMyReminders = ({ navigation }) => {
         {/* Top Employees */}
         {stats.topEmployees && stats.topEmployees.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📈 Top Employees by Reminders</Text>
+            <Text style={styles.sectionTitle}>?? Top Employees by Reminders</Text>
             {stats.topEmployees.map((emp, index) => (
               <View key={emp.employeeId} style={styles.topEmployeeCard}>
                 <View style={styles.rankBadge}>
@@ -826,7 +826,7 @@ const AdminMyReminders = ({ navigation }) => {
           <TouchableOpacity
             style={styles.refreshButton}
             onPress={() => {
-              console.log('🔄 Manual refresh triggered');
+              console.log('?? Manual refresh triggered');
               fetchDueReminders();
             }}
           >
@@ -839,7 +839,7 @@ const AdminMyReminders = ({ navigation }) => {
           {/* Debug Info */}
           <View style={styles.debugInfo}>
             <Text style={styles.debugText}>
-              📊 Loaded {dueReminders.length} reminder groups, Total due: {totalDueCount}
+              ?? Loaded {dueReminders.length} reminder groups, Total due: {totalDueCount}
             </Text>
           </View>
 
@@ -849,7 +849,7 @@ const AdminMyReminders = ({ navigation }) => {
                 <View>
                   <Text style={styles.dueEmployeeName}>{item.employee?.name}</Text>
                   <Text style={styles.dueEmployeeInfo}>
-                    {item.employee?.email} • {item.employee?.department}
+                    {item.employee?.email} � {item.employee?.department}
                   </Text>
                 </View>
                 <View style={styles.dueCountBadge}>
@@ -861,7 +861,7 @@ const AdminMyReminders = ({ navigation }) => {
                 const { date, time } = formatDateTime(reminder.reminderDateTime);
 
                 // Debug log for each reminder
-                console.log(`🔔 Reminder ${rIndex + 1}:`, {
+                console.log(`?? Reminder ${rIndex + 1}:`, {
                   title: reminder.title,
                   note: reminder.note,
                   dateTime: reminder.reminderDateTime,
@@ -880,8 +880,8 @@ const AdminMyReminders = ({ navigation }) => {
                         color: reminder.status === 'completed' ? '#065f46' :
                           reminder.status === 'dismissed' ? '#991b1b' : '#92400e'
                       }]}>
-                        {reminder.status === 'completed' ? '✓ Done' :
-                          reminder.status === 'dismissed' ? '✕ Dismissed' : '⏰ Pending'}
+                        {reminder.status === 'completed' ? '? Done' :
+                          reminder.status === 'dismissed' ? '? Dismissed' : '? Pending'}
                       </Text>
                     </View>
 
@@ -910,7 +910,7 @@ const AdminMyReminders = ({ navigation }) => {
                         <Icon name="person" size={14} color="#6b7280" />
                         <Text style={styles.clientInfoText}>
                           {reminder.clientName}
-                          {reminder.phone && ` • ${reminder.phone}`}
+                          {reminder.phone && ` � ${reminder.phone}`}
                         </Text>
                       </View>
                     )}
@@ -935,7 +935,7 @@ const AdminMyReminders = ({ navigation }) => {
                     <View style={styles.reminderMeta}>
                       <Text style={styles.reminderMetaText}>
                         {reminder.assignmentType && `Type: ${reminder.assignmentType}`}
-                        {reminder.assignmentType && reminder.createdAt && ' • '}
+                        {reminder.assignmentType && reminder.createdAt && ' � '}
                         {reminder.createdAt && `Created: ${new Date(reminder.createdAt).toLocaleDateString('en-IN')}`}
                       </Text>
                       {reminder.createdBy && (
@@ -1037,7 +1037,7 @@ const AdminMyReminders = ({ navigation }) => {
                       )}
                       <Text style={styles.modalReminderTime}>
                         {date} at {time}
-                        {reminder.clientName && ` • ${reminder.clientName}`}
+                        {reminder.clientName && ` � ${reminder.clientName}`}
                       </Text>
                     </View>
                   );

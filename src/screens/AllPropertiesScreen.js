@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
     View,
     Text,
@@ -118,11 +118,11 @@ const AllPropertiesScreen = ({ navigation, route }) => {
 
     // Predefined price ranges for quick selection
     const priceRanges = [
-        { label: 'Under ₹10L', min: '0', max: '1000000' },
-        { label: '₹10L - ₹25L', min: '1000000', max: '2500000' },
-        { label: '₹25L - ₹50L', min: '2500000', max: '5000000' },
-        { label: '₹50L - ₹1Cr', min: '5000000', max: '10000000' },
-        { label: 'Above ₹1Cr', min: '10000000', max: '' },
+        { label: 'Under ?10L', min: '0', max: '1000000' },
+        { label: '?10L - ?25L', min: '1000000', max: '2500000' },
+        { label: '?25L - ?50L', min: '2500000', max: '5000000' },
+        { label: '?50L - ?1Cr', min: '5000000', max: '10000000' },
+        { label: 'Above ?1Cr', min: '10000000', max: '' },
     ];
 
     // Apply filters to properties
@@ -182,7 +182,7 @@ const AllPropertiesScreen = ({ navigation, route }) => {
     const loadFavorites = useCallback(async () => {
         try {
             setFavorites([]);
-            console.log('⚠️ Favorites API removed - no data loaded');
+            console.log('?? Favorites API removed - no data loaded');
         } catch (e) {
             console.warn('Failed to load favorites:', e);
         }
@@ -198,15 +198,15 @@ const AllPropertiesScreen = ({ navigation, route }) => {
 
             // Load properties based on category
             if (category === 'Featured') {
-                console.log('📌 Loading Featured Properties...');
+                console.log('?? Loading Featured Properties...');
                 const response = await getRecentFeaturedProperties(15);
                 propertyData = response || [];
             } else if (category === 'All') {
-                console.log('📋 Loading All Properties...');
+                console.log('?? Loading All Properties...');
                 const response = await getRecentFeaturedProperties(50);
                 propertyData = response || [];
             } else if (category === 'Residential') {
-                console.log('🏠 Loading Residential Properties...');
+                console.log('?? Loading Residential Properties...');
                 const response = await getRecentFeaturedProperties(50);
                 propertyData = (response || []).filter(item => 
                     item.propertyType?.toLowerCase().includes('residential') ||
@@ -215,7 +215,7 @@ const AllPropertiesScreen = ({ navigation, route }) => {
                     item.propertyType?.toLowerCase().includes('villa')
                 );
             } else if (category === 'Commercial') {
-                console.log('🏢 Loading Commercial Properties...');
+                console.log('?? Loading Commercial Properties...');
                 const response = await getRecentFeaturedProperties(50);
                 propertyData = (response || []).filter(item => 
                     item.propertyType?.toLowerCase().includes('commercial') ||
@@ -223,14 +223,14 @@ const AllPropertiesScreen = ({ navigation, route }) => {
                     item.propertyType?.toLowerCase().includes('shop')
                 );
             } else if (category === 'Rent') {
-                console.log('🔑 Loading Rental Properties...');
+                console.log('?? Loading Rental Properties...');
                 const response = await getRecentFeaturedProperties(50);
                 propertyData = (response || []).filter(item => 
                     item.purpose?.toLowerCase().includes('rent') ||
                     item.purpose?.toLowerCase().includes('lease')
                 );
             } else {
-                console.log('⚠️ Unknown category:', category);
+                console.log('?? Unknown category:', category);
                 propertyData = [];
             }
 
@@ -317,7 +317,7 @@ const AllPropertiesScreen = ({ navigation, route }) => {
 
         try {
             // API calls removed - favorites functionality disabled
-            console.log('🚫 Favorite toggle API removed');
+            console.log('?? Favorite toggle API removed');
         } catch (error) {
             // Revert on error
             setFavorites(prev =>
@@ -365,11 +365,11 @@ const AllPropertiesScreen = ({ navigation, route }) => {
         // Handle uploads path
         if (imageData.startsWith('uploads/') || imageData.startsWith('/uploads/')) {
             if (isPostedByAdmin) {
-                const baseUrl = 'https://gharplotbackend.gntechnology.de';
+                const baseUrl = 'https://ghar-plot-backend1.onrender.com';
                 const cleanPath = imageData.replace(/^\/+/, '');
                 return `${baseUrl}/${cleanPath}`;
             } else {
-                const baseUrl = 'https://gharplotbackend.gntechnology.de';
+                const baseUrl = 'https://ghar-plot-backend1.onrender.com';
                 const cleanPath = imageData.replace(/^\/+/, '');
                 return `${baseUrl}/${cleanPath}`;
             }
@@ -699,7 +699,7 @@ const AllPropertiesScreen = ({ navigation, route }) => {
 
                             {/* Price Range Filter */}
                             <View style={styles.filterSection}>
-                                <Text style={styles.filterLabel}>Price Range (₹)</Text>
+                                <Text style={styles.filterLabel}>Price Range (?)</Text>
 
                                 {/* Quick Price Range Selection */}
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterOptions}>
