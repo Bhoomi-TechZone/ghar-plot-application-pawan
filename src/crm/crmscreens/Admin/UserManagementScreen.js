@@ -174,8 +174,9 @@ const UserManagementScreen = ({ navigation }) => {
       }
 
       // Normalize user data to ensure proper field names
-      const normalizedUsers = users.map(user => ({
-        id: user.id || user._id || user.user_id,
+      const normalizedUsers = users.map((user, idx) => ({
+        ...user, // Spread original first so explicit fields below always win
+        id: user.id || user._id || user.user_id || `user_${currentPage}_${idx}`,
         name: user.name || user.fullName || user.full_name ||
           `${user.firstName || user.first_name || ''} ${user.lastName || user.last_name || ''}`.trim() ||
           user.username || 'Unknown User',
@@ -185,7 +186,6 @@ const UserManagementScreen = ({ navigation }) => {
         status: user.status || user.accountStatus || user.isActive === false ? 'inactive' : 'active',
         createdAt: user.createdAt || user.created_at || user.signupDate || user.joinedDate,
         lastSeenAt: user.lastSeenAt || user.last_seen || user.lastLogin || user.updatedAt,
-        ...user // Keep all original fields as well
       }));
 
       console.log('✅ Normalized users:', normalizedUsers.length);
@@ -197,8 +197,17 @@ const UserManagementScreen = ({ navigation }) => {
         setUsers(normalizedUsers);
         setAllUsers(normalizedUsers);
       } else {
-        setUsers(prev => [...prev, ...normalizedUsers]);
-        setAllUsers(prev => [...prev, ...normalizedUsers]);
+        // Deduplicate: only add users whose id is not already in the list
+        setUsers(prev => {
+          const existingIds = new Set(prev.map(u => u.id));
+          const newUsers = normalizedUsers.filter(u => !existingIds.has(u.id));
+          return [...prev, ...newUsers];
+        });
+        setAllUsers(prev => {
+          const existingIds = new Set(prev.map(u => u.id));
+          const newUsers = normalizedUsers.filter(u => !existingIds.has(u.id));
+          return [...prev, ...newUsers];
+        });
       }
 
       setTotalPages(response.totalPages || response.total_pages || Math.ceil((response.totalUsers || response.total || normalizedUsers.length) / 10) || 1);
@@ -785,7 +794,7 @@ const UserManagementScreen = ({ navigation }) => {
       ) : (
         <FlatList
           data={isSearching ? [] : (searchQuery ? searchResults : users)}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => item.id ? String(item.id) : `user_fallback_${index}`}
           renderItem={renderUser}
           contentContainerStyle={styles.listContainer}
           refreshControl={
@@ -818,6 +827,18 @@ const UserManagementScreen = ({ navigation }) => {
             }
           }}
           onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loading && currentPage > 1 ? (
+              <View style={styles.loadMoreContainer}>
+                <ActivityIndicator size="small" color="#2563EB" />
+                <Text style={styles.loadMoreText}>Loading more users...</Text>
+              </View>
+            ) : !loading && currentPage < totalPages ? (
+              <View style={styles.loadMoreContainer}>
+                <Text style={styles.loadMoreHint}>Scroll down for more</Text>
+              </View>
+            ) : null
+          }
         />
       )}
 
@@ -1521,5 +1542,24 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#94A3B8',
     marginTop: 2,
+  },
+  loadMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    color: '#2563EB',
+    fontWeight: '500',
+    marginLeft: 10,
+  },
+  loadMoreHint: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '400',
   },
 });

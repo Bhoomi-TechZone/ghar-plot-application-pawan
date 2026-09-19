@@ -6,12 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   StatusBar,
   Alert,
   Dimensions,
   Platform,
+  BackHandler,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -21,6 +22,9 @@ import * as adminSitesApi from '../../services/adminSitesApi';
 const { width } = Dimensions.get('window');
 
 const SitesManagementScreen = ({ route, navigation }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
+
   const { viewType: initialViewType } = route.params || { viewType: 'all_projects' };
   const [currentView, setCurrentView] = useState(initialViewType);
 
@@ -29,6 +33,47 @@ const SitesManagementScreen = ({ route, navigation }) => {
       setCurrentView(route.params.viewType);
     }
   }, [route.params?.viewType]);
+
+  // Handle back navigation for sub-views or stack pop
+  const handleBack = () => {
+    switch (currentView) {
+      case 'add_project':
+      case 'edit_project':
+        setCurrentView('all_projects');
+        break;
+      case 'add_cash_flow':
+      case 'edit_cash_flow':
+        setCurrentView('cash_flow');
+        break;
+      case 'add_expenses':
+        setCurrentView('all_expenses');
+        break;
+      case 'add_work_status':
+        setCurrentView('work_status');
+        break;
+      case 'add_client_payment':
+      case 'edit_client_payment':
+        setCurrentView('client_payments');
+        break;
+      default:
+        navigation.goBack();
+        break;
+    }
+  };
+
+  // Hardware back press handler on Android
+  useEffect(() => {
+    const onBackPress = () => {
+      if (['add_project', 'edit_project', 'add_cash_flow', 'edit_cash_flow', 'add_expenses', 'add_work_status', 'add_client_payment', 'edit_client_payment'].includes(currentView)) {
+        handleBack();
+        return true;
+      }
+      return false;
+    };
+
+    const backSub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => backSub.remove();
+  }, [currentView]);
 
   // --- API Data States ---
   const [apiClients, setApiClients] = useState([]);
@@ -1668,13 +1713,18 @@ const SitesManagementScreen = ({ route, navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#009688" />
+    <View style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#009688" translucent={true} />
 
-      {/* Modern Teal Header */}
-      <View style={styles.headerWrapper}>
+      {/* Modern Teal Header with Safe Area Insets */}
+      <View style={[styles.headerWrapper, { paddingTop: statusBarTop + 10 }]}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.iconButton}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+          >
             <Icon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
 
@@ -1682,7 +1732,12 @@ const SitesManagementScreen = ({ route, navigation }) => {
             <Text style={styles.headerTitle} numberOfLines={1}>{config.title}</Text>
           </View>
 
-          <TouchableOpacity onPress={() => navigation.navigate('AdminMainTabs', { screen: 'Dashboard' })} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AdminMainTabs', { screen: 'Dashboard' })}
+            style={styles.iconButton}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+          >
             <Icon name="home" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -1698,7 +1753,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 40 }}
       >
         {renderContent()}
       </ScrollView>
@@ -1710,7 +1765,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
           onChange={handleDateChange}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -1722,7 +1777,7 @@ const styles = StyleSheet.create({
   headerWrapper: {
     backgroundColor: '#009688',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingBottom: 14,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
