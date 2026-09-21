@@ -2,7 +2,7 @@
   "expo": {
     "name": "Gharplot",
     "slug": "gharplot",
-    "version": "1.0.8",
+    "version": "1.0.10",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "13",
+      "buildNumber": "15",
       "bundleIdentifier": "com.bhoomitechzone.gharplot"
     },
     "android": {

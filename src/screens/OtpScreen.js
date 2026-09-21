@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from "react-native-linear-gradient";
 import Icon from "react-native-vector-icons/Ionicons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getStoredFCMToken } from "../utils/fcmService";
+import { getFCMToken } from "../utils/fcmService";
 import { sendFCMTokenToBackend } from "../services/api";
 import authApi from "../services/authApi";
 import { storeUserCredentials } from '../utils/authManager';
@@ -139,7 +139,7 @@ const OtpScreen = ({ route, navigation }) => {
 
         // Send FCM token to backend after successful OTP verification
         try {
-          const fcmToken = await getStoredFCMToken();
+          const fcmToken = await getFCMToken();
 
           if (fcmToken && userIdToStore) {
             await sendFCMTokenToBackend(userIdToStore, fcmToken);

@@ -16,12 +16,13 @@ import {
   Share,
   ActivityIndicator,
   RefreshControl,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Picker } from '@react-native-picker/picker';
+import Picker from '../../components/Common/AppDropdownPicker';
 import * as adminSitesApi from '../../services/adminSitesApi';
 
 const { width } = Dimensions.get('window');
@@ -427,16 +428,35 @@ const SitesManagementScreen = ({ route, navigation }) => {
     targetField: null,
     currentValue: new Date()
   });
+  const [iosTempDate, setIosTempDate] = useState(new Date());
 
   const openDatePicker = (targetField, currentValueString) => {
     let parsedDate = new Date();
-    if (currentValueString) {
-      const parts = currentValueString.split(/[-/]/);
-      if (parts.length === 3) {
-        parsedDate = new Date(`${parts[2]}-${parts[0]}-${parts[1]}`);
+    if (currentValueString && typeof currentValueString === 'string') {
+      const trimmed = currentValueString.trim();
+      const direct = new Date(trimmed);
+      if (!isNaN(direct.getTime()) && trimmed.includes('-') && trimmed.length >= 10 && trimmed.indexOf('-') === 4) {
+        parsedDate = direct;
+      } else {
+        const parts = trimmed.split(/[-/]/);
+        if (parts.length === 3) {
+          if (parts[2].length === 4) {
+            const p0 = parseInt(parts[0], 10);
+            const p1 = parseInt(parts[1], 10);
+            const p2 = parseInt(parts[2], 10);
+            if (p0 > 12) {
+              parsedDate = new Date(p2, p1 - 1, p0);
+            } else {
+              parsedDate = new Date(p2, p0 - 1, p1);
+            }
+          } else if (parts[0].length === 4) {
+            parsedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+          }
+        }
       }
       if (isNaN(parsedDate.getTime())) parsedDate = new Date();
     }
+    setIosTempDate(parsedDate);
     setDatePickerConfig({
       show: true,
       targetField,
@@ -448,7 +468,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
     if (Platform.OS === 'android') {
       setDatePickerConfig(prev => ({ ...prev, show: false }));
     }
-    if (!selectedDate) {
+    if (!selectedDate || (event && event.type === 'dismissed')) {
       if (Platform.OS === 'ios') setDatePickerConfig(prev => ({ ...prev, show: false }));
       return;
     }
@@ -3486,13 +3506,74 @@ const SitesManagementScreen = ({ route, navigation }) => {
       >
         {renderContent()}
       </ScrollView>
-      {datePickerConfig.show && (
+      {/* Android Native Date Picker */}
+      {Platform.OS === 'android' && datePickerConfig.show && (
         <DateTimePicker
           value={datePickerConfig.currentValue}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           onChange={handleDateChange}
         />
+      )}
+
+      {/* iOS Bottom Sheet Date Picker Modal */}
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={datePickerConfig.show}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setDatePickerConfig(prev => ({ ...prev, show: false }))}
+        >
+          <TouchableWithoutFeedback onPress={() => setDatePickerConfig(prev => ({ ...prev, show: false }))}>
+            <View style={styles.iosDatePickerOverlay}>
+              <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                <View style={[styles.iosDatePickerSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+                  {/* Drag Handle Indicator */}
+                  <View style={styles.sheetHandle} />
+
+                  {/* Header with Cancel and Done Buttons */}
+                  <View style={styles.iosDatePickerHeader}>
+                    <TouchableOpacity
+                      onPress={() => setDatePickerConfig(prev => ({ ...prev, show: false }))}
+                      style={styles.iosDatePickerCancelBtn}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={styles.iosDatePickerCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+
+                    <Text style={styles.iosDatePickerTitle}>Select Date</Text>
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        handleDateChange(null, iosTempDate);
+                        setDatePickerConfig(prev => ({ ...prev, show: false }));
+                      }}
+                      style={styles.iosDatePickerDoneBtn}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={styles.iosDatePickerDoneText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* iOS Spinner Wheel */}
+                  <View style={styles.iosDatePickerBody}>
+                    <DateTimePicker
+                      value={iosTempDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={(event, date) => {
+                        if (date) setIosTempDate(date);
+                      }}
+                      textColor="#0f172a"
+                      themeVariant="light"
+                      style={{ height: 216, width: '100%' }}
+                    />
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       )}
 
       {/* Date Expenses Breakdown & Export Modal */}
@@ -4496,6 +4577,67 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '700',
+  },
+  /* iOS DatePicker Modal Styles */
+  iosDatePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    justifyContent: 'flex-end',
+  },
+  iosDatePickerSheet: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 20,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#cbd5e1',
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  iosDatePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  iosDatePickerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  iosDatePickerCancelBtn: {
+    padding: 6,
+  },
+  iosDatePickerCancelText: {
+    fontSize: 15,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  iosDatePickerDoneBtn: {
+    padding: 6,
+  },
+  iosDatePickerDoneText: {
+    fontSize: 15,
+    color: '#009688',
+    fontWeight: '700',
+  },
+  iosDatePickerBody: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: '#ffffff',
   },
 });
 

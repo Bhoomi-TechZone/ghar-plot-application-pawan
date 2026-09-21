@@ -50,6 +50,19 @@ export const getFCMToken = async () => {
       return null;
     }
 
+    // Ensure iOS device is registered with APNs for remote messages
+    if (Platform.OS === 'ios') {
+      try {
+        if (!messaging().isDeviceRegisteredForRemoteMessages) {
+          console.log('📱 Registering iOS device for remote notifications with APNs...');
+          await messaging().registerDeviceForRemoteMessages();
+          console.log('✅ iOS device registered for remote messages');
+        }
+      } catch (apnsErr) {
+        console.warn('⚠️ registerDeviceForRemoteMessages warning:', apnsErr?.message || apnsErr);
+      }
+    }
+
     // Get FCM token
     const token = await messaging().getToken();
 
@@ -108,6 +121,13 @@ export const forceRefreshFCMToken = async () => {
     console.log('🗑️ Stored token cleared');
 
     // Get fresh token
+    if (Platform.OS === 'ios') {
+      try {
+        if (!messaging().isDeviceRegisteredForRemoteMessages) {
+          await messaging().registerDeviceForRemoteMessages();
+        }
+      } catch (e) {}
+    }
     const newToken = await messaging().getToken();
 
     if (newToken) {
@@ -848,6 +868,13 @@ export const checkFCMConfiguration = async () => {
     // Try to get token with retry logic
     let token = null;
     try {
+      if (Platform.OS === 'ios') {
+        try {
+          if (!messaging().isDeviceRegisteredForRemoteMessages) {
+            await messaging().registerDeviceForRemoteMessages();
+          }
+        } catch (e) {}
+      }
       console.log('🎫 Attempting to get FCM token...');
       token = await messaging().getToken();
 

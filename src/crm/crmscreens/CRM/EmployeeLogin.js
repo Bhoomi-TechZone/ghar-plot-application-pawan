@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/Ionicons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getFCMToken } from '../../../utils/fcmService';
+import { getFCMToken, sendTokenToBackend } from '../../../utils/fcmService';
 import { usePermissions } from '../../../context/PermissionContext';
 import { resetAdminNotificationState } from '../../../services/AdminNotificationPollingService';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
@@ -110,11 +110,22 @@ const EmployeeLogin = () => {
           console.log('📋 Employee permissions stored:', data.data.employee.role.permissions);
         }
 
-        // Store FCM token locally
+        // Store FCM token locally and explicitly sync to backend
         if (fcmToken) {
           await AsyncStorage.setItem('fcmToken', fcmToken);
           await AsyncStorage.setItem('fcmTokenRegistered', 'true');
-          console.log('✅ FCM token sent with login and stored locally');
+          console.log('✅ FCM token stored locally');
+
+          // Explicitly sync to Employee model via dedicated endpoint
+          const employeeId = data.data.employee?._id || data.data.employee?.id;
+          if (employeeId) {
+            try {
+              await sendTokenToBackend(employeeId, fcmToken);
+              console.log('✅ FCM token explicitly synced to Employee model after login');
+            } catch (syncErr) {
+              console.warn('⚠️ Post-login FCM sync failed (non-critical):', syncErr.message);
+            }
+          }
         }
 
         console.log('✅ Employee login successful:', {

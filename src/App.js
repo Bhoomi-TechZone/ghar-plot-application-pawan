@@ -58,12 +58,17 @@ const App = () => {
 
             // Send updated token to backend
             try {
+              const { sendTokenToBackend } = await import('./utils/fcmService');
               const userId = await AsyncStorage.getItem('userId');
+              const adminId = await AsyncStorage.getItem('adminId');
+              const effectiveId = userId || adminId;
 
-              if (userId && newToken) {
-                // You can add your backend token update API call here
-                console.log('📤 Should send updated FCM token to backend for user:', userId);
-                // await sendTokenToBackend(userId, newToken);
+              if (effectiveId && newToken) {
+                console.log('📤 Sending refreshed FCM token to backend for user:', effectiveId);
+                await sendTokenToBackend(effectiveId, newToken);
+                console.log('✅ Refreshed FCM token sent to backend');
+              } else {
+                console.log('ℹ️ No userId/adminId found - skipping token refresh sync');
               }
             } catch (syncError) {
               console.warn('⚠️ Token sync failed (non-critical):', syncError.message);

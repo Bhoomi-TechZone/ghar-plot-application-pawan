@@ -72,7 +72,7 @@ class AuthService {
         
         // 🔥 Sync FCM token to Employee model for notifications
         try {
-          const { getFCMToken, sendTokenToBackend } = require('../../../utils/fcmService');
+          const { getFCMToken, sendTokenToBackend } = require('../../utils/fcmService');
           const fcmToken = await getFCMToken();
           if (fcmToken) {
             await sendTokenToBackend(user._id, fcmToken);

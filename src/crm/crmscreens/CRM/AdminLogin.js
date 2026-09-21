@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -179,12 +179,24 @@ const AdminLogin = () => {
           console.warn('⚠️ Could not reset notification state:', err);
         }
 
-        // FCM token is already sent with login request above
-        // Store FCM token locally for reference
+        // FCM token was sent with login request above, but also explicitly save
+        // via /api/save-admin-token to guarantee it's stored in Admin model
         if (fcmToken) {
           await AsyncStorage.setItem('fcmToken', fcmToken);
           await AsyncStorage.setItem('fcmTokenRegistered', 'true');
-          console.log('✅ FCM token sent with login and stored locally');
+          console.log('✅ FCM token stored locally');
+
+          // Explicitly sync to Admin model via dedicated endpoint
+          const adminId = user?.id || user?._id;
+          if (adminId) {
+            try {
+              const { sendTokenToBackend } = require('../../../utils/fcmService');
+              await sendTokenToBackend(adminId, fcmToken);
+              console.log('✅ FCM token explicitly synced to Admin model after login');
+            } catch (syncErr) {
+              console.warn('⚠️ Post-login FCM sync failed (non-critical):', syncErr.message);
+            }
+          }
         }
 
         setLoading(false);
