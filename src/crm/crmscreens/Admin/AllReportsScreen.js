@@ -21,7 +21,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const BASE_URL = 'https://gharplotbackend.gntechnology.de';
 const { width } = Dimensions.get('window');
 
 // -- Date Picker helpers (no library needed) ----------------------------------
@@ -151,7 +151,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
 
     // -- Render single reminder card (Minimal) ---------------------------------
     const renderItem = ({ item }) => {
-        const employeeName = item.employeeId?.name || '—';
+        const employeeName = item.employeeId?.name || 'ï¿½';
         const status = item.status || 'pending';
         const clientName = item.clientName || item.manualInquiryId?.clientName || 'Unknown Client';
         const phone = item.phone || item.manualInquiryId?.contactNumber || '';
@@ -169,14 +169,14 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
                 </View>
 
                 <View style={styles.cardDetailRow}>
-                    <Text style={styles.cardClientTxt}>{clientName}{phone ? ` • ${phone}` : ''}</Text>
+                    <Text style={styles.cardClientTxt}>{clientName}{phone ? ` ï¿½ ${phone}` : ''}</Text>
                 </View>
 
                 <View style={styles.cardFooterRow}>
                     <Text style={styles.cardSubTxt}>?? {employeeName}</Text>
                     {reminderTime ? (
                         <Text style={styles.cardSubTxt}>
-                            {pad(reminderTime.getDate())} {MONTHS[reminderTime.getMonth()]} • {pad(reminderTime.getHours())}:{pad(reminderTime.getMinutes())}
+                            {pad(reminderTime.getDate())} {MONTHS[reminderTime.getMonth()]} ï¿½ {pad(reminderTime.getHours())}:{pad(reminderTime.getMinutes())}
                         </Text>
                     ) : (<Text style={styles.cardSubTxt}>No time</Text>)}
                 </View>
@@ -252,7 +252,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
         <View style={styles.container}>
             <StatusBar backgroundColor="#0f2545" barStyle="light-content" />
 
-            {/* Header — hidden when embedded in AllReportsHome */}
+            {/* Header ï¿½ hidden when embedded in AllReportsHome */}
             {!hideHeader && (
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>?? Reminder Report</Text>

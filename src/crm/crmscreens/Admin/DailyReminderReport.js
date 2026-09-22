@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const BASE_URL = 'https://gharplotbackend.gntechnology.de';
 const { width } = Dimensions.get('window');
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -21,7 +21,7 @@ const pad = n => String(n).padStart(2, '0');
 const toISO = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const fmtDate = d => `${DAYS[d.getDay()]}, ${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 const fmtTime = iso => {
-    if (!iso) return '—';
+    if (!iso) return 'ï¿½';
     const d = new Date(iso);
     let h = d.getHours(), m = pad(d.getMinutes());
     const ampm = h >= 12 ? 'PM' : 'AM';
@@ -44,7 +44,7 @@ const EmpRow = ({ emp, expanded, onToggle }) => (
             <View style={{ flex: 1 }}>
                 <Text style={styles.empName}>{emp.employeeName}</Text>
                 <Text style={styles.empDept}>
-                    {emp.due} Due  •  {emp.completed} Done  •  {emp.pending} Pending
+                    {emp.due} Due  ï¿½  {emp.completed} Done  ï¿½  {emp.pending} Pending
                 </Text>
             </View>
             <Text style={styles.chevron}>{expanded ? '?' : '?'}</Text>
@@ -57,7 +57,7 @@ const EmpRow = ({ emp, expanded, onToggle }) => (
                         <Text style={styles.timeTxt}>{fmtTime(r.reminderDateTime)}</Text>
                         <View style={styles.remContent}>
                             <View style={styles.remTitleRow}>
-                                <Text style={styles.remTitle} numberOfLines={1}>{r.title || '—'}</Text>
+                                <Text style={styles.remTitle} numberOfLines={1}>{r.title || 'ï¿½'}</Text>
                                 <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[r.status] }]} />
                             </View>
                             {r.clientName ? <Text style={styles.remClient}>{r.clientName}</Text> : null}
@@ -134,23 +134,23 @@ const DailyReminderReport = ({ hideHeader = false }) => {
         <View style={styles.container}>
             <StatusBar backgroundColor="#0f2545" barStyle="light-content" />
 
-            {/* Header — hide when parent provides it */}
+            {/* Header ï¿½ hide when parent provides it */}
             {!hideHeader && (
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>?? Daily Reminder Report</Text>
-                    <Text style={styles.headerSub}>Placements • Due • Handled</Text>
+                    <Text style={styles.headerSub}>Placements ï¿½ Due ï¿½ Handled</Text>
                 </View>
             )}
 
             {/* Date Navigator */}
             <View style={styles.dateNav}>
                 <TouchableOpacity style={styles.navArrow} onPress={() => shiftDate(-1)}>
-                    <Text style={styles.navArrowTxt}>‹</Text>
+                    <Text style={styles.navArrowTxt}>ï¿½</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.dateSelector} onPress={() => { setPickerDate(selectedDate); setShowPicker(true); }}>
                     <Text style={styles.dateSelectorTxt}>
-                        {fmtDate(selectedDate)} {isToday ? '  •  Today' : ''}
+                        {fmtDate(selectedDate)} {isToday ? '  ï¿½  Today' : ''}
                     </Text>
                 </TouchableOpacity>
 
@@ -159,7 +159,7 @@ const DailyReminderReport = ({ hideHeader = false }) => {
                     onPress={() => !isToday && shiftDate(1)}
                     disabled={isToday}
                 >
-                    <Text style={[styles.navArrowTxt, isToday && { color: '#cbd5e1' }]}>›</Text>
+                    <Text style={[styles.navArrowTxt, isToday && { color: '#cbd5e1' }]}>ï¿½</Text>
                 </TouchableOpacity>
             </View>
 
@@ -229,7 +229,7 @@ const DailyReminderReport = ({ hideHeader = false }) => {
                     {/* -- Due reminders by Employee -- */}
                     {data.dueByEmployee?.length > 0 ? (
                         <>
-                            <Text style={styles.sectionTitle}>Due Reminders — Employee Wise</Text>
+                            <Text style={styles.sectionTitle}>Due Reminders ï¿½ Employee Wise</Text>
 
                             {data.dueByEmployee.map(emp => (
                                 <EmpRow

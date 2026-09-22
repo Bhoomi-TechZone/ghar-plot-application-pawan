@@ -19,7 +19,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const AdminMyReminders = ({ navigation }) => {
   // Main Data States
@@ -320,7 +320,7 @@ const AdminMyReminders = ({ navigation }) => {
             return;
           }
         }
-      } catch (e) {}
+      } catch (e) { }
 
       setDueReminders([]);
     }
@@ -849,7 +849,7 @@ const AdminMyReminders = ({ navigation }) => {
                 <View>
                   <Text style={styles.dueEmployeeName}>{item.employee?.name}</Text>
                   <Text style={styles.dueEmployeeInfo}>
-                    {item.employee?.email} • {item.employee?.department}
+                    {item.employee?.email} ï¿½ {item.employee?.department}
                   </Text>
                 </View>
                 <View style={styles.dueCountBadge}>
@@ -910,7 +910,7 @@ const AdminMyReminders = ({ navigation }) => {
                         <Icon name="person" size={14} color="#6b7280" />
                         <Text style={styles.clientInfoText}>
                           {reminder.clientName}
-                          {reminder.phone && ` • ${reminder.phone}`}
+                          {reminder.phone && ` ï¿½ ${reminder.phone}`}
                         </Text>
                       </View>
                     )}
@@ -935,7 +935,7 @@ const AdminMyReminders = ({ navigation }) => {
                     <View style={styles.reminderMeta}>
                       <Text style={styles.reminderMetaText}>
                         {reminder.assignmentType && `Type: ${reminder.assignmentType}`}
-                        {reminder.assignmentType && reminder.createdAt && ' • '}
+                        {reminder.assignmentType && reminder.createdAt && ' ï¿½ '}
                         {reminder.createdAt && `Created: ${new Date(reminder.createdAt).toLocaleDateString('en-IN')}`}
                       </Text>
                       {reminder.createdBy && (
@@ -1037,7 +1037,7 @@ const AdminMyReminders = ({ navigation }) => {
                       )}
                       <Text style={styles.modalReminderTime}>
                         {date} at {time}
-                        {reminder.clientName && ` • ${reminder.clientName}`}
+                        {reminder.clientName && ` ï¿½ ${reminder.clientName}`}
                       </Text>
                     </View>
                   );

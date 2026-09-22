@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 // Get authentication token
 const getAuthToken = async () => {

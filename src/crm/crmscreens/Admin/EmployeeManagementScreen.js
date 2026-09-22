@@ -645,7 +645,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
       }
 
       const response = await fetch(
-        `https://ghar-plot-backend1.onrender.com/api/reminder/employee/${employeeId}`,
+        `https://gharplotbackend.gntechnology.de/api/reminder/employee/${employeeId}`,
         {
           method: 'GET',
           headers: {
@@ -709,7 +709,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
         }
 
         const response = await fetch(
-          `https://ghar-plot-backend1.onrender.com/api/reminder/employee/${selectedEmployee._id || selectedEmployee.id}`,
+          `https://gharplotbackend.gntechnology.de/api/reminder/employee/${selectedEmployee._id || selectedEmployee.id}`,
           {
             method: 'GET',
             headers: {
@@ -760,7 +760,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
 
               // Call backend to schedule FCM notification at reminder time
               const scheduleResponse = await fetch(
-                'https://ghar-plot-backend1.onrender.com/api/reminder/schedule-notification',
+                'https://gharplotbackend.gntechnology.de/api/reminder/schedule-notification',
                 {
                   method: 'POST',
                   headers: {
@@ -1393,108 +1393,108 @@ const EmployeeManagementScreen = ({ navigation }) => {
     </Modal>
   );
 
- return (
-  <View style={styles.container}>
-    <StatusBar
-      barStyle="light-content"
-      backgroundColor="#1e293b"
-      translucent={false}
-    />
+  return (
+    <View style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#1e293b"
+        translucent={false}
+      />
 
-    <View style={[styles.header, { paddingTop: statusBarTop + 14 }]}>
-      <Text style={styles.headerTitle}>Employee Management</Text>
+      <View style={[styles.header, { paddingTop: statusBarTop + 14 }]}>
+        <Text style={styles.headerTitle}>Employee Management</Text>
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={openCreateEmployee}
-      >
-        <Icon name="add" size={24} color="#ffffff" />
-      </TouchableOpacity>
-    </View>
-
-    <View style={styles.content}>
-      <View style={styles.searchContainer}>
-        <Icon
-          name="search"
-          size={20}
-          color="#6b7280"
-          style={styles.searchIcon}
-        />
-
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search employees..."
-          value={searchText}
-          onChangeText={setSearchText}
-          placeholderTextColor="#9ca3af"
-        />
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={openCreateEmployee}
+        >
+          <Icon name="add" size={24} color="#ffffff" />
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{employees.length}</Text>
-          <Text style={styles.statLabel}>Total</Text>
+      <View style={styles.content}>
+        <View style={styles.searchContainer}>
+          <Icon
+            name="search"
+            size={20}
+            color="#6b7280"
+            style={styles.searchIcon}
+          />
+
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search employees..."
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholderTextColor="#9ca3af"
+          />
         </View>
 
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: '#10b981' }]}>
-            {employees.filter(emp => emp.isActive).length}
-          </Text>
-          <Text style={styles.statLabel}>Active</Text>
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{employees.length}</Text>
+            <Text style={styles.statLabel}>Total</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Text style={[styles.statNumber, { color: '#10b981' }]}>
+              {employees.filter(emp => emp.isActive).length}
+            </Text>
+            <Text style={styles.statLabel}>Active</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Text style={[styles.statNumber, { color: '#ef4444' }]}>
+              {employees.filter(emp => !emp.isActive).length}
+            </Text>
+            <Text style={styles.statLabel}>Inactive</Text>
+          </View>
         </View>
 
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: '#ef4444' }]}>
-            {employees.filter(emp => !emp.isActive).length}
-          </Text>
-          <Text style={styles.statLabel}>Inactive</Text>
-        </View>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3b82f6" />
+            <Text style={styles.loadingText}>Loading employees...</Text>
+          </View>
+        ) : filteredEmployees.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Icon name="people" size={60} color="#9ca3af" />
+
+            <Text style={styles.emptyText}>
+              {searchText ? 'No employees found' : 'No employees found'}
+            </Text>
+
+            <Text style={styles.emptySubText}>
+              {searchText
+                ? 'Try adjusting your search criteria'
+                : 'Create your first employee!'}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredEmployees}
+            renderItem={renderEmployeeItem}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#3b82f6']}
+                tintColor="#3b82f6"
+              />
+            }
+          />
+        )}
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Loading employees...</Text>
-        </View>
-      ) : filteredEmployees.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Icon name="people" size={60} color="#9ca3af" />
-
-          <Text style={styles.emptyText}>
-            {searchText ? 'No employees found' : 'No employees found'}
-          </Text>
-
-          <Text style={styles.emptySubText}>
-            {searchText
-              ? 'Try adjusting your search criteria'
-              : 'Create your first employee!'}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredEmployees}
-          renderItem={renderEmployeeItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#3b82f6']}
-              tintColor="#3b82f6"
-            />
-          }
-        />
-      )}
+      {renderAssignSubAdminModal()}
+      {renderPasswordModal()}
+      {renderUspModal()}
+      {renderRemindersModal()}
     </View>
-
-    {renderAssignSubAdminModal()}
-    {renderPasswordModal()}
-    {renderUspModal()}
-    {renderRemindersModal()}
-  </View>
-);
+  );
 };
 const styles = StyleSheet.create({
   container: {
@@ -1513,7 +1513,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
-},
+  },
   backButton: {
     width: 40,
     height: 40,

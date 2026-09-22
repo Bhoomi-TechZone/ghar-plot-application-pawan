@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const MyReminders = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -838,9 +838,9 @@ const MyReminders = ({ navigation }) => {
         </View>
 
         {/* Notification Test Button (Hidden but usable in dev) */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.testButton, { bottom: 20 + (insets.bottom > 0 ? insets.bottom + 60 : 70) }]}
-          onPress={() => {}}
+          onPress={() => { }}
         >
           <Text style={styles.testButtonText}>Test</Text>
         </TouchableOpacity>

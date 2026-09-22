@@ -27,7 +27,7 @@ import { updateReminder } from '../../../services/api';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const { width } = Dimensions.get('window');
-const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
   const {
@@ -50,7 +50,7 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [reminderStatus, setReminderStatus ] = useState('pending');
+  const [reminderStatus, setReminderStatus] = useState('pending');
   const [fetchedDetails, setFetchedDetails] = useState(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;

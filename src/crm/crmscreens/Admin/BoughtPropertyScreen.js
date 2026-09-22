@@ -53,7 +53,7 @@ const BoughtPropertyScreen = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Constants
-  const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+  const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
   // Authentication Helper
   const getAuthHeaders = async () => {
@@ -620,246 +620,246 @@ const BoughtPropertyScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-back" size={24} color="#000" />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>🏠 Bought Properties</Text>
-            <Text style={styles.headerSubtitle}>
-              Track all purchased properties with analytics
-            </Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Icon name="arrow-back" size={24} color="#000" />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.headerTitle}>🏠 Bought Properties</Text>
+              <Text style={styles.headerSubtitle}>
+                Track all purchased properties with analytics
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* Statistics Cards */}
-        {!loading && !error && (
-          <View style={styles.statsContainer}>
-            <View style={styles.statsRow}>
-              {renderStatCard({
-                title: 'Total Bought',
-                value: totalBought.toString(),
-                subtitle: 'Properties',
-                icon: 'people',
-                color: '#667eea'
-              })}
-              {renderStatCard({
-                title: 'Total Revenue',
-                value: formatCurrency(totalRevenue),
-                subtitle: 'Sales Value',
-                icon: 'currency-inr',
-                iconFamily: 'MaterialCommunityIcons',
-                color: '#48bb78'
-              })}
+        <ScrollView
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {/* Statistics Cards */}
+          {!loading && !error && (
+            <View style={styles.statsContainer}>
+              <View style={styles.statsRow}>
+                {renderStatCard({
+                  title: 'Total Bought',
+                  value: totalBought.toString(),
+                  subtitle: 'Properties',
+                  icon: 'people',
+                  color: '#667eea'
+                })}
+                {renderStatCard({
+                  title: 'Total Revenue',
+                  value: formatCurrency(totalRevenue),
+                  subtitle: 'Sales Value',
+                  icon: 'currency-inr',
+                  iconFamily: 'MaterialCommunityIcons',
+                  color: '#48bb78'
+                })}
+              </View>
+
+              <View style={styles.statsRow}>
+                {renderStatCard({
+                  title: 'Residential',
+                  value: residentialCount.toString(),
+                  subtitle: 'Properties',
+                  icon: 'home',
+                  color: '#4299e1'
+                })}
+                {renderStatCard({
+                  title: 'Commercial',
+                  value: commercialCount.toString(),
+                  subtitle: 'Properties',
+                  icon: 'business',
+                  color: '#ed8936'
+                })}
+              </View>
+
+              <View style={styles.statsRow}>
+                {renderStatCard({
+                  title: 'Sold',
+                  value: soldCount.toString(),
+                  subtitle: 'Properties Resold',
+                  icon: 'check-circle',
+                  color: '#9f7aea'
+                })}
+              </View>
             </View>
+          )}
 
-            <View style={styles.statsRow}>
-              {renderStatCard({
-                title: 'Residential',
-                value: residentialCount.toString(),
-                subtitle: 'Properties',
-                icon: 'home',
-                color: '#4299e1'
-              })}
-              {renderStatCard({
-                title: 'Commercial',
-                value: commercialCount.toString(),
-                subtitle: 'Properties',
-                icon: 'business',
-                color: '#ed8936'
-              })}
+          {/* Filters Section */}
+          {!loading && !error && (
+            <View style={styles.filtersContainer}>
+              {/* Search Bar */}
+              <View style={styles.searchContainer}>
+                <Icon name="search" size={20} color="#6b7280" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search by location, buyer name, or type..."
+                  value={searchTerm}
+                  onChangeText={setSearchTerm}
+                />
+                {searchTerm.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchTerm('')}>
+                    <Icon name="close" size={20} color="#6b7280" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Category Filter */}
+              <View style={styles.filterButtonsContainer}>
+                {['All', 'Residential', 'Commercial'].map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.filterButton,
+                      filterType === type && styles.filterButtonActive
+                    ]}
+                    onPress={() => setFilterType(type)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterButtonText,
+                        filterType === type && styles.filterButtonTextActive
+                      ]}
+                    >
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
+          )}
 
-            <View style={styles.statsRow}>
-              {renderStatCard({
-                title: 'Sold',
-                value: soldCount.toString(),
-                subtitle: 'Properties Resold',
-                icon: 'check-circle',
-                color: '#9f7aea'
-              })}
+          {/* Loading State */}
+          {loading && (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color="#667eea" />
+              <Text style={styles.loadingText}>Loading bought properties...</Text>
             </View>
-          </View>
-        )}
+          )}
 
-        {/* Filters Section */}
-        {!loading && !error && (
-          <View style={styles.filtersContainer}>
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-              <Icon name="search" size={20} color="#6b7280" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search by location, buyer name, or type..."
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-              />
-              {searchTerm.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchTerm('')}>
-                  <Icon name="close" size={20} color="#6b7280" />
+          {/* Error State */}
+          {error && !loading && (
+            <View style={styles.centerContainer}>
+              <Icon name="error-outline" size={64} color="#ef4444" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={fetchBoughtProperties}
+              >
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Properties Grid */}
+          {!loading && !error && currentProperties.length > 0 && (
+            <View style={styles.propertiesGrid}>
+              {currentProperties.map((item) => (
+                <View key={item._id} style={styles.propertyCardWrapper}>
+                  {renderPropertyCard({ item })}
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && filteredProperties.length === 0 && (
+            <View style={styles.centerContainer}>
+              <Icon name="home" size={64} color="#9ca3af" />
+              <Text style={styles.emptyTitle}>No Bought Properties Found</Text>
+              <Text style={styles.emptySubtitle}>
+                {searchTerm || filterType !== 'All'
+                  ? 'No properties match your current filters.'
+                  : 'No properties have been purchased yet.'}
+              </Text>
+              {(searchTerm || filterType !== 'All') && (
+                <TouchableOpacity
+                  style={styles.clearFiltersButton}
+                  onPress={() => {
+                    setSearchTerm('');
+                    setFilterType('All');
+                  }}
+                >
+                  <Text style={styles.clearFiltersText}>Clear Filters</Text>
                 </TouchableOpacity>
               )}
             </View>
+          )}
 
-            {/* Category Filter */}
-            <View style={styles.filterButtonsContainer}>
-              {['All', 'Residential', 'Commercial'].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.filterButton,
-                    filterType === type && styles.filterButtonActive
-                  ]}
-                  onPress={() => setFilterType(type)}
-                >
-                  <Text
-                    style={[
-                      styles.filterButtonText,
-                      filterType === type && styles.filterButtonTextActive
-                    ]}
-                  >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#667eea" />
-            <Text style={styles.loadingText}>Loading bought properties...</Text>
-          </View>
-        )}
-
-        {/* Error State */}
-        {error && !loading && (
-          <View style={styles.centerContainer}>
-            <Icon name="error-outline" size={64} color="#ef4444" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={fetchBoughtProperties}
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Properties Grid */}
-        {!loading && !error && currentProperties.length > 0 && (
-          <View style={styles.propertiesGrid}>
-            {currentProperties.map((item) => (
-              <View key={item._id} style={styles.propertyCardWrapper}>
-                {renderPropertyCard({ item })}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && filteredProperties.length === 0 && (
-          <View style={styles.centerContainer}>
-            <Icon name="home" size={64} color="#9ca3af" />
-            <Text style={styles.emptyTitle}>No Bought Properties Found</Text>
-            <Text style={styles.emptySubtitle}>
-              {searchTerm || filterType !== 'All'
-                ? 'No properties match your current filters.'
-                : 'No properties have been purchased yet.'}
-            </Text>
-            {(searchTerm || filterType !== 'All') && (
+          {/* Pagination */}
+          {!loading && !error && totalPages > 1 && (
+            <View style={styles.paginationContainer}>
               <TouchableOpacity
-                style={styles.clearFiltersButton}
-                onPress={() => {
-                  setSearchTerm('');
-                  setFilterType('All');
-                }}
+                style={[
+                  styles.paginationButton,
+                  currentPage === 1 && styles.paginationButtonDisabled
+                ]}
+                onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
               >
-                <Text style={styles.clearFiltersText}>Clear Filters</Text>
+                <Icon
+                  name="chevron-left"
+                  size={24}
+                  color={currentPage === 1 ? '#d1d5db' : '#667eea'}
+                />
+                <Text
+                  style={[
+                    styles.paginationButtonText,
+                    currentPage === 1 && styles.paginationButtonTextDisabled
+                  ]}
+                >
+                  Previous
+                </Text>
               </TouchableOpacity>
-            )}
-          </View>
-        )}
 
-        {/* Pagination */}
-        {!loading && !error && totalPages > 1 && (
-          <View style={styles.paginationContainer}>
-            <TouchableOpacity
-              style={[
-                styles.paginationButton,
-                currentPage === 1 && styles.paginationButtonDisabled
-              ]}
-              onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-            >
-              <Icon
-                name="chevron-left"
-                size={24}
-                color={currentPage === 1 ? '#d1d5db' : '#667eea'}
-              />
-              <Text
-                style={[
-                  styles.paginationButtonText,
-                  currentPage === 1 && styles.paginationButtonTextDisabled
-                ]}
-              >
-                Previous
+              <Text style={styles.paginationInfo}>
+                Page {currentPage} of {totalPages}
               </Text>
-            </TouchableOpacity>
 
-            <Text style={styles.paginationInfo}>
-              Page {currentPage} of {totalPages}
-            </Text>
-
-            <TouchableOpacity
-              style={[
-                styles.paginationButton,
-                currentPage === totalPages && styles.paginationButtonDisabled
-              ]}
-              onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-            >
-              <Text
+              <TouchableOpacity
                 style={[
-                  styles.paginationButtonText,
-                  currentPage === totalPages && styles.paginationButtonTextDisabled
+                  styles.paginationButton,
+                  currentPage === totalPages && styles.paginationButtonDisabled
                 ]}
+                onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
               >
-                Next
-              </Text>
-              <Icon
-                name="chevron-right"
-                size={24}
-                color={currentPage === totalPages ? '#d1d5db' : '#667eea'}
-              />
-            </TouchableOpacity>
-          </View>
-        )}
+                <Text
+                  style={[
+                    styles.paginationButtonText,
+                    currentPage === totalPages && styles.paginationButtonTextDisabled
+                  ]}
+                >
+                  Next
+                </Text>
+                <Icon
+                  name="chevron-right"
+                  size={24}
+                  color={currentPage === totalPages ? '#d1d5db' : '#667eea'}
+                />
+              </TouchableOpacity>
+            </View>
+          )}
 
-        {/* Bottom Padding */}
-        <View style={{ height: 30 }} />
-      </ScrollView>
+          {/* Bottom Padding */}
+          <View style={{ height: 30 }} />
+        </ScrollView>
 
-      {/* Property Details Modal */}
-      {renderPropertyDetailsModal()}
-    </View>
+        {/* Property Details Modal */}
+        {renderPropertyDetailsModal()}
+      </View>
     </SafeAreaView>
   );
 };

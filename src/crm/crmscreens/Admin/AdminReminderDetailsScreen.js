@@ -28,7 +28,7 @@ import { updateReminder } from '../../../services/api';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const { width } = Dimensions.get('window');
-const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const AdminReminderDetailsScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -84,7 +84,7 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
         await AsyncStorage.getItem('adminToken') ||
         await AsyncStorage.getItem('accessToken') ||
         await AsyncStorage.getItem('userToken');
-      
+
       if (!token) return;
 
       const response = await fetch(`${CRM_BASE_URL}/api/reminder/${reminderId}`, {
@@ -152,7 +152,7 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
     // Determine if this is an Alert or a real Reminder
     // Admin reminders created via CreateAlertScreen.js use alertIds (often prefixed with 'alert_')
     const isAlert = reminderId && String(reminderId).includes('alert_');
-    
+
     if (isAlert) {
       console.log('✏️ Navigating to EditAlert for admin reminder');
       navigation.navigate('EditAlert', {
@@ -310,13 +310,13 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
         </View>
 
         <View style={styles.headerHero}>
-           <View style={styles.heroAvatar}>
-              <Icon name="shield-check" size={30} color="#FFD700" />
-           </View>
-           <View style={{ flex: 1 }}>
-              <Text style={styles.heroTitle} numberOfLines={1}>{reminderTitle}</Text>
-              <Text style={styles.heroSubTitle}>Set by: {employeeName}</Text>
-           </View>
+          <View style={styles.heroAvatar}>
+            <Icon name="shield-check" size={30} color="#FFD700" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.heroTitle} numberOfLines={1}>{reminderTitle}</Text>
+            <Text style={styles.heroSubTitle}>Set by: {employeeName}</Text>
+          </View>
         </View>
       </View>
 
@@ -343,16 +343,16 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
             <Text style={styles.sectionTitle}>Employee Information</Text>
           </View>
           <View style={styles.infoCard}>
-             <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Name</Text>
-                <Text style={styles.infoValue}>{employeeName}</Text>
-             </View>
-             {employeeEmail ? (
-               <TouchableOpacity style={styles.emailBtn} onPress={handleEmailEmployee}>
-                  <Icon name="email-outline" size={18} color="#4F46E5" />
-                  <Text style={styles.emailBtnText}>{employeeEmail}</Text>
-               </TouchableOpacity>
-             ) : null}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Name</Text>
+              <Text style={styles.infoValue}>{employeeName}</Text>
+            </View>
+            {employeeEmail ? (
+              <TouchableOpacity style={styles.emailBtn} onPress={handleEmailEmployee}>
+                <Icon name="email-outline" size={18} color="#4F46E5" />
+                <Text style={styles.emailBtnText}>{employeeEmail}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
 
@@ -363,18 +363,18 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
             <Text style={styles.sectionTitle}>Reminder Details</Text>
           </View>
           <View style={styles.infoCard}>
-             <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Scheduled Time</Text>
-                <View style={styles.timePill}>
-                   <Icon name="clock-outline" size={16} color="#EF4444" />
-                   <Text style={styles.timePillText}>{formatDateTime(reminderTime)}</Text>
-                </View>
-             </View>
-             <View style={styles.divider} />
-             <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Note / Comment</Text>
-                <Text style={styles.noteBody}>{currentNote || 'No notes provided'}</Text>
-             </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Scheduled Time</Text>
+              <View style={styles.timePill}>
+                <Icon name="clock-outline" size={16} color="#EF4444" />
+                <Text style={styles.timePillText}>{formatDateTime(reminderTime)}</Text>
+              </View>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Note / Comment</Text>
+              <Text style={styles.noteBody}>{currentNote || 'No notes provided'}</Text>
+            </View>
           </View>
         </View>
 
@@ -385,50 +385,50 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
             <Text style={styles.sectionTitle}>Client Information</Text>
           </View>
           <View style={styles.infoCard}>
-             <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Name</Text>
-                <Text style={styles.infoValue}>{clientName}</Text>
-             </View>
-             {phone ? (
-               <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Phone</Text>
-                  <Text style={styles.infoValue}>{phone}</Text>
-               </View>
-             ) : null}
-             {location ? (
-               <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Location</Text>
-                  <Text style={styles.infoValue}>{location}</Text>
-               </View>
-             ) : null}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Name</Text>
+              <Text style={styles.infoValue}>{clientName}</Text>
+            </View>
+            {phone ? (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Phone</Text>
+                <Text style={styles.infoValue}>{phone}</Text>
+              </View>
+            ) : null}
+            {location ? (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Location</Text>
+                <Text style={styles.infoValue}>{location}</Text>
+              </View>
+            ) : null}
 
-             {phone && (
-               <View style={styles.contactActions}>
-                  <TouchableOpacity style={styles.primaryAction} onPress={handleCall}>
-                     <Icon name="phone" size={20} color="#fff" />
-                     <Text style={styles.primaryActionText}>Call Client</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.secondaryAction} 
-                    onPress={() => {
-                        const cleanPhone = phone.replace(/[^\d]/g, '');
-                        Linking.openURL(`whatsapp://send?phone=${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}`);
-                    }}
-                  >
-                     <Icon name="whatsapp" size={20} color="#25D366" />
-                  </TouchableOpacity>
-               </View>
-             )}
+            {phone && (
+              <View style={styles.contactActions}>
+                <TouchableOpacity style={styles.primaryAction} onPress={handleCall}>
+                  <Icon name="phone" size={20} color="#fff" />
+                  <Text style={styles.primaryActionText}>Call Client</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.secondaryAction}
+                  onPress={() => {
+                    const cleanPhone = phone.replace(/[^\d]/g, '');
+                    Linking.openURL(`whatsapp://send?phone=${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}`);
+                  }}
+                >
+                  <Icon name="whatsapp" size={20} color="#25D366" />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
 
         {enquiryId && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.leadBtn}
             onPress={() => navigation.navigate('AdminApp', { screen: 'EnquiryDetail', params: { enquiryId } })}
           >
-             <Text style={styles.leadBtnText}>View Full Lead Details</Text>
-             <Icon name="arrow-right" size={20} color="#fff" />
+            <Text style={styles.leadBtnText}>View Full Lead Details</Text>
+            <Icon name="arrow-right" size={20} color="#fff" />
           </TouchableOpacity>
         )}
 
@@ -457,25 +457,25 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
       {/* COMMENT MODAL */}
       <Modal visible={showCommentModal} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
-           <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Add Admin Comment</Text>
-              <TextInput 
-                style={styles.modalInput}
-                multiline
-                numberOfLines={4}
-                placeholder="Type your feedback/comment..."
-                value={newComment}
-                onChangeText={setNewComment}
-              />
-              <View style={styles.modalFooter}>
-                 <TouchableOpacity style={styles.modalCancel} onPress={() => setShowCommentModal(false)}>
-                    <Text style={styles.modalCancelText}>Close</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity style={styles.modalSave} onPress={submitComment}>
-                    {isUpdating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalSaveText}>Post Comment</Text>}
-                 </TouchableOpacity>
-              </View>
-           </View>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add Admin Comment</Text>
+            <TextInput
+              style={styles.modalInput}
+              multiline
+              numberOfLines={4}
+              placeholder="Type your feedback/comment..."
+              value={newComment}
+              onChangeText={setNewComment}
+            />
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowCommentModal(false)}>
+                <Text style={styles.modalCancelText}>Close</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSave} onPress={submitComment}>
+                {isUpdating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalSaveText}>Post Comment</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </View>

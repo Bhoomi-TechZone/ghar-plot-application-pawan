@@ -31,7 +31,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const ReminderPermissionScreen = ({ navigation }) => {
   const [employees, setEmployees] = useState([]);
@@ -194,7 +194,7 @@ const ReminderPermissionScreen = ({ navigation }) => {
 
           <Text style={styles.employeeEmail}>{employee.email}</Text>
           <Text style={styles.employeeDepartment}>
-            {employee.department} • {employee.role?.name || 'N/A'}
+            {employee.department} ï¿½ {employee.role?.name || 'N/A'}
           </Text>
 
           {!canGivePermission && (

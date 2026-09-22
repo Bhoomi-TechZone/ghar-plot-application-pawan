@@ -51,7 +51,7 @@ const AdminReminderControlScreen = () => {
   const [filterStatus, setFilterStatus] = useState('');
 
   // Constants
-  const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+  const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
   // Authentication Helper
   const getAuthHeaders = async () => {
@@ -600,7 +600,7 @@ const AdminReminderControlScreen = () => {
       <View style={styles.employeeInfo}>
         <Text style={styles.employeeName}>{item.name}</Text>
         <Text style={styles.employeeEmail}>{item.email}</Text>
-        <Text style={styles.employeeDepartment}>{item.department} • {item.role?.name || 'N/A'}</Text>
+        <Text style={styles.employeeDepartment}>{item.department} ï¿½ {item.role?.name || 'N/A'}</Text>
       </View>
 
       <View style={styles.employeeStats}>
@@ -714,7 +714,7 @@ const AdminReminderControlScreen = () => {
       <View style={styles.employeeHeader}>
         <View style={styles.employeeHeaderInfo}>
           <Text style={styles.employeeHeaderName}>{item.employee.name}</Text>
-          <Text style={styles.employeeHeaderEmail}>{item.employee.email} • {item.employee.department}</Text>
+          <Text style={styles.employeeHeaderEmail}>{item.employee.email} ï¿½ {item.employee.department}</Text>
         </View>
         <View style={styles.dueCountBadge}>
           <Text style={styles.dueCountText}>{item.reminders.length} Due</Text>
@@ -734,8 +734,8 @@ const AdminReminderControlScreen = () => {
             <Text style={styles.reminderComment}>{reminder.comment}</Text>
             {reminder.clientName && (
               <Text style={styles.reminderClient}>
-                Client: {reminder.clientName} • {reminder.phone || 'N/A'}
-                {reminder.location && ` • ${reminder.location}`}
+                Client: {reminder.clientName} ï¿½ {reminder.phone || 'N/A'}
+                {reminder.location && ` ï¿½ ${reminder.location}`}
               </Text>
             )}
           </View>
@@ -828,7 +828,7 @@ const AdminReminderControlScreen = () => {
                 <Text style={styles.modalReminderComment}>{item.comment}</Text>
                 <Text style={styles.modalReminderDateTime}>
                   {date} at {time}
-                  {item.clientName && ` • ${item.clientName}`}
+                  {item.clientName && ` ï¿½ ${item.clientName}`}
                 </Text>
                 {item.status === 'completed' && item.completionResponse && (
                   <Text style={styles.completionResponse}>

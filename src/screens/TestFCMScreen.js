@@ -93,7 +93,7 @@ const TestFCMScreen = () => {
 
       const authToken = await AsyncStorage.getItem('accessToken');
 
-      const response = await fetch('https://ghar-plot-backend1.onrender.com/api/alert/schedule-notification', {
+      const response = await fetch('https://gharplotbackend.gntechnology.de/api/alert/schedule-notification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

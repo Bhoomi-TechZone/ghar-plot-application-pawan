@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const AdminNotificationSettings = ({ navigation }) => {
   const [loading, setLoading] = useState(false);

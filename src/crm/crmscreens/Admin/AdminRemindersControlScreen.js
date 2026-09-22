@@ -20,7 +20,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const AdminRemindersControlScreen = ({ navigation }) => {
   // Main Data States
@@ -575,7 +575,7 @@ const AdminRemindersControlScreen = ({ navigation }) => {
               <View>
                 <Text style={styles.dueEmployeeName}>{item.employee?.name}</Text>
                 <Text style={styles.dueEmployeeInfo}>
-                  {item.employee?.email} • {item.employee?.department}
+                  {item.employee?.email} ï¿½ {item.employee?.department}
                 </Text>
               </View>
               <View style={styles.dueCountBadge}>
@@ -599,8 +599,8 @@ const AdminRemindersControlScreen = ({ navigation }) => {
                       <Icon name="person" size={14} color="#6b7280" />
                       <Text style={styles.clientInfoText}>
                         {reminder.clientName}
-                        {reminder.phone && ` • ${reminder.phone}`}
-                        {reminder.location && ` • ${reminder.location}`}
+                        {reminder.phone && ` ï¿½ ${reminder.phone}`}
+                        {reminder.location && ` ï¿½ ${reminder.location}`}
                       </Text>
                     </View>
                   )}
@@ -696,7 +696,7 @@ const AdminRemindersControlScreen = ({ navigation }) => {
                       )}
                       <Text style={styles.modalReminderTime}>
                         {date} at {time}
-                        {reminder.clientName && ` • ${reminder.clientName}`}
+                        {reminder.clientName && ` ï¿½ ${reminder.clientName}`}
                       </Text>
                     </View>
                   );

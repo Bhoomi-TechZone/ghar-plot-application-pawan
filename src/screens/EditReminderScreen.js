@@ -26,16 +26,16 @@ import { sendTokenToBackend, getFCMToken } from '../utils/fcmService';
 //import ReminderNotificationService from '../services/ReminderNotificationService';
 import CrossPlatformAlert from '../utils/crossPlatformAlert';
 
-//const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+//const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const EditReminderScreen = ({ route, navigation }) => {
-  const { 
-    reminderId, 
-    clientName, 
-    originalMessage, 
+  const {
+    reminderId,
+    clientName,
+    originalMessage,
     //enquiryId, 
-    fromNotification, 
-    isRepeating, 
+    fromNotification,
+    isRepeating,
     repeatType,
     scheduledDateTime // 🔥 Get the scheduled date from params
   } = route.params || {};
@@ -61,26 +61,26 @@ const EditReminderScreen = ({ route, navigation }) => {
 
     // Extract local date parts from ISO string or Date object
     const parseDateFromISO = (isoStr) => {
-  if (!isoStr) return null;
+      if (!isoStr) return null;
 
-  try {
-    // Extract calendar date directly from ISO string.
-    // Do NOT convert UTC -> local timezone here.
-    const match = String(isoStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      try {
+        // Extract calendar date directly from ISO string.
+        // Do NOT convert UTC -> local timezone here.
+        const match = String(isoStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
 
-    if (match) {
-      return {
-        year: Number(match[1]),
-        month: Number(match[2]) - 1,
-        day: Number(match[3]),
-      };
-    }
+        if (match) {
+          return {
+            year: Number(match[1]),
+            month: Number(match[2]) - 1,
+            day: Number(match[3]),
+          };
+        }
 
-    return null;
-  } catch (_) {
-    return null;
-  }
-};
+        return null;
+      } catch (_) {
+        return null;
+      }
+    };
 
     // If we have originalTime (IST string), use it for time + scheduledDateTime for date
     const timeParts = parseTimeFromString(originalTime);
@@ -102,7 +102,7 @@ const EditReminderScreen = ({ route, navigation }) => {
           const [hours, minutes] = timePart.split(':').map(Number);
           const date = new Date(year, month - 1, day, hours, minutes || 0);
           if (!isNaN(date.getTime())) return date;
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // If scheduledDateTime is an ISO string, it's UTC. Let's parse it to local device timezone
@@ -184,41 +184,41 @@ const EditReminderScreen = ({ route, navigation }) => {
     }
   };
 
-const formatDate = (date) => {
-  if (!date) return '';
+  const formatDate = (date) => {
+    if (!date) return '';
 
-  const d = new Date(date);
+    const d = new Date(date);
 
-  if (isNaN(d.getTime())) return '';
+    if (isNaN(d.getTime())) return '';
 
-  return d.toLocaleDateString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-};
+    return d.toLocaleDateString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
 
-const formatTime = (date) => {
-  if (!date) return '';
+  const formatTime = (date) => {
+    if (!date) return '';
 
-  const d = new Date(date);
+    const d = new Date(date);
 
-  if (isNaN(d.getTime())) return '';
+    if (isNaN(d.getTime())) return '';
 
-  return d.toLocaleTimeString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
-};
+    return d.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
 
-const formatDateTime = (date) => {
-  if (!date) return '';
+  const formatDateTime = (date) => {
+    if (!date) return '';
 
-  return `${formatDate(date)} at ${formatTime(date)}`;
-};
+    return `${formatDate(date)} at ${formatTime(date)}`;
+  };
 
   const getRepeatLabel = () => {
     if (repeatFrequency === 'custom') {
@@ -359,12 +359,12 @@ const formatDateTime = (date) => {
         try {
           const fcmToken = await getFCMToken();
           const scheduledDateTimeISO = scheduledDate.toISOString();
-          
+
           const authToken = await AsyncStorage.getItem('adminToken') ||
-                           await AsyncStorage.getItem('crm_token') ||
-                           await AsyncStorage.getItem('admin_token') ||
-                           await AsyncStorage.getItem('authToken') ||
-                           await AsyncStorage.getItem('userToken');
+            await AsyncStorage.getItem('crm_token') ||
+            await AsyncStorage.getItem('admin_token') ||
+            await AsyncStorage.getItem('authToken') ||
+            await AsyncStorage.getItem('userToken');
 
           if (authToken) {
             const fcmResponse = await fetch(`${BASE_URL}/api/alerts/schedule-notification`, {

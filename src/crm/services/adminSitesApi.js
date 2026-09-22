@@ -29,10 +29,20 @@ const getAuthHeaders = async () => {
   }
 };
 
+const fetchWithTimeout = async (url, options = {}, timeout = 30000) => {
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`Network timeout (${timeout}ms)`)), timeout)
+  );
+  return Promise.race([
+    fetch(url, options),
+    timeoutPromise,
+  ]);
+};
+
 const handleResponse = async (response) => {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  if (!response || !response.ok) {
+    const errorData = response ? await response.json().catch(() => ({})) : {};
+    throw new Error(errorData.message || (response ? 'HTTP error! status: ' + response.status : 'Request failed'));
   }
   return response.json();
 };
@@ -43,7 +53,7 @@ const handleResponse = async (response) => {
 export const getClients = async () => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/clients`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/clients`, {
       method: 'GET',
       headers,
     });
@@ -61,7 +71,7 @@ export const getClients = async () => {
 export const createClient = async (clientData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/clients`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/clients`, {
       method: 'POST',
       headers,
       body: JSON.stringify(clientData),
@@ -79,7 +89,7 @@ export const createClient = async (clientData) => {
 export const getCashFlows = async () => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/cashflows`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/cashflows`, {
       method: 'GET',
       headers,
     });
@@ -97,7 +107,7 @@ export const getCashFlows = async () => {
 export const createCashFlow = async (cashFlowData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/cashflows`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/cashflows`, {
       method: 'POST',
       headers,
       body: JSON.stringify(cashFlowData),
@@ -115,7 +125,7 @@ export const createCashFlow = async (cashFlowData) => {
 export const getProjects = async () => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/projects`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/projects`, {
       method: 'GET',
       headers,
     });
@@ -133,7 +143,7 @@ export const getProjects = async () => {
 export const createProject = async (projectData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/projects`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/projects`, {
       method: 'POST',
       headers,
       body: JSON.stringify(projectData),
@@ -151,7 +161,7 @@ export const createProject = async (projectData) => {
 export const updateProject = async (id, projectData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/projects/${id}`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/projects/${id}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify(projectData),
@@ -169,7 +179,7 @@ export const updateProject = async (id, projectData) => {
 export const deleteProject = async (id) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/projects/${id}`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/projects/${id}`, {
       method: 'DELETE',
       headers,
     });
@@ -187,7 +197,7 @@ export const getPreviousClosingBalance = async (associateId, date) => {
   try {
     const headers = await getAuthHeaders();
     const query = date ? `?date=${encodeURIComponent(date)}` : '';
-    const response = await fetch(`${BASE_URL}/admin/cashflows/opening-balance/${associateId}${query}`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/cashflows/opening-balance/${associateId}${query}`, {
       method: 'GET',
       headers,
     });
@@ -205,7 +215,7 @@ export const getPreviousClosingBalance = async (associateId, date) => {
 export const updateCashFlow = async (id, cashFlowData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/cashflows/${id}`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/cashflows/${id}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify(cashFlowData),
@@ -223,7 +233,7 @@ export const updateCashFlow = async (id, cashFlowData) => {
 export const deleteCashFlow = async (id) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/cashflows/${id}`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/cashflows/${id}`, {
       method: 'DELETE',
       headers,
     });
@@ -242,7 +252,7 @@ export const getExpenses = async (params = {}) => {
     const headers = await getAuthHeaders();
     const query = new URLSearchParams(params).toString();
     const url = query ? `${BASE_URL}/admin/expenses?${query}` : `${BASE_URL}/admin/expenses`;
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers,
     });
@@ -260,7 +270,7 @@ export const getExpenses = async (params = {}) => {
 export const createExpense = async (expenseData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/expenses`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/expenses`, {
       method: 'POST',
       headers,
       body: JSON.stringify(expenseData),
@@ -278,7 +288,7 @@ export const createExpense = async (expenseData) => {
 export const updateExpense = async (id, expenseData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/expenses/${id}`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/expenses/${id}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify(expenseData),
@@ -296,7 +306,7 @@ export const updateExpense = async (id, expenseData) => {
 export const deleteExpense = async (id) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/expenses/${id}`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/expenses/${id}`, {
       method: 'DELETE',
       headers,
     });
@@ -313,7 +323,7 @@ export const deleteExpense = async (id) => {
 export const getExpenseCategories = async () => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/expenses/categories`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/expenses/categories`, {
       method: 'GET',
       headers,
     });
@@ -342,7 +352,7 @@ export const getExpenseCategories = async () => {
 export const addExpenseCategory = async (name) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/expenses/categories`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/expenses/categories`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ name }),
@@ -360,7 +370,7 @@ export const addExpenseCategory = async (name) => {
 export const getDateExpensesSummary = async (businessAssociate, date) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${BASE_URL}/admin/expenses/date-summary?businessAssociate=${businessAssociate}&date=${encodeURIComponent(date)}`,
       {
         method: 'GET',
@@ -385,7 +395,7 @@ export const getDailyProjectExpenseSheet = async (params = {}) => {
     const url = query
       ? `${BASE_URL}/admin/expenses/daily-sheet?${query}`
       : `${BASE_URL}/admin/expenses/daily-sheet`;
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers,
     });
@@ -402,7 +412,7 @@ export const getDailyProjectExpenseSheet = async (params = {}) => {
 export const createBatchExpenses = async (expenses) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/expenses/batch`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/expenses/batch`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ expenses }),
@@ -420,7 +430,7 @@ export const createBatchExpenses = async (expenses) => {
 export const getEmployees = async () => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/admin/employees`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/employees`, {
       method: 'GET',
       headers,
     });
@@ -431,6 +441,111 @@ export const getEmployees = async () => {
     return [];
   }
 };
+
+/**
+ * GET /admin/work-status - Fetch work statuses with filters
+ */
+export const getWorkStatuses = async (params = {}) => {
+  try {
+    const headers = await getAuthHeaders();
+    const query = new URLSearchParams(params).toString();
+    const url = query ? `${BASE_URL}/admin/work-status?${query}` : `${BASE_URL}/admin/work-status`;
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error fetching work statuses:', error);
+    return { success: false, data: [], total: 0 };
+  }
+};
+
+/**
+ * POST /admin/work-status - Create or Upsert work status
+ */
+export const createWorkStatus = async (statusData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/work-status`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(statusData),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error creating work status:', error);
+    throw error;
+  }
+};
+
+/**
+ * PUT /admin/work-status/:id - Update work status
+ */
+export const updateWorkStatus = async (id, statusData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/work-status/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(statusData),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error updating work status:', error);
+    throw error;
+  }
+};
+
+/**
+ * DELETE /admin/work-status/:id - Delete work status
+ */
+export const deleteWorkStatus = async (id) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/work-status/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error deleting work status:', error);
+    throw error;
+  }
+};
+
+/**
+ * POST /admin/export/generate - Generate downloadable file link
+ */
+export const generateExportFile = async (filename, headersList, rowsList) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(
+      `${BASE_URL}/admin/export/generate`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ filename, headers: headersList, rows: rowsList }),
+      },
+      60000 // 60s timeout for large export payloads
+    );
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error generating export file:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get direct download URL for entity export
+ */
+export const getDirectExportUrl = (type, params = {}) => {
+  const query = new URLSearchParams({ type, ...params }).toString();
+  return `${BASE_URL}/admin/export/csv?${query}`;
+};
+
+export { BASE_URL };
+
 
 export default {
   getClients,
@@ -454,4 +569,10 @@ export default {
   getDateExpensesSummary,
   getDailyProjectExpenseSheet,
   getEmployees,
+  getWorkStatuses,
+  createWorkStatus,
+  updateWorkStatus,
+  deleteWorkStatus,
+  generateExportFile,
+  getDirectExportUrl,
 };

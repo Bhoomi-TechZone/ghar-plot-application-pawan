@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { handleUnauthorizedError } from './api';
 
-const BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 // Get authentication token
 const getAuthToken = async () => {

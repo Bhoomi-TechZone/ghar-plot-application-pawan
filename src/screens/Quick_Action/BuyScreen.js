@@ -214,11 +214,11 @@ const BuyScreen = ({ navigation }) => {
     // Handle uploads path
     if (imageData.startsWith('uploads/') || imageData.startsWith('/uploads/')) {
       if (isPostedByAdmin) {
-        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const baseUrl = 'https://gharplotbackend.gntechnology.de';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       } else {
-        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const baseUrl = 'https://gharplotbackend.gntechnology.de';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       }
@@ -349,73 +349,73 @@ const BuyScreen = ({ navigation }) => {
         </View>
 
         <View style={Platform.OS === 'web' ? { flex: 1, overflowY: 'auto' } : { flex: 1 }}>
-        <ScrollView 
-          showsVerticalScrollIndicator={Platform.OS === 'web' ? true : false}
-        >
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <Icon name="search-outline" size={22} color={COLORS.textSecondary} />
-            <TextInput
-              placeholder="Search by city, project, or ID..."
-              placeholderTextColor="#AAA"
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery ? (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Icon name="close-circle" size={20} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
+          <ScrollView
+            showsVerticalScrollIndicator={Platform.OS === 'web' ? true : false}
+          >
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+              <Icon name="search-outline" size={22} color={COLORS.textSecondary} />
+              <TextInput
+                placeholder="Search by city, project, or ID..."
+                placeholderTextColor="#AAA"
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery ? (
+                <TouchableOpacity onPress={() => setSearchQuery("")}>
+                  <Icon name="close-circle" size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
 
-          {/* Filter Buttons */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-            {propertyTypes.map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  styles.filterBtn,
-                  selectedType === type && { backgroundColor: COLORS.primary },
-                ]}
-                onPress={() => setSelectedType(type)}
-              >
-                <Text
+            {/* Filter Buttons */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+              {propertyTypes.map((type) => (
+                <TouchableOpacity
+                  key={type}
                   style={[
-                    styles.filterText,
-                    selectedType === type && { color: COLORS.card },
+                    styles.filterBtn,
+                    selectedType === type && { backgroundColor: COLORS.primary },
                   ]}
+                  onPress={() => setSelectedType(type)}
                 >
-                  {type}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.filterText,
+                      selectedType === type && { color: COLORS.card },
+                    ]}
+                  >
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Property List */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Featured Properties</Text>
+            </View>
+
+            <FlatList
+              data={filteredProperties}
+              renderItem={renderProperty}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              contentContainerStyle={styles.propertiesListContainer}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              key={Platform.OS === 'web' ? 'web-grid-2' : 'mobile-list-1'}
+              numColumns={Platform.OS === 'web' ? 2 : 1}
+              columnWrapperStyle={Platform.OS === 'web' ? styles.gridRow : undefined}
+              ListEmptyComponent={
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ color: COLORS.textSecondary, fontSize: 16 }}>No properties found</Text>
+                </View>
+              }
+            />
+            <View style={{ height: 50 }} />
           </ScrollView>
-
-          {/* Property List */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Featured Properties</Text>
-          </View>
-
-          <FlatList
-            data={filteredProperties}
-            renderItem={renderProperty}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            contentContainerStyle={styles.propertiesListContainer}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            key={Platform.OS === 'web' ? 'web-grid-2' : 'mobile-list-1'}
-            numColumns={Platform.OS === 'web' ? 2 : 1}
-            columnWrapperStyle={Platform.OS === 'web' ? styles.gridRow : undefined}
-            ListEmptyComponent={
-              <View style={{ padding: 20, alignItems: 'center' }}>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 16 }}>No properties found</Text>
-              </View>
-            }
-          />
-          <View style={{ height: 50 }} />
-        </ScrollView>
         </View>
       </View>
     </SafeAreaView>

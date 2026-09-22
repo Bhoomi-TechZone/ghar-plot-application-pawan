@@ -20,7 +20,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const USPEmployeesScreen = ({ navigation }) => {
   // Main Data States
@@ -681,421 +681,421 @@ const USPEmployeesScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-    <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#10b981', '#059669']}
-        style={styles.header}
-      >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
+      <View style={styles.container}>
+        {/* Header */}
+        <LinearGradient
+          colors={['#10b981', '#059669']}
+          style={styles.header}
         >
-          <Icon name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Team's USP</Text>
-          <Text style={styles.headerSubtitle}>
-            Manage employees featured in USP categories
-          </Text>
-        </View>
-      </LinearGradient>
-
-      <ScrollView
-        style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* Statistics Cards */}
-        <View style={styles.statsContainer}>
-          {renderStatisticsCard('Total Employees', statistics.total, 'people', '#10b981')}
-          {renderStatisticsCard('Manual', statistics.manualEmployees, 'person-add', '#f59e0b')}
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtonsContainer}>
           <TouchableOpacity
-            style={styles.addManualButton}
-            onPress={() => handleShowModal('manual')}
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
           >
-            <LinearGradient
-              colors={['#10b981', '#059669']}
-              style={styles.gradientButton}
-            >
-              <Icon name="person-add" size={20} color="#fff" />
-              <Text style={styles.addButtonText}>Add Manually</Text>
-            </LinearGradient>
+            <Icon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-        </View>
-
-        {/* Filter Section */}
-        <View style={styles.filterContainer}>
-          <View style={styles.filterHeader}>
-            <Icon name="filter-list" size={20} color="#10b981" />
-            <Text style={styles.filterTitle}>Filter by Category</Text>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{filteredEmployees.length} Employees</Text>
-            </View>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Team's USP</Text>
+            <Text style={styles.headerSubtitle}>
+              Manage employees featured in USP categories
+            </Text>
           </View>
-          <View style={styles.categoryFilterContainer}>
+        </LinearGradient>
+
+        <ScrollView
+          style={styles.content}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {/* Statistics Cards */}
+          <View style={styles.statsContainer}>
+            {renderStatisticsCard('Total Employees', statistics.total, 'people', '#10b981')}
+            {renderStatisticsCard('Manual', statistics.manualEmployees, 'person-add', '#f59e0b')}
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtonsContainer}>
             <TouchableOpacity
-              style={[
-                styles.categoryFilterItem,
-                selectedCategory === 'all' && styles.categoryFilterItemActive
-              ]}
-              onPress={() => setSelectedCategory('all')}
+              style={styles.addManualButton}
+              onPress={() => handleShowModal('manual')}
             >
-              <Text style={[
-                styles.categoryFilterText,
-                selectedCategory === 'all' && styles.categoryFilterTextActive
-              ]}>
-                All Categories
-              </Text>
+              <LinearGradient
+                colors={['#10b981', '#059669']}
+                style={styles.gradientButton}
+              >
+                <Icon name="person-add" size={20} color="#fff" />
+                <Text style={styles.addButtonText}>Add Manually</Text>
+              </LinearGradient>
             </TouchableOpacity>
-            {categories.map(category => (
+          </View>
+
+          {/* Filter Section */}
+          <View style={styles.filterContainer}>
+            <View style={styles.filterHeader}>
+              <Icon name="filter-list" size={20} color="#10b981" />
+              <Text style={styles.filterTitle}>Filter by Category</Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{filteredEmployees.length} Employees</Text>
+              </View>
+            </View>
+            <View style={styles.categoryFilterContainer}>
               <TouchableOpacity
-                key={category._id}
                 style={[
                   styles.categoryFilterItem,
-                  selectedCategory === category._id && styles.categoryFilterItemActive
+                  selectedCategory === 'all' && styles.categoryFilterItemActive
                 ]}
-                onPress={() => setSelectedCategory(category._id)}
+                onPress={() => setSelectedCategory('all')}
               >
                 <Text style={[
                   styles.categoryFilterText,
-                  selectedCategory === category._id && styles.categoryFilterTextActive
+                  selectedCategory === 'all' && styles.categoryFilterTextActive
                 ]}>
-                  {category.name}
+                  All Categories
                 </Text>
               </TouchableOpacity>
-            ))}
+              {categories.map(category => (
+                <TouchableOpacity
+                  key={category._id}
+                  style={[
+                    styles.categoryFilterItem,
+                    selectedCategory === category._id && styles.categoryFilterItemActive
+                  ]}
+                  onPress={() => setSelectedCategory(category._id)}
+                >
+                  <Text style={[
+                    styles.categoryFilterText,
+                    selectedCategory === category._id && styles.categoryFilterTextActive
+                  ]}>
+                    {category.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
 
-        {/* Employees List */}
-        <View style={styles.employeesContainer}>
-          {filteredEmployees.length > 0 ? (
-            filteredEmployees.map(employee => renderEmployeeCard(employee))
-          ) : (
-            <View style={styles.emptyState}>
-              <Icon name="person-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyStateTitle}>No employees found</Text>
-              <Text style={styles.emptyStateText}>
-                Add employees to get started
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
+          {/* Employees List */}
+          <View style={styles.employeesContainer}>
+            {filteredEmployees.length > 0 ? (
+              filteredEmployees.map(employee => renderEmployeeCard(employee))
+            ) : (
+              <View style={styles.emptyState}>
+                <Icon name="person-outline" size={64} color="#d1d5db" />
+                <Text style={styles.emptyStateTitle}>No employees found</Text>
+                <Text style={styles.emptyStateText}>
+                  Add employees to get started
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
 
-      {/* Add/Edit Modal */}
-      <Modal
-        visible={showModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={handleCloseModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingEmployee ? 'Edit Team\'s USP' :
-                  modalType === 'system' ? 'Add from System' : 'Add Manually'}
-              </Text>
-              <TouchableOpacity onPress={handleCloseModal}>
-                <Icon name="close" size={24} color="#6b7280" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalBody}>
-              {/* Error/Success Messages */}
-              {error ? (
-                <View style={styles.errorAlert}>
-                  <Icon name="error" size={20} color="#ef4444" />
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              ) : null}
-
-              {success ? (
-                <View style={styles.successAlert}>
-                  <Icon name="check-circle" size={20} color="#10b981" />
-                  <Text style={styles.successText}>{success}</Text>
-                </View>
-              ) : null}
-
-              {/* Category Dropdown */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Category *</Text>
-
-                {/* Add New Category */}
-                <View style={styles.addCategoryContainer}>
-                  <TextInput
-                    style={styles.addCategoryInput}
-                    placeholder="Add new category"
-                    value={newCategoryName}
-                    onChangeText={setNewCategoryName}
-                  />
-                  <TouchableOpacity
-                    style={styles.addCategoryButton}
-                    onPress={handleCreateCategory}
-                    disabled={isCreatingCategory}
-                  >
-                    <Icon name="add" size={18} color="#fff" />
-                    <Text style={styles.addCategoryButtonText}>
-                      {isCreatingCategory ? 'Adding...' : 'Add'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Existing Categories */}
-                <View style={styles.pickerContainer}>
-                  <Icon name="category" size={20} color="#10b981" />
-                  <ScrollView style={styles.picker} nestedScrollEnabled>
-                    {categories.length === 0 ? (
-                      <Text style={styles.pickerItemText}>No categories available</Text>
-                    ) : (
-                      categories.map(category => (
-                        <TouchableOpacity
-                          key={category._id}
-                          style={[
-                            styles.pickerItem,
-                            formData.categoryId === category._id && styles.pickerItemSelected
-                          ]}
-                          onPress={() => handleInputChange('categoryId', category._id)}
-                        >
-                          <Text style={[
-                            styles.pickerItemText,
-                            formData.categoryId === category._id && styles.pickerItemTextSelected
-                          ]}>
-                            {category.name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))
-                    )}
-                  </ScrollView>
-                </View>
+        {/* Add/Edit Modal */}
+        <Modal
+          visible={showModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={handleCloseModal}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {editingEmployee ? 'Edit Team\'s USP' :
+                    modalType === 'system' ? 'Add from System' : 'Add Manually'}
+                </Text>
+                <TouchableOpacity onPress={handleCloseModal}>
+                  <Icon name="close" size={24} color="#6b7280" />
+                </TouchableOpacity>
               </View>
 
-              {/* System Employee Selection */}
-              {modalType === 'system' && !editingEmployee && (
+              <ScrollView style={styles.modalBody}>
+                {/* Error/Success Messages */}
+                {error ? (
+                  <View style={styles.errorAlert}>
+                    <Icon name="error" size={20} color="#ef4444" />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                ) : null}
+
+                {success ? (
+                  <View style={styles.successAlert}>
+                    <Icon name="check-circle" size={20} color="#10b981" />
+                    <Text style={styles.successText}>{success}</Text>
+                  </View>
+                ) : null}
+
+                {/* Category Dropdown */}
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Select Employee *</Text>
+                  <Text style={styles.label}>Category *</Text>
+
+                  {/* Add New Category */}
+                  <View style={styles.addCategoryContainer}>
+                    <TextInput
+                      style={styles.addCategoryInput}
+                      placeholder="Add new category"
+                      value={newCategoryName}
+                      onChangeText={setNewCategoryName}
+                    />
+                    <TouchableOpacity
+                      style={styles.addCategoryButton}
+                      onPress={handleCreateCategory}
+                      disabled={isCreatingCategory}
+                    >
+                      <Icon name="add" size={18} color="#fff" />
+                      <Text style={styles.addCategoryButtonText}>
+                        {isCreatingCategory ? 'Adding...' : 'Add'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Existing Categories */}
                   <View style={styles.pickerContainer}>
-                    <Icon name="person" size={20} color="#10b981" />
-                    <View style={styles.picker}>
-                      {systemEmployees.map(emp => (
-                        <TouchableOpacity
-                          key={emp._id}
-                          style={[
-                            styles.pickerItem,
-                            formData.employeeId === emp._id && styles.pickerItemSelected
-                          ]}
-                          onPress={() => handleInputChange('employeeId', emp._id)}
-                        >
-                          <Text style={[
-                            styles.pickerItemText,
-                            formData.employeeId === emp._id && styles.pickerItemTextSelected
-                          ]}>
-                            {emp.name} - {emp.email}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                    <Icon name="category" size={20} color="#10b981" />
+                    <ScrollView style={styles.picker} nestedScrollEnabled>
+                      {categories.length === 0 ? (
+                        <Text style={styles.pickerItemText}>No categories available</Text>
+                      ) : (
+                        categories.map(category => (
+                          <TouchableOpacity
+                            key={category._id}
+                            style={[
+                              styles.pickerItem,
+                              formData.categoryId === category._id && styles.pickerItemSelected
+                            ]}
+                            onPress={() => handleInputChange('categoryId', category._id)}
+                          >
+                            <Text style={[
+                              styles.pickerItemText,
+                              formData.categoryId === category._id && styles.pickerItemTextSelected
+                            ]}>
+                              {category.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))
+                      )}
+                    </ScrollView>
                   </View>
                 </View>
-              )}
 
-              {/* Manual Employee Fields */}
-              {(modalType === 'manual' || (editingEmployee && editingEmployee.employeeType === 'manual')) && (
-                <>
-                  {/* Search User/Client */}
+                {/* System Employee Selection */}
+                {modalType === 'system' && !editingEmployee && (
                   <View style={styles.formGroup}>
-                    <Text style={styles.label}>
-                      Search User/Client 🔍
-                    </Text>
-                    <Text style={styles.helperText}>
-                      Search by name or phone - includes all registered users and enquiries
-                    </Text>
-                    <View style={styles.inputContainer}>
-                      <Icon name="search" size={20} color="#10b981" />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Type name or phone number..."
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        onFocus={() => {
-                          if (searchResults.length > 0) {
-                            setShowSearchDropdown(true);
-                          }
-                        }}
-                      />
-                      {searchLoading && (
-                        <ActivityIndicator size="small" color="#10b981" style={styles.searchLoader} />
+                    <Text style={styles.label}>Select Employee *</Text>
+                    <View style={styles.pickerContainer}>
+                      <Icon name="person" size={20} color="#10b981" />
+                      <View style={styles.picker}>
+                        {systemEmployees.map(emp => (
+                          <TouchableOpacity
+                            key={emp._id}
+                            style={[
+                              styles.pickerItem,
+                              formData.employeeId === emp._id && styles.pickerItemSelected
+                            ]}
+                            onPress={() => handleInputChange('employeeId', emp._id)}
+                          >
+                            <Text style={[
+                              styles.pickerItemText,
+                              formData.employeeId === emp._id && styles.pickerItemTextSelected
+                            ]}>
+                              {emp.name} - {emp.email}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Manual Employee Fields */}
+                {(modalType === 'manual' || (editingEmployee && editingEmployee.employeeType === 'manual')) && (
+                  <>
+                    {/* Search User/Client */}
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>
+                        Search User/Client 🔍
+                      </Text>
+                      <Text style={styles.helperText}>
+                        Search by name or phone - includes all registered users and enquiries
+                      </Text>
+                      <View style={styles.inputContainer}>
+                        <Icon name="search" size={20} color="#10b981" />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Type name or phone number..."
+                          value={searchQuery}
+                          onChangeText={setSearchQuery}
+                          onFocus={() => {
+                            if (searchResults.length > 0) {
+                              setShowSearchDropdown(true);
+                            }
+                          }}
+                        />
+                        {searchLoading && (
+                          <ActivityIndicator size="small" color="#10b981" style={styles.searchLoader} />
+                        )}
+                      </View>
+
+                      {/* Search Results Dropdown */}
+                      {showSearchDropdown && searchResults.length > 0 && (
+                        <View style={styles.searchDropdown}>
+                          <ScrollView style={styles.searchResultsList} nestedScrollEnabled>
+                            {searchResults.map((user, index) => (
+                              <TouchableOpacity
+                                key={user._id || index}
+                                style={styles.searchResultItem}
+                                onPress={() => handleUserSelect(user)}
+                              >
+                                <View style={styles.searchResultContent}>
+                                  <View style={styles.searchResultIcon}>
+                                    <Icon
+                                      name={
+                                        user.type === 'user' || user.source === 'users-api'
+                                          ? "person"
+                                          : user.type === 'enquiry' || user.source === 'enquiries'
+                                            ? "person-outline"
+                                            : user.type === 'buyer' || user.isBuyer
+                                              ? "shopping-cart"
+                                              : "store"
+                                      }
+                                      size={20}
+                                      color="#10b981"
+                                    />
+                                  </View>
+                                  <View style={styles.searchResultInfo}>
+                                    <Text style={styles.searchResultName}>
+                                      {user.fullName || user.name || 'Unknown'}
+                                    </Text>
+                                    <Text style={styles.searchResultPhone}>
+                                      📞 {user.phone || user.mobile || user.contactNumber || 'No phone'}
+                                    </Text>
+                                    <Text style={styles.searchResultType}>
+                                      {user.type === 'user' || user.source === 'users-api'
+                                        ? '👤 User'
+                                        : user.type === 'enquiry' || user.source === 'enquiries'
+                                          ? '📋 Enquiry'
+                                          : user.type === 'buyer' || user.isBuyer
+                                            ? '🛒 Buyer'
+                                            : '🏪 Seller'}
+                                    </Text>
+                                  </View>
+                                </View>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      )}
+
+                      {showSearchDropdown && searchResults.length === 0 && !searchLoading && searchQuery.length >= 2 && (
+                        <View style={styles.searchDropdown}>
+                          <View style={styles.noResultsContainer}>
+                            <Icon name="person-off" size={32} color="#9ca3af" />
+                            <Text style={styles.noResultsText}>No users found</Text>
+                          </View>
+                        </View>
                       )}
                     </View>
 
-                    {/* Search Results Dropdown */}
-                    {showSearchDropdown && searchResults.length > 0 && (
-                      <View style={styles.searchDropdown}>
-                        <ScrollView style={styles.searchResultsList} nestedScrollEnabled>
-                          {searchResults.map((user, index) => (
-                            <TouchableOpacity
-                              key={user._id || index}
-                              style={styles.searchResultItem}
-                              onPress={() => handleUserSelect(user)}
-                            >
-                              <View style={styles.searchResultContent}>
-                                <View style={styles.searchResultIcon}>
-                                  <Icon
-                                    name={
-                                      user.type === 'user' || user.source === 'users-api'
-                                        ? "person"
-                                        : user.type === 'enquiry' || user.source === 'enquiries'
-                                          ? "person-outline"
-                                          : user.type === 'buyer' || user.isBuyer
-                                            ? "shopping-cart"
-                                            : "store"
-                                    }
-                                    size={20}
-                                    color="#10b981"
-                                  />
-                                </View>
-                                <View style={styles.searchResultInfo}>
-                                  <Text style={styles.searchResultName}>
-                                    {user.fullName || user.name || 'Unknown'}
-                                  </Text>
-                                  <Text style={styles.searchResultPhone}>
-                                    📞 {user.phone || user.mobile || user.contactNumber || 'No phone'}
-                                  </Text>
-                                  <Text style={styles.searchResultType}>
-                                    {user.type === 'user' || user.source === 'users-api'
-                                      ? '👤 User'
-                                      : user.type === 'enquiry' || user.source === 'enquiries'
-                                        ? '📋 Enquiry'
-                                        : user.type === 'buyer' || user.isBuyer
-                                          ? '🛒 Buyer'
-                                          : '🏪 Seller'}
-                                  </Text>
-                                </View>
-                              </View>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Name *</Text>
+                      <View style={styles.inputContainer}>
+                        <Icon name="person" size={20} color="#10b981" />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Enter full name"
+                          value={formData.name}
+                          onChangeText={(value) => handleInputChange('name', value)}
+                        />
                       </View>
-                    )}
+                    </View>
 
-                    {showSearchDropdown && searchResults.length === 0 && !searchLoading && searchQuery.length >= 2 && (
-                      <View style={styles.searchDropdown}>
-                        <View style={styles.noResultsContainer}>
-                          <Icon name="person-off" size={32} color="#9ca3af" />
-                          <Text style={styles.noResultsText}>No users found</Text>
-                        </View>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Phone *</Text>
+                      <View style={styles.inputContainer}>
+                        <Icon name="phone" size={20} color="#10b981" />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Enter phone number"
+                          value={formData.phone}
+                          onChangeText={(value) => handleInputChange('phone', value)}
+                          keyboardType="phone-pad"
+                        />
                       </View>
-                    )}
-                  </View>
-
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Name *</Text>
-                    <View style={styles.inputContainer}>
-                      <Icon name="person" size={20} color="#10b981" />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Enter full name"
-                        value={formData.name}
-                        onChangeText={(value) => handleInputChange('name', value)}
-                      />
                     </View>
+                  </>
+                )}
+
+                {/* Expertise */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Expertise</Text>
+                  <View style={styles.inputContainer}>
+                    <MaterialCommunityIcons name="briefcase" size={20} color="#10b981" />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., Commercial Real Estate"
+                      value={formData.expertise}
+                      onChangeText={(value) => handleInputChange('expertise', value)}
+                    />
                   </View>
+                </View>
 
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Phone *</Text>
-                    <View style={styles.inputContainer}>
-                      <Icon name="phone" size={20} color="#10b981" />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Enter phone number"
-                        value={formData.phone}
-                        onChangeText={(value) => handleInputChange('phone', value)}
-                        keyboardType="phone-pad"
-                      />
-                    </View>
+                {/* Experience Years */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Years of Experience</Text>
+                  <View style={styles.inputContainer}>
+                    <MaterialCommunityIcons name="clock-outline" size={20} color="#10b981" />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., 5"
+                      value={formData.experienceYears}
+                      onChangeText={(value) => handleInputChange('experienceYears', value)}
+                      keyboardType="numeric"
+                    />
                   </View>
-                </>
-              )}
-
-              {/* Expertise */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Expertise</Text>
-                <View style={styles.inputContainer}>
-                  <MaterialCommunityIcons name="briefcase" size={20} color="#10b981" />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., Commercial Real Estate"
-                    value={formData.expertise}
-                    onChangeText={(value) => handleInputChange('expertise', value)}
-                  />
                 </View>
-              </View>
 
-              {/* Experience Years */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Years of Experience</Text>
-                <View style={styles.inputContainer}>
-                  <MaterialCommunityIcons name="clock-outline" size={20} color="#10b981" />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., 5"
-                    value={formData.experienceYears}
-                    onChangeText={(value) => handleInputChange('experienceYears', value)}
-                    keyboardType="numeric"
-                  />
+                {/* Description */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Description</Text>
+                  <View style={styles.textAreaContainer}>
+                    <Icon name="description" size={20} color="#10b981" />
+                    <TextInput
+                      style={styles.textArea}
+                      placeholder="Brief description of expertise and achievements"
+                      value={formData.description}
+                      onChangeText={(value) => handleInputChange('description', value)}
+                      multiline
+                      numberOfLines={4}
+                    />
+                  </View>
                 </View>
-              </View>
+              </ScrollView>
 
-              {/* Description */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Description</Text>
-                <View style={styles.textAreaContainer}>
-                  <Icon name="description" size={20} color="#10b981" />
-                  <TextInput
-                    style={styles.textArea}
-                    placeholder="Brief description of expertise and achievements"
-                    value={formData.description}
-                    onChangeText={(value) => handleInputChange('description', value)}
-                    multiline
-                    numberOfLines={4}
-                  />
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={handleCloseModal}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleSubmit}
-              >
-                <LinearGradient
-                  colors={['#10b981', '#059669']}
-                  style={styles.submitGradient}
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={handleCloseModal}
                 >
-                  <Text style={styles.submitButtonText}>
-                    {editingEmployee ? 'Update Employee' : 'Add to USP'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={handleSubmit}
+                >
+                  <LinearGradient
+                    colors={['#10b981', '#059669']}
+                    style={styles.submitGradient}
+                  >
+                    <Text style={styles.submitButtonText}>
+                      {editingEmployee ? 'Update Employee' : 'Add to USP'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
     </SafeAreaView>
   );
 };

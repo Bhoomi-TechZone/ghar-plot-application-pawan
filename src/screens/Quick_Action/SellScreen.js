@@ -214,11 +214,11 @@ const SellScreen = ({ navigation }) => {
     // Handle uploads path
     if (imageData.startsWith('uploads/') || imageData.startsWith('/uploads/')) {
       if (isPostedByAdmin) {
-        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const baseUrl = 'https://gharplotbackend.gntechnology.de';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       } else {
-        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const baseUrl = 'https://gharplotbackend.gntechnology.de';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       }
@@ -400,29 +400,29 @@ const SellScreen = ({ navigation }) => {
           </View>
         ) : (
           <View style={Platform.OS === 'web' ? { flex: 1, overflowY: 'auto' } : { flex: 1 }}>
-          <FlatList
-            data={filteredListings}
-            renderItem={renderListing}
-            keyExtractor={(i) => (i._id || i.id || Math.random().toString())}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={Platform.OS === 'web' ? true : false}
-            key={Platform.OS === 'web' ? 'web-grid-2' : 'mobile-list-1'}
-            numColumns={Platform.OS === 'web' ? 2 : 1}
-            columnWrapperStyle={Platform.OS === 'web' ? styles.gridRow : undefined}
-            ListEmptyComponent={() => (
-              <View style={styles.emptyContainer}>
-                <Icon name="home-outline" size={64} color={COLORS.gray} />
-                <Text style={styles.emptyTitle}>No Properties Found</Text>
-                <Text style={styles.emptySubtitle}>Post your first property to get started.</Text>
-                <TouchableOpacity style={styles.emptyButton} onPress={() => navigation.navigate("AddSell")}>
-                  <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.emptyButtonGradient}>
-                    <Icon name="add" size={18} color={COLORS.white} />
-                    <Text style={styles.emptyButtonText} numberOfLines={1}>Post Property</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            )}
-          />
+            <FlatList
+              data={filteredListings}
+              renderItem={renderListing}
+              keyExtractor={(i) => (i._id || i.id || Math.random().toString())}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={Platform.OS === 'web' ? true : false}
+              key={Platform.OS === 'web' ? 'web-grid-2' : 'mobile-list-1'}
+              numColumns={Platform.OS === 'web' ? 2 : 1}
+              columnWrapperStyle={Platform.OS === 'web' ? styles.gridRow : undefined}
+              ListEmptyComponent={() => (
+                <View style={styles.emptyContainer}>
+                  <Icon name="home-outline" size={64} color={COLORS.gray} />
+                  <Text style={styles.emptyTitle}>No Properties Found</Text>
+                  <Text style={styles.emptySubtitle}>Post your first property to get started.</Text>
+                  <TouchableOpacity style={styles.emptyButton} onPress={() => navigation.navigate("AddSell")}>
+                    <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.emptyButtonGradient}>
+                      <Icon name="add" size={18} color={COLORS.white} />
+                      <Text style={styles.emptyButtonText} numberOfLines={1}>Post Property</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              )}
+            />
           </View>
         )}
       </View>

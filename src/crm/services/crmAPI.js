@@ -5,8 +5,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Production server URL - Updated to use localhost:8866
-export const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
-export const OTP_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+export const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+export const OTP_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 /**
  * Get authentication headers with CRM token

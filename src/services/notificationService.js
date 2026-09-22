@@ -190,12 +190,12 @@ export const sendServiceCompleteNotification = async (serviceData) => {
 
 /**
  * Send system update notification using the real backend API
- * POST https://ghar-plot-backend1.onrender.com/application/notify-update
+ * POST https://gharplotbackend.gntechnology.de/application/notify-update
  */
 export const sendSystemUpdateNotification = async (updateData) => {
     try {
         // Use the actual backend endpoint
-        const apiUrl = 'https://ghar-plot-backend1.onrender.com/application/notify-update';
+        const apiUrl = 'https://gharplotbackend.gntechnology.de/application/notify-update';
 
         const payload = {
             title: updateData.title || "New App Update Available!",
@@ -283,7 +283,7 @@ export const handleNotificationAction = (notificationData, navigation) => {
                 timestamp: Date.now()
             }));
             return;
-        } catch (_) {}
+        } catch (_) { }
 
         // Ultimate fallback if popup cannot be shown
         if (navigation && navigation.navigate) {

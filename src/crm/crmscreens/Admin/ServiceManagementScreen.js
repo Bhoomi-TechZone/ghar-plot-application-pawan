@@ -18,7 +18,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const ServiceManagementScreen = ({ navigation }) => {
   // Main Data States
@@ -470,369 +470,369 @@ const ServiceManagementScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-    <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Icon name="wrench" size={30} color="#fff" />
-          <Text style={styles.headerTitle}>Service Management</Text>
-        </View>
-        <Text style={styles.headerSubtitle}>Manage service types and configurations</Text>
-      </LinearGradient>
-
-      {/* Statistics Cards */}
-      <View style={styles.statsContainer}>
-        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.statCard}>
-          <Icon name="briefcase-outline" size={32} color="#fff" />
-          <Text style={styles.statValue}>{totalServicesCount}</Text>
-          <Text style={styles.statLabel}>Total Services</Text>
-        </LinearGradient>
-
-        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.statCard}>
-          <Icon name="format-list-bulleted" size={32} color="#fff" />
-          <Text style={styles.statValue}>{totalServiceTypesCount}</Text>
-          <Text style={styles.statLabel}>Total Types</Text>
-        </LinearGradient>
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        {/* Error Alert */}
-        {error && (
-          <View style={styles.errorAlert}>
-            <Icon name="alert-circle" size={20} color="#e53e3e" />
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {/* Add New Service Form */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Icon name="plus-circle" size={24} color="#667eea" />
-            <Text style={styles.cardTitle}>Add New Service</Text>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Main Service</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Cleaning, Plumbing"
-              value={mainService}
-              onChangeText={setMainService}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Service Type</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Office, Apartment"
-              value={typeName}
-              onChangeText={setTypeName}
-            />
-          </View>
-
-          <Text style={styles.sectionTitle}>Base Charges Configuration</Text>
-          <View style={styles.chargesGrid}>
-            {propertyTypes.map((type, index) => (
-              <View key={index} style={styles.chargeItem}>
-                <Text style={styles.chargeLabel}>{type}</Text>
-                <TextInput
-                  style={styles.chargeInput}
-                  placeholder="0"
-                  keyboardType="numeric"
-                  value={adminConfig.baseCharges[type]?.toString()}
-                  onChangeText={(value) => handleBaseChargeChange(type, value)}
-                />
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Distance Rate Per Km (₹)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="10"
-              keyboardType="numeric"
-              value={adminConfig.distanceRatePerKm?.toString()}
-              onChangeText={handleDistanceRateChange}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.button, styles.primaryButton]}
-            onPress={addService}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Icon name="plus" size={20} color="#fff" />
-                <Text style={styles.buttonText}>Add Service</Text>
-              </>
-            )}
+      <View style={styles.container}>
+        {/* Header */}
+        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <MaterialIcons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Icon name="wrench" size={30} color="#fff" />
+            <Text style={styles.headerTitle}>Service Management</Text>
+          </View>
+          <Text style={styles.headerSubtitle}>Manage service types and configurations</Text>
+        </LinearGradient>
+
+        {/* Statistics Cards */}
+        <View style={styles.statsContainer}>
+          <LinearGradient colors={['#667eea', '#764ba2']} style={styles.statCard}>
+            <Icon name="briefcase-outline" size={32} color="#fff" />
+            <Text style={styles.statValue}>{totalServicesCount}</Text>
+            <Text style={styles.statLabel}>Total Services</Text>
+          </LinearGradient>
+
+          <LinearGradient colors={['#667eea', '#764ba2']} style={styles.statCard}>
+            <Icon name="format-list-bulleted" size={32} color="#fff" />
+            <Text style={styles.statValue}>{totalServiceTypesCount}</Text>
+            <Text style={styles.statLabel}>Total Types</Text>
+          </LinearGradient>
         </View>
 
-        {/* Existing Services List */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Icon name="format-list-bulleted" size={24} color="#667eea" />
-            <Text style={styles.cardTitle}>Existing Services</Text>
+        <ScrollView
+          style={styles.scrollView}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          {/* Error Alert */}
+          {error && (
+            <View style={styles.errorAlert}>
+              <Icon name="alert-circle" size={20} color="#e53e3e" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          {/* Add New Service Form */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Icon name="plus-circle" size={24} color="#667eea" />
+              <Text style={styles.cardTitle}>Add New Service</Text>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Main Service</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., Cleaning, Plumbing"
+                value={mainService}
+                onChangeText={setMainService}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Service Type</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., Office, Apartment"
+                value={typeName}
+                onChangeText={setTypeName}
+              />
+            </View>
+
+            <Text style={styles.sectionTitle}>Base Charges Configuration</Text>
+            <View style={styles.chargesGrid}>
+              {propertyTypes.map((type, index) => (
+                <View key={index} style={styles.chargeItem}>
+                  <Text style={styles.chargeLabel}>{type}</Text>
+                  <TextInput
+                    style={styles.chargeInput}
+                    placeholder="0"
+                    keyboardType="numeric"
+                    value={adminConfig.baseCharges[type]?.toString()}
+                    onChangeText={(value) => handleBaseChargeChange(type, value)}
+                  />
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Distance Rate Per Km (₹)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="10"
+                keyboardType="numeric"
+                value={adminConfig.distanceRatePerKm?.toString()}
+                onChangeText={handleDistanceRateChange}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, styles.primaryButton]}
+              onPress={addService}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Icon name="plus" size={20} color="#fff" />
+                  <Text style={styles.buttonText}>Add Service</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
-          {loading && services.length === 0 ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#667eea" />
-              <Text style={styles.loadingText}>Loading services...</Text>
+          {/* Existing Services List */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Icon name="format-list-bulleted" size={24} color="#667eea" />
+              <Text style={styles.cardTitle}>Existing Services</Text>
             </View>
-          ) : services.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Icon name="information-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyText}>No services found. Add a new service to get started.</Text>
-            </View>
-          ) : (
-            services.map((service) => (
-              <View key={service._id} style={styles.serviceCard}>
-                <View style={styles.serviceHeader}>
-                  <View style={styles.serviceHeaderLeft}>
-                    <Icon name="wrench" size={24} color="#667eea" />
-                    <Text style={styles.serviceName}>{service.mainService}</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => openDeleteMainModal(service)}
-                    style={styles.iconButton}
-                  >
-                    <Icon name="delete" size={24} color="#e53e3e" />
-                  </TouchableOpacity>
-                </View>
 
-                {/* Service Types */}
-                <View style={styles.typesContainer}>
+            {loading && services.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#667eea" />
+                <Text style={styles.loadingText}>Loading services...</Text>
+              </View>
+            ) : services.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Icon name="information-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>No services found. Add a new service to get started.</Text>
+              </View>
+            ) : (
+              services.map((service) => (
+                <View key={service._id} style={styles.serviceCard}>
+                  <View style={styles.serviceHeader}>
+                    <View style={styles.serviceHeaderLeft}>
+                      <Icon name="wrench" size={24} color="#667eea" />
+                      <Text style={styles.serviceName}>{service.mainService}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => openDeleteMainModal(service)}
+                      style={styles.iconButton}
+                    >
+                      <Icon name="delete" size={24} color="#e53e3e" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Service Types */}
+                  <View style={styles.typesContainer}>
+                    {service.serviceTypes?.map((type) => (
+                      <View key={type._id} style={styles.typeBadge}>
+                        <Text style={styles.typeName}>{type.typeName}</Text>
+                        <View style={styles.typeActions}>
+                          <TouchableOpacity
+                            onPress={() => openEditTypeModal(service, type)}
+                            style={styles.typeActionButton}
+                          >
+                            <Icon name="pencil" size={16} color="#ed8936" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => openDeleteTypeModal(service, type)}
+                            style={styles.typeActionButton}
+                          >
+                            <Icon name="delete" size={16} color="#e53e3e" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Charges Display */}
                   {service.serviceTypes?.map((type) => (
-                    <View key={type._id} style={styles.typeBadge}>
-                      <Text style={styles.typeName}>{type.typeName}</Text>
-                      <View style={styles.typeActions}>
-                        <TouchableOpacity
-                          onPress={() => openEditTypeModal(service, type)}
-                          style={styles.typeActionButton}
-                        >
-                          <Icon name="pencil" size={16} color="#ed8936" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => openDeleteTypeModal(service, type)}
-                          style={styles.typeActionButton}
-                        >
-                          <Icon name="delete" size={16} color="#e53e3e" />
-                        </TouchableOpacity>
+                    <View key={type._id} style={styles.chargesDisplay}>
+                      <Text style={styles.chargesTitle}>{type.typeName} Charges</Text>
+                      <View style={styles.chargesList}>
+                        {Object.entries(type.adminConfig?.baseCharges || {})
+                          .filter(([_, value]) => value > 0)
+                          .map(([key, value]) => (
+                            <View key={key} style={styles.chargeRow}>
+                              <Text style={styles.chargeKey}>{key}:</Text>
+                              <Text style={styles.chargeValue}>₹{value}</Text>
+                            </View>
+                          ))}
+                        <View style={styles.chargeRow}>
+                          <Text style={styles.chargeKey}>Distance Rate:</Text>
+                          <Text style={styles.chargeValue}>
+                            ₹{type.adminConfig?.distanceRatePerKm}/km
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   ))}
                 </View>
+              ))
+            )}
+          </View>
+        </ScrollView>
 
-                {/* Charges Display */}
-                {service.serviceTypes?.map((type) => (
-                  <View key={type._id} style={styles.chargesDisplay}>
-                    <Text style={styles.chargesTitle}>{type.typeName} Charges</Text>
-                    <View style={styles.chargesList}>
-                      {Object.entries(type.adminConfig?.baseCharges || {})
-                        .filter(([_, value]) => value > 0)
-                        .map(([key, value]) => (
-                          <View key={key} style={styles.chargeRow}>
-                            <Text style={styles.chargeKey}>{key}:</Text>
-                            <Text style={styles.chargeValue}>₹{value}</Text>
-                          </View>
-                        ))}
-                      <View style={styles.chargeRow}>
-                        <Text style={styles.chargeKey}>Distance Rate:</Text>
-                        <Text style={styles.chargeValue}>
-                          ₹{type.adminConfig?.distanceRatePerKm}/km
-                        </Text>
-                      </View>
+        {/* Delete Main Service Modal */}
+        <Modal
+          visible={showDeleteMainModal}
+          transparent
+          animationType="fade"
+          onRequestClose={closeDeleteMainModal}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Confirm Deletion</Text>
+                <TouchableOpacity onPress={closeDeleteMainModal}>
+                  <Icon name="close" size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalBody}>
+                <Icon name="alert-circle-outline" size={60} color="#e53e3e" />
+                <Text style={styles.modalText}>
+                  Are you sure you want to delete the main service "{serviceToDelete?.mainService}" and
+                  all its service types?
+                </Text>
+                <View style={styles.warningBox}>
+                  <Icon name="alert" size={20} color="#e53e3e" />
+                  <Text style={styles.warningText}>This action cannot be undone.</Text>
+                </View>
+              </View>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={[styles.button, styles.secondaryButton]}
+                  onPress={closeDeleteMainModal}
+                >
+                  <Text style={styles.secondaryButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.dangerButton]}
+                  onPress={confirmDeleteMainService}
+                >
+                  <Text style={styles.buttonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Delete Service Type Modal */}
+        <Modal
+          visible={showDeleteTypeModal}
+          transparent
+          animationType="fade"
+          onRequestClose={closeDeleteTypeModal}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Confirm Deletion</Text>
+                <TouchableOpacity onPress={closeDeleteTypeModal}>
+                  <Icon name="close" size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalBody}>
+                <Icon name="alert-circle-outline" size={60} color="#e53e3e" />
+                <Text style={styles.modalText}>
+                  Are you sure you want to delete the service type "{serviceTypeToDelete?.typeName}"?
+                </Text>
+                <View style={styles.warningBox}>
+                  <Icon name="alert" size={20} color="#e53e3e" />
+                  <Text style={styles.warningText}>This action cannot be undone.</Text>
+                </View>
+              </View>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={[styles.button, styles.secondaryButton]}
+                  onPress={closeDeleteTypeModal}
+                >
+                  <Text style={styles.secondaryButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.dangerButton]}
+                  onPress={confirmDeleteServiceType}
+                >
+                  <Text style={styles.buttonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Edit Service Type Modal */}
+        <Modal
+          visible={showEditTypeModal}
+          transparent
+          animationType="slide"
+          onRequestClose={closeEditTypeModal}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, styles.editModalContent]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Service Type</Text>
+                <TouchableOpacity onPress={closeEditTypeModal}>
+                  <Icon name="close" size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.editModalBody}>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Service Type Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Service Type Name"
+                    value={typeName}
+                    onChangeText={setTypeName}
+                  />
+                </View>
+
+                <Text style={styles.sectionTitle}>Base Charges Configuration</Text>
+                <View style={styles.chargesGrid}>
+                  {propertyTypes.map((type, index) => (
+                    <View key={index} style={styles.chargeItem}>
+                      <Text style={styles.chargeLabel}>{type}</Text>
+                      <TextInput
+                        style={styles.chargeInput}
+                        placeholder="0"
+                        keyboardType="numeric"
+                        value={adminConfig.baseCharges[type]?.toString()}
+                        onChangeText={(value) => handleBaseChargeChange(type, value)}
+                      />
                     </View>
-                  </View>
-                ))}
+                  ))}
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Distance Rate Per Km (₹)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="10"
+                    keyboardType="numeric"
+                    value={adminConfig.distanceRatePerKm?.toString()}
+                    onChangeText={handleDistanceRateChange}
+                  />
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={[styles.button, styles.secondaryButton]}
+                  onPress={closeEditTypeModal}
+                >
+                  <Text style={styles.secondaryButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.primaryButton]}
+                  onPress={updateServiceType}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.buttonText}>Update</Text>
+                  )}
+                </TouchableOpacity>
               </View>
-            ))
-          )}
-        </View>
-      </ScrollView>
-
-      {/* Delete Main Service Modal */}
-      <Modal
-        visible={showDeleteMainModal}
-        transparent
-        animationType="fade"
-        onRequestClose={closeDeleteMainModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Confirm Deletion</Text>
-              <TouchableOpacity onPress={closeDeleteMainModal}>
-                <Icon name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalBody}>
-              <Icon name="alert-circle-outline" size={60} color="#e53e3e" />
-              <Text style={styles.modalText}>
-                Are you sure you want to delete the main service "{serviceToDelete?.mainService}" and
-                all its service types?
-              </Text>
-              <View style={styles.warningBox}>
-                <Icon name="alert" size={20} color="#e53e3e" />
-                <Text style={styles.warningText}>This action cannot be undone.</Text>
-              </View>
-            </View>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={[styles.button, styles.secondaryButton]}
-                onPress={closeDeleteMainModal}
-              >
-                <Text style={styles.secondaryButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.dangerButton]}
-                onPress={confirmDeleteMainService}
-              >
-                <Text style={styles.buttonText}>Delete</Text>
-              </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
-
-      {/* Delete Service Type Modal */}
-      <Modal
-        visible={showDeleteTypeModal}
-        transparent
-        animationType="fade"
-        onRequestClose={closeDeleteTypeModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Confirm Deletion</Text>
-              <TouchableOpacity onPress={closeDeleteTypeModal}>
-                <Icon name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalBody}>
-              <Icon name="alert-circle-outline" size={60} color="#e53e3e" />
-              <Text style={styles.modalText}>
-                Are you sure you want to delete the service type "{serviceTypeToDelete?.typeName}"?
-              </Text>
-              <View style={styles.warningBox}>
-                <Icon name="alert" size={20} color="#e53e3e" />
-                <Text style={styles.warningText}>This action cannot be undone.</Text>
-              </View>
-            </View>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={[styles.button, styles.secondaryButton]}
-                onPress={closeDeleteTypeModal}
-              >
-                <Text style={styles.secondaryButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.dangerButton]}
-                onPress={confirmDeleteServiceType}
-              >
-                <Text style={styles.buttonText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Edit Service Type Modal */}
-      <Modal
-        visible={showEditTypeModal}
-        transparent
-        animationType="slide"
-        onRequestClose={closeEditTypeModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, styles.editModalContent]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Service Type</Text>
-              <TouchableOpacity onPress={closeEditTypeModal}>
-                <Icon name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.editModalBody}>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Service Type Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Service Type Name"
-                  value={typeName}
-                  onChangeText={setTypeName}
-                />
-              </View>
-
-              <Text style={styles.sectionTitle}>Base Charges Configuration</Text>
-              <View style={styles.chargesGrid}>
-                {propertyTypes.map((type, index) => (
-                  <View key={index} style={styles.chargeItem}>
-                    <Text style={styles.chargeLabel}>{type}</Text>
-                    <TextInput
-                      style={styles.chargeInput}
-                      placeholder="0"
-                      keyboardType="numeric"
-                      value={adminConfig.baseCharges[type]?.toString()}
-                      onChangeText={(value) => handleBaseChargeChange(type, value)}
-                    />
-                  </View>
-                ))}
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Distance Rate Per Km (₹)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="10"
-                  keyboardType="numeric"
-                  value={adminConfig.distanceRatePerKm?.toString()}
-                  onChangeText={handleDistanceRateChange}
-                />
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={[styles.button, styles.secondaryButton]}
-                onPress={closeEditTypeModal}
-              >
-                <Text style={styles.secondaryButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.primaryButton]}
-                onPress={updateServiceType}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Update</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
     </SafeAreaView>
   );
 };

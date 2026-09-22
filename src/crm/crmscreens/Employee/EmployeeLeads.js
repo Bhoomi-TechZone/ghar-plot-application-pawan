@@ -28,7 +28,7 @@ import PermissionGate, { usePermissionCheck } from '../../../components/Permissi
 import { MODULES } from '../../../context/PermissionContext';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const EmployeeLeads = ({ navigation, openDrawer }) => {
   // ============================================
@@ -247,7 +247,7 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
           clientName: assignment.enquiry?.buyerId?.fullName || assignment.enquiry?.clientName || 'N/A',
           clientPhone: assignment.enquiry?.buyerId?.phone || assignment.enquiry?.contactNumber || 'N/A',
           clientEmail: assignment.enquiry?.buyerId?.email || assignment.enquiry?.email || 'N/A',
-          
+
           // Property Info - handle both propertyId model and manual fields
           propertyType: assignment.enquiry?.propertyId?.propertyType || assignment.enquiry?.productType || 'N/A',
           propertyLocation: assignment.enquiry?.propertyId?.propertyLocation || assignment.enquiry?.location || assignment.enquiry?.address || 'N/A',

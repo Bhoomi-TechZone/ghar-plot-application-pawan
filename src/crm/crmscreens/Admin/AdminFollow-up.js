@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const AdminFollowUps = ({ navigation }) => {
   // Data States
@@ -470,7 +470,7 @@ const AdminFollowUps = ({ navigation }) => {
             {followUp.comments[0].text}
           </Text>
           <Text style={styles.commentMeta}>
-            By {followUp.comments[0].addedBy?.name} • {formatDate(followUp.comments[0].createdAt)}
+            By {followUp.comments[0].addedBy?.name} ï¿½ {formatDate(followUp.comments[0].createdAt)}
           </Text>
         </View>
       )}
@@ -920,7 +920,7 @@ const AdminFollowUps = ({ navigation }) => {
                               <Text style={styles.reminderNote}>?? {reminder.note}</Text>
                             )}
                             <Text style={styles.reminderMeta}>
-                              Set by: {reminder.createdBy?.fullName || reminder.createdBy?.name || 'Unknown'} • {new Date(reminder.createdAt).toLocaleDateString('en-IN')}
+                              Set by: {reminder.createdBy?.fullName || reminder.createdBy?.name || 'Unknown'} ï¿½ {new Date(reminder.createdAt).toLocaleDateString('en-IN')}
                             </Text>
                           </View>
                         ))}

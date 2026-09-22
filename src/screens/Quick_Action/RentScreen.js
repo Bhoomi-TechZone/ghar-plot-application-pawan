@@ -205,11 +205,11 @@ const RentScreen = ({ navigation }) => {
     // Handle uploads path
     if (imageData.startsWith('uploads/') || imageData.startsWith('/uploads/')) {
       if (isPostedByAdmin) {
-        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const baseUrl = 'https://gharplotbackend.gntechnology.de';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       } else {
-        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const baseUrl = 'https://gharplotbackend.gntechnology.de';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       }

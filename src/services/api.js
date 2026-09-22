@@ -52,7 +52,7 @@ async function handleTokenExpiry() {
 }
 
 // Backend Server URL
-export const BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+export const BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 // --- HELPER FUNCTION TO CONSTRUCT QUERY STRING ---
 const buildQuery = (params) => {

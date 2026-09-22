@@ -384,7 +384,7 @@ export const updateProperty = async (propertyId, data = {}, files = []) => {
 
 /**
  * GET: Fetch recently added properties across the platform
- * cURL: GET https://ghar-plot-backend1.onrender.com/api/properties/recent/all?limit=50
+ * cURL: GET https://gharplotbackend.gntechnology.de/api/properties/recent/all?limit=50
  * Returns recently added properties with full details
  * PUBLIC API: No authentication required for browsing properties
  * @param {number} limit - Maximum number of properties to fetch (default: 15 for featured, 50 for all)
@@ -395,7 +395,7 @@ export const getRecentFeaturedProperties = async (limit = 15) => {
         // Get token if available (optional for public browsing)
         const token = await AsyncStorage.getItem('userToken');
 
-        const url = `https://ghar-plot-backend1.onrender.com/api/properties/recent/all?limit=${limit}`;
+        const url = `https://gharplotbackend.gntechnology.de/api/properties/recent/all?limit=${limit}`;
 
         console.log('[propertyapi] Fetching recent featured properties from:', url);
         console.log('[propertyapi] Token available:', !!token, '(optional for browsing)');
@@ -443,7 +443,7 @@ export const getRecentFeaturedProperties = async (limit = 15) => {
 
 // Function to fetch nearby properties
 export const fetchNearbyProperties = async (lat, lng, distance) => {
-    const url = `https://ghar-plot-backend1.onrender.com/property/nearby?lat=${lat}&lng=${lng}&distance=${distance}`;
+    const url = `https://gharplotbackend.gntechnology.de/property/nearby?lat=${lat}&lng=${lng}&distance=${distance}`;
     const token = await AsyncStorage.getItem('jwtToken'); // Replace 'jwtToken' with the actual key if different
 
     try {

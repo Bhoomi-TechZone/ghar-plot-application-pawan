@@ -909,6 +909,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: 'stretch',
+    paddingLeft: 6,
     marginRight: 16,
     marginBottom: 14,
   },
@@ -926,6 +927,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    marginLeft: 14,
   },
   backToHomeButton: {
     width: 36,

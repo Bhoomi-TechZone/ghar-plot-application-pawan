@@ -60,13 +60,13 @@ const PropertyManagementScreen = ({ navigation }) => {
     if (imageData.startsWith('uploads/') || imageData.startsWith('/uploads/')) {
       // Admin properties use .us domain
       if (isPostedByAdmin) {
-        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const baseUrl = 'https://gharplotbackend.gntechnology.de';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       }
       // User properties use .com domain
       else {
-        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const baseUrl = 'https://gharplotbackend.gntechnology.de';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       }
@@ -343,18 +343,18 @@ const PropertyManagementScreen = ({ navigation }) => {
             const isPostedByAdmin = item?.isPostedByAdmin || false;
             const cleanPath = imageUrl.replace(/^\/+/, '');
             if (isPostedByAdmin) {
-              return `https://ghar-plot-backend1.onrender.com/${cleanPath}`;
+              return `https://gharplotbackend.gntechnology.de/${cleanPath}`;
             } else {
-              return `https://ghar-plot-backend1.onrender.com/${cleanPath}`;
+              return `https://gharplotbackend.gntechnology.de/${cleanPath}`;
             }
           }
 
           // Handle relative paths without leading slash
           const isPostedByAdmin = item?.isPostedByAdmin || false;
           if (isPostedByAdmin) {
-            return `https://ghar-plot-backend1.onrender.com/${imageUrl}`;
+            return `https://gharplotbackend.gntechnology.de/${imageUrl}`;
           } else {
-            return `https://ghar-plot-backend1.onrender.com/${imageUrl}`;
+            return `https://gharplotbackend.gntechnology.de/${imageUrl}`;
           }
         }
       }
@@ -425,7 +425,7 @@ const PropertyManagementScreen = ({ navigation }) => {
           </Text>
 
           <Text style={styles.cardMeta}>
-            {item.area || item.size || item.sqft || item.square_feet || 'Area not specified'} • {formatPrice(item.price || item.cost || item.rent || item.amount)}
+            {item.area || item.size || item.sqft || item.square_feet || 'Area not specified'} ï¿½ {formatPrice(item.price || item.cost || item.rent || item.amount)}
           </Text>
 
           <View style={styles.cardFooter}>
@@ -580,7 +580,7 @@ const PropertyManagementScreen = ({ navigation }) => {
       console.log('Posting property with', formData.photosAndVideo.length, 'files');
 
       // Call backend API - Use admin endpoint
-      const response = await fetch('https://ghar-plot-backend1.onrender.com/property/admin/add', {
+      const response = await fetch('https://gharplotbackend.gntechnology.de/property/admin/add', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -680,7 +680,7 @@ const PropertyManagementScreen = ({ navigation }) => {
 
         {/* STATS */}
         <View style={styles.statsRow}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statBox}
             onPress={() => navigation.navigate('AllPropertiesScreen', {
               category: 'All',
@@ -691,7 +691,7 @@ const PropertyManagementScreen = ({ navigation }) => {
             <Text style={styles.statNum}>{stats.total}</Text>
             <Text style={styles.statLabel}>TOTAL</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statBox}
             onPress={() => navigation.navigate('AllPropertiesScreen', {
               category: 'Residential',
@@ -702,7 +702,7 @@ const PropertyManagementScreen = ({ navigation }) => {
             <Text style={styles.statNum}>{stats.residential}</Text>
             <Text style={styles.statLabel}>RESIDENTIAL</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statBox}
             onPress={() => navigation.navigate('AllPropertiesScreen', {
               category: 'Commercial',

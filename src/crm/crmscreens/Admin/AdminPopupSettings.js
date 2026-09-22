@@ -22,7 +22,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const AdminPopupSettings = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
@@ -180,7 +180,7 @@ const AdminPopupSettings = ({ navigation }) => {
 
           CrossPlatformAlert.alert(
             'Success',
-            `All notifications enabled!\n• Admin settings: ?\n• Employee popups: ${employeeData.updatedCount || 'all'} employees`
+            `All notifications enabled!\nï¿½ Admin settings: ?\nï¿½ Employee popups: ${employeeData.updatedCount || 'all'} employees`
           );
         } else {
           throw new Error('Employee popup update failed');

@@ -126,7 +126,7 @@ export const forceRefreshFCMToken = async () => {
         if (!messaging().isDeviceRegisteredForRemoteMessages) {
           await messaging().registerDeviceForRemoteMessages();
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     const newToken = await messaging().getToken();
 
@@ -873,7 +873,7 @@ export const checkFCMConfiguration = async () => {
           if (!messaging().isDeviceRegisteredForRemoteMessages) {
             await messaging().registerDeviceForRemoteMessages();
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       console.log('🎫 Attempting to get FCM token...');
       token = await messaging().getToken();
@@ -983,7 +983,7 @@ export const sendTokenToBackend = async (userId, token) => {
       // 1️⃣ Admin: ONLY save to Admin model — never call save-employee-token
       // (save-employee-token clears Admin tokens, causing missed push notifications)
       try {
-        const adminResponse = await fetch('https://ghar-plot-backend1.onrender.com/api/save-admin-token', {
+        const adminResponse = await fetch('https://gharplotbackend.gntechnology.de/api/save-admin-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1006,7 +1006,7 @@ export const sendTokenToBackend = async (userId, token) => {
     } else {
       // 1️⃣ User/Employee: Save to User model
       try {
-        const userResponse = await fetch('https://ghar-plot-backend1.onrender.com/api/save-token', {
+        const userResponse = await fetch('https://gharplotbackend.gntechnology.de/api/save-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: userId, fcmToken: token, platform: Platform.OS }),
@@ -1021,7 +1021,7 @@ export const sendTokenToBackend = async (userId, token) => {
 
       // 2️⃣ Save to Employee model
       try {
-        const employeeResponse = await fetch('https://ghar-plot-backend1.onrender.com/api/save-employee-token', {
+        const employeeResponse = await fetch('https://gharplotbackend.gntechnology.de/api/save-employee-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1217,7 +1217,7 @@ export const createReminderNotificationPayload = (reminderData) => {
         channelId: 'enquiry_reminders',
         priority: 'max',
         defaultSound: true,
-        defaultVibratePattern: true
+        defaultVibrateTimings: true
       }
     },
     apns: {

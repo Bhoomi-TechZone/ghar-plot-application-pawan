@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const EmployeeReminders = ({ navigation, openDrawer }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -127,7 +127,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
 
         // Merge API reminders with local reminders
         const allRemindersMap = new Map();
-        
+
         // Add local ones first
         localRemindersList.forEach(r => {
           allRemindersMap.set(r.id || r._id, {
@@ -146,7 +146,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
         });
 
         const mergedList = Array.from(allRemindersMap.values());
-        
+
         // Sort by date (descending)
         mergedList.sort((a, b) => {
           const dateA = new Date(a.reminderDateTime || a.dateTime || a.scheduledDate);
@@ -261,7 +261,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
               const url = isAdmin
                 ? `${API_BASE_URL}/api/reminder/${reminder._id}/complete`
                 : `${API_BASE_URL}/employee/reminders/${reminder._id}/complete`;
-              
+
               console.log('?? Complete reminder URL:', url, '| isAdmin:', isAdmin);
 
               const result = await fetch(url, {
@@ -325,7 +325,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
       const url = isAdmin
         ? `${API_BASE_URL}/api/reminder/snooze/${reminderId}`
         : `${API_BASE_URL}/employee/reminders/snooze/${reminderId}`;
-      
+
       console.log('?? Snooze URL:', url, '| isAdmin:', isAdmin);
 
       const response = await fetch(url, {
@@ -374,11 +374,11 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
                 return;
               }
 
-              // Use correct route based on role — admin uses /api/reminder, employee uses /employee/reminders
+              // Use correct route based on role ï¿½ admin uses /api/reminder, employee uses /employee/reminders
               const url = isAdmin
                 ? `${API_BASE_URL}/api/reminder/dismiss/${reminder._id}`
                 : `${API_BASE_URL}/employee/reminders/dismiss/${reminder._id}`;
-              
+
               console.log('?? Dismiss URL:', url, '| isAdmin:', isAdmin);
 
               const response = await fetch(url, {
@@ -509,7 +509,7 @@ const EmployeeReminders = ({ navigation, openDrawer }) => {
               <Icon name="person-outline" size={14} color="#6b7280" />
               <Text style={styles.clientText}>
                 {reminder.clientName || reminder.clientInfo?.name}
-                {(reminder.phone || reminder.clientInfo?.phone) && ` • ${reminder.phone || reminder.clientInfo.phone}`}
+                {(reminder.phone || reminder.clientInfo?.phone) && ` ï¿½ ${reminder.phone || reminder.clientInfo.phone}`}
               </Text>
             </View>
           )}

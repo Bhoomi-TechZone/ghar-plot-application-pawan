@@ -89,21 +89,49 @@ const EmployeeExpensesScreen = ({ navigation }) => {
   const [dailySheetGrandTotal, setDailySheetGrandTotal] = useState(0);
   const [dailySheetTotalCount, setDailySheetTotalCount] = useState(0);
 
+  // Employees List for Associate Selection & Assignment
+  const [employeesList, setEmployeesList] = useState([]);
+
+  // Cash Flow State for Employee
+  const [cashFlowForm, setCashFlowForm] = useState({
+    associateId: '',
+    associateName: '',
+    openingBalance: '0',
+    entries: [
+      { id: Date.now().toString(), receivedFrom: '', receivedAmount: '', type: 'Cash' }
+    ],
+  });
+  const [cashFlowSubmitting, setCashFlowSubmitting] = useState(false);
+  const [todayCashFlowRecord, setTodayCashFlowRecord] = useState(null);
+  const [loadingCashFlowData, setLoadingCashFlowData] = useState(false);
+
   // Load employee and initial data
   useEffect(() => {
     const initData = async () => {
       try {
         setLoadingMaster(true);
         const storedUser = await AsyncStorage.getItem('employee_user');
+        let initialEmpId = '';
         if (storedUser) {
           const emp = JSON.parse(storedUser);
           setCurrentEmployee(emp);
+          initialEmpId = emp._id || emp.id;
+          setCashFlowForm(prev => ({
+            ...prev,
+            associateId: initialEmpId,
+            associateName: emp.name,
+          }));
         }
 
-        const [projList, catList] = await Promise.all([
+        const [projList, catList, empList] = await Promise.all([
           adminSitesApi.getProjects(),
           adminSitesApi.getExpenseCategories(),
+          adminSitesApi.getEmployees(),
         ]);
+
+        if (empList && Array.isArray(empList)) {
+          setEmployeesList(empList);
+        }
 
         if (projList && Array.isArray(projList)) {
           setProjects(projList);
@@ -118,6 +146,10 @@ const EmployeeExpensesScreen = ({ navigation }) => {
 
         if (catList && Array.isArray(catList) && catList.length > 0) {
           setCategoriesList(catList);
+        }
+
+        if (initialEmpId) {
+          fetchAssociateCashFlowData(initialEmpId);
         }
       } catch (err) {
         console.error('Error initializing employee expense screen:', err);
@@ -163,8 +195,159 @@ const EmployeeExpensesScreen = ({ navigation }) => {
   useEffect(() => {
     if (activeTab === 'daily_sheet' && currentEmployee) {
       fetchTodayProjectSheet(sheetProjectFilter);
+    } else if (activeTab === 'cash_flow') {
+      const targetAssoc = cashFlowForm.associateId || currentEmployee?._id || currentEmployee?.id;
+      if (targetAssoc) {
+        fetchAssociateCashFlowData(targetAssoc);
+      }
     }
   }, [activeTab, currentEmployee, sheetProjectFilter]);
+
+  // Fetch associate cashflow data & previous closing balance
+  const fetchAssociateCashFlowData = async (associateId) => {
+    if (!associateId) return;
+    setLoadingCashFlowData(true);
+    try {
+      const now = new Date();
+      const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      const [prevBal, allFlows] = await Promise.all([
+        adminSitesApi.getPreviousClosingBalance(associateId, formattedDate),
+        adminSitesApi.getCashFlows(),
+      ]);
+
+      setCashFlowForm(prev => ({
+        ...prev,
+        openingBalance: String(prevBal || 0),
+      }));
+
+      if (allFlows && Array.isArray(allFlows)) {
+        const todayMatch = allFlows.find(cf => {
+          const assocId = cf.businessAssociate?._id || cf.businessAssociate?.id || cf.businessAssociate;
+          if (assocId !== associateId) return false;
+          if (!cf.date) return false;
+          const cfDateStr = new Date(cf.date).toISOString().split('T')[0];
+          return cfDateStr === formattedDate;
+        });
+        setTodayCashFlowRecord(todayMatch || null);
+      }
+    } catch (err) {
+      console.log('Error fetching cash flow data:', err);
+    } finally {
+      setLoadingCashFlowData(false);
+    }
+  };
+
+  const handleAssociateChangeInCashFlow = (associateName) => {
+    const foundEmp = employeesList.find(e => e.name === associateName);
+    if (foundEmp) {
+      const assocId = foundEmp.id || foundEmp._id;
+      setCashFlowForm(prev => ({
+        ...prev,
+        associateName: foundEmp.name,
+        associateId: assocId,
+      }));
+      fetchAssociateCashFlowData(assocId);
+    } else {
+      setCashFlowForm(prev => ({
+        ...prev,
+        associateName,
+      }));
+    }
+  };
+
+  const addCashFlowEntry = () => {
+    setCashFlowForm(prev => ({
+      ...prev,
+      entries: [
+        ...prev.entries,
+        { id: Date.now().toString(), receivedFrom: '', receivedAmount: '', type: 'Cash' },
+      ],
+    }));
+  };
+
+  const removeCashFlowEntry = (entryId) => {
+    if (cashFlowForm.entries.length <= 1) return;
+    setCashFlowForm(prev => ({
+      ...prev,
+      entries: prev.entries.filter(e => e.id !== entryId),
+    }));
+  };
+
+  const updateCashFlowEntry = (entryId, field, value) => {
+    setCashFlowForm(prev => ({
+      ...prev,
+      entries: prev.entries.map(e => (e.id === entryId ? { ...e, [field]: value } : e)),
+    }));
+  };
+
+  const handleCashFlowSubmit = async () => {
+    if (!cashFlowForm.associateId) {
+      Alert.alert('Validation Error', 'Please select an associate to assign cash.');
+      return;
+    }
+
+    const hasInvalid = cashFlowForm.entries.some(
+      e => !e.receivedFrom.trim() || isNaN(parseFloat(e.receivedAmount)) || parseFloat(e.receivedAmount) <= 0
+    );
+    if (hasInvalid) {
+      Alert.alert('Validation Error', 'Please fill in Received From and a valid Received Amount for each entry.');
+      return;
+    }
+
+    setCashFlowSubmitting(true);
+    try {
+      const now = new Date();
+      const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      const newEntries = cashFlowForm.entries.map(e => ({
+        receivedFrom: e.receivedFrom.trim(),
+        receivedAmount: parseFloat(e.receivedAmount) || 0,
+        type: e.type || 'Cash',
+      }));
+
+      // If today's record already exists, update and settle
+      if (todayCashFlowRecord?._id) {
+        const prevEntries = Array.isArray(todayCashFlowRecord.entries) ? todayCashFlowRecord.entries : [];
+        const mergedEntries = [...prevEntries, ...newEntries];
+        let openingBal = parseFloat(cashFlowForm.openingBalance) || 0;
+        if (openingBal === 0 && (todayCashFlowRecord.openingBalance || 0) > 0) {
+          openingBal = todayCashFlowRecord.openingBalance;
+        }
+
+        const requestBody = {
+          businessAssociate: cashFlowForm.associateId,
+          date: formattedDate,
+          openingBalance: openingBal,
+          entries: mergedEntries,
+        };
+
+        const res = await adminSitesApi.updateCashFlow(todayCashFlowRecord._id, requestBody);
+        Alert.alert('Success', res?.message || 'Cash flow entry assigned and settled successfully!');
+      } else {
+        const requestBody = {
+          businessAssociate: cashFlowForm.associateId,
+          date: formattedDate,
+          openingBalance: parseFloat(cashFlowForm.openingBalance) || 0,
+          entries: newEntries,
+        };
+
+        const res = await adminSitesApi.createCashFlow(requestBody);
+        Alert.alert('Success', res?.message || 'Cash flow entry assigned & settled successfully!');
+      }
+
+      setCashFlowForm(prev => ({
+        ...prev,
+        entries: [{ id: Date.now().toString(), receivedFrom: '', receivedAmount: '', type: 'Cash' }],
+      }));
+
+      await fetchAssociateCashFlowData(cashFlowForm.associateId);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to assign cash flow.');
+    } finally {
+      setCashFlowSubmitting(false);
+    }
+  };
 
   // Handle Project Change in Form
   const handleProjectSelect = (projectName) => {
@@ -656,12 +839,27 @@ const EmployeeExpensesScreen = ({ navigation }) => {
           >
             <MaterialIcons
               name="table-chart"
-              size={18}
+              size={17}
               color={activeTab === 'daily_sheet' ? '#0f766e' : '#ccfbf1'}
-              style={{ marginRight: 6 }}
+              style={{ marginRight: 4 }}
             />
             <Text style={[styles.tabText, activeTab === 'daily_sheet' && styles.tabTextActive]}>
-              Today's Project Sheet
+              Today's Sheet
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'cash_flow' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('cash_flow')}
+          >
+            <MaterialIcons
+              name="account-balance-wallet"
+              size={17}
+              color={activeTab === 'cash_flow' ? '#0f766e' : '#ccfbf1'}
+              style={{ marginRight: 4 }}
+            />
+            <Text style={[styles.tabText, activeTab === 'cash_flow' && styles.tabTextActive]}>
+              Cash Flow
             </Text>
           </TouchableOpacity>
         </View>
@@ -1234,6 +1432,218 @@ const EmployeeExpensesScreen = ({ navigation }) => {
             )}
           </View>
         )}
+
+        {/* TAB 3: CASH FLOW ASSIGNMENT & SETTLEMENT */}
+        {activeTab === 'cash_flow' && (
+          <View>
+            {/* Header Banner */}
+            <View style={styles.dateLockBanner}>
+              <View style={styles.dateLockIcon}>
+                <MaterialIcons name="account-balance-wallet" size={22} color="#0f766e" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.dateLockTitle}>Associate Daily Cash Flow</Text>
+                <Text style={styles.dateLockValue}>Date: {todayDate}</Text>
+                <Text style={styles.dateLockHint}>
+                  Assign or receive cash. Any amount added automatically settles with today's expenses & balance.
+                </Text>
+              </View>
+            </View>
+
+            {/* ASSOCIATE SELECTION & BALANCE STATUS */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Business Associate Details</Text>
+              <View style={styles.formField}>
+                <Text style={styles.formLabel}>Assign / View Associate <Text style={styles.required}>*</Text></Text>
+                <View style={styles.pickerBorder}>
+                  <Picker
+                    selectedValue={cashFlowForm.associateName}
+                    onValueChange={(val) => handleAssociateChangeInCashFlow(val)}
+                    style={styles.picker}
+                    dropdownIconColor="#0f766e"
+                  >
+                    <Picker.Item label="Select Employee" value="" />
+                    {employeesList.map((emp) => (
+                      <Picker.Item
+                        key={emp.id || emp._id}
+                        label={`${emp.name} (${emp.department || 'Employee'})`}
+                        value={emp.name}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+
+              {/* TODAY'S LIVE BALANCE STATS */}
+              {loadingCashFlowData ? (
+                <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color="#0f766e" />
+                  <Text style={{ color: '#64748b', fontSize: 12, marginTop: 6 }}>Loading balance summary...</Text>
+                </View>
+              ) : (
+                <View style={{ marginTop: 6, marginBottom: 6 }}>
+                  <Text style={[styles.formLabel, { marginBottom: 8 }]}>Daily Balance & Settlement Summary</Text>
+                  <View style={styles.statsGrid}>
+                    <View style={[styles.statBox, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}>
+                      <Text style={styles.statBoxTitle}>Opening Bal</Text>
+                      <Text style={[styles.statBoxValue, { color: '#1d4ed8' }]}>
+                        ₹{Number(cashFlowForm.openingBalance || 0).toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.statBox, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+                      <Text style={styles.statBoxTitle}>Total Received</Text>
+                      <Text style={[styles.statBoxValue, { color: '#15803d' }]}>
+                        ₹{Number(todayCashFlowRecord?.totalReceived || 0).toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.statBox, { backgroundColor: '#fff7ed', borderColor: '#fed7aa' }]}>
+                      <Text style={styles.statBoxTitle}>Total Spent</Text>
+                      <Text style={[styles.statBoxValue, { color: '#c2410c' }]}>
+                        ₹{Number(todayCashFlowRecord?.totalExpense || 0).toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.statBox, { backgroundColor: '#f0fdfa', borderColor: '#99f6e4' }]}>
+                      <Text style={styles.statBoxTitle}>Current Balance</Text>
+                      <Text style={[styles.statBoxValue, { color: '#0f766e' }]}>
+                        ₹{Number(
+                          todayCashFlowRecord?.closingBalance !== undefined
+                            ? todayCashFlowRecord.closingBalance
+                            : (parseFloat(cashFlowForm.openingBalance) || 0) +
+                              (todayCashFlowRecord?.totalReceived || 0) -
+                              (todayCashFlowRecord?.totalExpense || 0)
+                        ).toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* AUTO-SETTLEMENT ACTIVE BADGE */}
+              {todayCashFlowRecord && (
+                <View style={styles.settleBadge}>
+                  <MaterialIcons name="sync" size={20} color="#0f766e" />
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <Text style={styles.settleBadgeTitle}>Auto-Settlement Active</Text>
+                    <Text style={styles.settleBadgeText}>
+                      A cash record for today already exists. Submitting will automatically merge and settle receipts into their balance.
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* TODAY'S EXISTING RECEIPTS LIST */}
+              {todayCashFlowRecord?.entries && todayCashFlowRecord.entries.length > 0 && (
+                <View style={{ marginTop: 12, marginBottom: 10 }}>
+                  <Text style={[styles.formLabel, { marginBottom: 6 }]}>Today's Logged Receipts:</Text>
+                  {todayCashFlowRecord.entries.map((entry, idx) => (
+                    <View key={idx} style={styles.existingReceiptItem}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <MaterialIcons name="check-circle" size={16} color="#10b981" style={{ marginRight: 6 }} />
+                        <Text style={styles.receiptFromText}>{entry.receivedFrom}</Text>
+                        <Text style={styles.receiptTypeText}>({entry.type || 'Cash'})</Text>
+                      </View>
+                      <Text style={styles.receiptAmountText}>+ ₹{Number(entry.receivedAmount).toLocaleString('en-IN')}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* ASSIGN CASH FORM */}
+            <View style={[styles.card, { marginTop: 16 }]}>
+              <Text style={styles.cardTitle}>Assign / Add Cash Receipts</Text>
+
+              {cashFlowForm.entries.map((entry, index) => (
+                <View key={entry.id} style={styles.entryContainer}>
+                  <View style={styles.entryHeader}>
+                    <Text style={styles.entryTitle}>Receipt Entry #{index + 1}</Text>
+                    {cashFlowForm.entries.length > 1 && (
+                      <TouchableOpacity onPress={() => removeCashFlowEntry(entry.id)}>
+                        <Text style={styles.removeText}>Remove</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.formLabel}>Received From <Text style={styles.required}>*</Text></Text>
+                      <TextInput
+                        style={styles.input}
+                        value={entry.receivedFrom}
+                        onChangeText={(val) => updateCashFlowEntry(entry.id, 'receivedFrom', val)}
+                        placeholder="e.g. Sumit sir, Admin, Client"
+                        placeholderTextColor="#94a3b8"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.formLabel}>Amount (₹) <Text style={styles.required}>*</Text></Text>
+                      <TextInput
+                        style={styles.input}
+                        value={entry.receivedAmount}
+                        onChangeText={(val) => updateCashFlowEntry(entry.id, 'receivedAmount', val)}
+                        keyboardType="numeric"
+                        placeholder="e.g. 500"
+                        placeholderTextColor="#94a3b8"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formField}>
+                    <Text style={styles.formLabel}>Payment Mode <Text style={styles.required}>*</Text></Text>
+                    <View style={styles.pickerBorder}>
+                      <Picker
+                        selectedValue={entry.type}
+                        onValueChange={(val) => updateCashFlowEntry(entry.id, 'type', val)}
+                        style={styles.picker}
+                        dropdownIconColor="#0f766e"
+                      >
+                        <Picker.Item label="Cash" value="Cash" />
+                        <Picker.Item label="Credit" value="Credit" />
+                        <Picker.Item label="Paytm" value="Paytm" />
+                        <Picker.Item label="Googlepay" value="Googlepay" />
+                        <Picker.Item label="Phonepay" value="Phonepay" />
+                        <Picker.Item label="Online Transfer" value="Online Transfer" />
+                        <Picker.Item label="Adjustment" value="Adjustment" />
+                        <Picker.Item label="Product Upsell" value="Product Upsell" />
+                      </Picker>
+                    </View>
+                  </View>
+                </View>
+              ))}
+
+              {/* ACTION BUTTONS */}
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 10 }}>
+                <TouchableOpacity style={styles.outlineBtn} onPress={addCashFlowEntry}>
+                  <MaterialIcons name="add" size={18} color="#0f766e" />
+                  <Text style={styles.outlineBtnText}>Add More</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.solidBtn, cashFlowSubmitting && { opacity: 0.7 }]}
+                  onPress={handleCashFlowSubmit}
+                  disabled={cashFlowSubmitting}
+                >
+                  {cashFlowSubmitting ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="#fff" style={{ marginRight: 6 }} />
+                      <Text style={styles.solidBtnText}>Settling...</Text>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <MaterialIcons name="check" size={18} color="#fff" style={{ marginRight: 4 }} />
+                      <Text style={styles.solidBtnText}>
+                        {todayCashFlowRecord ? 'Settle & Assign Cash' : 'Submit Cash Flow'}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       {/* CUSTOM CATEGORY MODAL */}
@@ -1583,4 +1993,131 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#0f172a',
   },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  statBox: {
+    flex: 1,
+    minWidth: '47%',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+  },
+  statBoxTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase',
+  },
+  statBoxValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  settleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e6fffa',
+    borderWidth: 1,
+    borderColor: '#38b2ac',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 10,
+  },
+  settleBadgeTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f766e',
+  },
+  settleBadgeText: {
+    fontSize: 11,
+    color: '#0d9488',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  existingReceiptItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 6,
+  },
+  receiptFromText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  receiptTypeText: {
+    fontSize: 11,
+    color: '#64748b',
+    marginLeft: 4,
+  },
+  receiptAmountText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  entryContainer: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+    backgroundColor: '#f8fafc',
+  },
+  entryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  entryTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  removeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ef4444',
+  },
+  outlineBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#0f766e',
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  outlineBtnText: {
+    color: '#0f766e',
+    fontWeight: '800',
+    fontSize: 14,
+    marginLeft: 4,
+  },
+  solidBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0f766e',
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  solidBtnText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 14,
+  },
 });
+

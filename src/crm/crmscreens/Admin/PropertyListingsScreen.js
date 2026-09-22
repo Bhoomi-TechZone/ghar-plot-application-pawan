@@ -174,13 +174,13 @@ const PropertyListingsScreen = ({ navigation }) => {
     if (imageData.startsWith('uploads/') || imageData.startsWith('/uploads/')) {
       // Admin properties use .us domain
       if (isPostedByAdmin) {
-        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const baseUrl = 'https://gharplotbackend.gntechnology.de';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       }
       // User properties use .com domain
       else {
-        const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const baseUrl = 'https://gharplotbackend.gntechnology.de';
         const cleanPath = imageData.replace(/^\/+/, '');
         return `${baseUrl}/${cleanPath}`;
       }
@@ -403,7 +403,7 @@ const PropertyListingsScreen = ({ navigation }) => {
       />
 
       {/* Floating Add Button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.fabButton, { bottom: 20 + (insets.bottom > 0 ? insets.bottom : 0) }]}
       >
         <MaterialCommunityIcons name="plus" size={28} color="#fff" />

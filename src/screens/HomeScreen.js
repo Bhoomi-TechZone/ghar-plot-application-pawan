@@ -108,9 +108,9 @@ const SEARCH_BAR_HEIGHT = 50;
 const OVERLAP_AMOUNT = SEARCH_BAR_HEIGHT / 2;
 const BANNER_HEIGHT = height * BANNER_HEIGHT_RATIO;
 // On web: scroll starts right after search bar (search bar top + search bar height + small gap)
-const FIXED_HEADER_HEIGHT = Platform.OS === 'web' 
-    ? (BANNER_HEIGHT - SEARCH_BAR_HEIGHT - OVERLAP_AMOUNT) 
-    : (BANNER_HEIGHT + OVERLAP_AMOUNT );
+const FIXED_HEADER_HEIGHT = Platform.OS === 'web'
+    ? (BANNER_HEIGHT - SEARCH_BAR_HEIGHT - OVERLAP_AMOUNT)
+    : (BANNER_HEIGHT + OVERLAP_AMOUNT);
 const FALLBACK_IMAGE_URI = "https://via.placeholder.com/400x200/5da9f6/FFFFFF?text=Property+Image";
 
 // Chat Button Component
@@ -180,11 +180,11 @@ const Homescreen = ({ navigation }) => {
     // UI States
     const [hasUnreadMessages, setHasUnreadMessages] = useState(true);
     const [notificationCount, setNotificationCount] = useState(0);
-    
+
     // Auth Modal States
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authModalMessage, setAuthModalMessage] = useState('');
-    
+
     // Safe Area Insets for proper spacing
     //const insets = useSafeAreaInsets();
 
@@ -474,7 +474,7 @@ const Homescreen = ({ navigation }) => {
     const toggleFavorite = async (id) => {
         // Check authentication first
         const isAuthenticated = await isUserAuthenticated();
-        
+
         if (!isAuthenticated) {
             // Guest user trying to like property - show auth modal
             console.log('🚫 Guest user trying to like property - Showing auth modal');
@@ -482,7 +482,7 @@ const Homescreen = ({ navigation }) => {
             setShowAuthModal(true);
             return;
         }
-        
+
         const isCurrentlySaved = favorites.includes(id);
         setFavorites((prev) => (isCurrentlySaved ? prev.filter((f) => f !== id) : [...prev, id]));
         try {
@@ -516,12 +516,12 @@ const Homescreen = ({ navigation }) => {
         // Check if action requires authentication
         if (item.requiresAuth) {
             const isAuthenticated = await isUserAuthenticated();
-            
+
             if (!isAuthenticated) {
                 // Guest user trying to access Buy, Sell or Rent - show auth modal
                 console.log(`🚫 Guest user trying to access ${item.label} - Showing auth modal`);
                 let message = "";
-                
+
                 if (item.label === "Buy") {
                     message = "Login to access property buying features";
                 } else if (item.label === "Sell") {
@@ -529,13 +529,13 @@ const Homescreen = ({ navigation }) => {
                 } else if (item.label === "Rent") {
                     message = "Login to post your property for rent";
                 }
-                
+
                 setAuthModalMessage(message);
                 setShowAuthModal(true);
                 return;
             }
         }
-        
+
         // User is authenticated or action doesn't require auth - navigate
         navigation.navigate(item.screen);
     };
@@ -612,7 +612,7 @@ const Homescreen = ({ navigation }) => {
     const handleChatPress = async () => {
         // Check authentication first
         const isAuthenticated = await isUserAuthenticated();
-        
+
         if (!isAuthenticated) {
             // Guest user trying to access chat - show auth modal
             console.log('🚫 Guest user trying to access chat - Showing auth modal');
@@ -620,7 +620,7 @@ const Homescreen = ({ navigation }) => {
             setShowAuthModal(true);
             return;
         }
-        
+
         setHasUnreadMessages(false);
         navigation.navigate('ChatListScreen');
     };
@@ -909,13 +909,13 @@ const Homescreen = ({ navigation }) => {
         if (imageData.startsWith('uploads/') || imageData.startsWith('/uploads/')) {
             // Admin properties use .us domain
             if (isPostedByAdmin) {
-                const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+                const baseUrl = 'https://gharplotbackend.gntechnology.de';
                 const cleanPath = imageData.replace(/^\/+/, '');
                 return `${baseUrl}/${cleanPath}`;
             }
             // User properties use .com domain
             else {
-                const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+                const baseUrl = 'https://gharplotbackend.gntechnology.de';
                 const cleanPath = imageData.replace(/^\/+/, '');
                 return `${baseUrl}/${cleanPath}`;
             }
@@ -1086,7 +1086,7 @@ const Homescreen = ({ navigation }) => {
                                 {/* Favorite Icon */}
                                 <TouchableOpacity
                                     onPress={() => toggleFavorite(item._id)}
-                                    style={{marginBottom: 8}}
+                                    style={{ marginBottom: 8 }}
                                     activeOpacity={0.7}
                                 >
                                     <Icon
@@ -1241,7 +1241,7 @@ const Homescreen = ({ navigation }) => {
                                         e.stopPropagation();
                                         toggleFavorite(item._id);
                                     }}
-                                    style={{marginBottom: 6}}
+                                    style={{ marginBottom: 6 }}
                                     activeOpacity={0.7}
                                 >
                                     <Icon
@@ -1471,7 +1471,7 @@ const Homescreen = ({ navigation }) => {
                     hasUnreadMessages={hasUnreadMessages}
                 />
             </View>
-            
+
             {/* Authentication Modal */}
             <AuthModal
                 visible={showAuthModal}

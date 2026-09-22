@@ -4,7 +4,7 @@ import { get as apiGet, BASE_URL } from './api.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Property API Base URL (different from CRM base URL)
-const PROPERTY_API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const PROPERTY_API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 // --- MOCK DATA FALLBACKS (Kept for Robustness) ---
 const generateMockProperty = (id, isNearby = false) => {
@@ -105,7 +105,7 @@ export const formatImageUrl = (imageData) => {
     // 2. If it's a server file path (like "uploads/123.jpeg" or "/uploads/123.jpeg")
     // Use the correct property image base URL (abc.ridealmobility.com)
     if (/^\/?uploads\//.test(imageData)) {
-        const propertyImageBaseUrl = 'https://ghar-plot-backend1.onrender.com';
+        const propertyImageBaseUrl = 'https://gharplotbackend.gntechnology.de';
         const baseUrlClean = propertyImageBaseUrl.endsWith('/') ? propertyImageBaseUrl.slice(0, -1) : propertyImageBaseUrl;
         // remove leading slash from imageData so we don't double\/join
         const cleanPath = imageData.replace(/^\/+/, '');
@@ -152,7 +152,7 @@ export const formatPrice = (price) => {
 
 /**
  * Fetch recent properties from ALL users including current user's own properties
- * UPDATED: Now uses https://ghar-plot-backend1.onrender.com/api/properties/recent/all
+ * UPDATED: Now uses https://gharplotbackend.gntechnology.de/api/properties/recent/all
  * This ensures user can see their own posted properties in recent listings
  * PUBLIC API: No authentication required for browsing properties
  */
@@ -337,7 +337,7 @@ export async function getSavedPropertiesIds() {
 
 /**
  * Fetch ALL properties from the new API endpoint
- * Endpoint: GET https://ghar-plot-backend1.onrender.com/api/properties/recent/all
+ * Endpoint: GET https://gharplotbackend.gntechnology.de/api/properties/recent/all
  * This replaces the old endpoint to show all available properties
  * PUBLIC API: No authentication required for browsing properties
  */

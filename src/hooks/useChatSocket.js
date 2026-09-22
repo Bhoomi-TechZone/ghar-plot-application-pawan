@@ -5,7 +5,7 @@ import io from 'socket.io-client';
 import { getAuthToken } from '../services/chatApi';
 
 // 🚨 IMPORTANT: Use 'http' or 'https' for the base URL 
-const SOCKET_URL = 'https://ghar-plot-backend1.onrender.com';
+const SOCKET_URL = 'https://gharplotbackend.gntechnology.de';
 
 /**
  * Custom hook to manage WebSocket connection and real-time chat messages.

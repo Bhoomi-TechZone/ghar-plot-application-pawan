@@ -95,7 +95,7 @@ export const testBackendNotification = async () => {
 
     console.log('📤 Sending test notification to backend...');
 
-    const response = await fetch('https://ghar-plot-backend1.onrender.com/application/notify-update', {
+    const response = await fetch('https://gharplotbackend.gntechnology.de/application/notify-update', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -208,7 +208,7 @@ const AllPropertiesScreen = ({ navigation, route }) => {
             } else if (category === 'Residential') {
                 console.log('?? Loading Residential Properties...');
                 const response = await getRecentFeaturedProperties(50);
-                propertyData = (response || []).filter(item => 
+                propertyData = (response || []).filter(item =>
                     item.propertyType?.toLowerCase().includes('residential') ||
                     item.propertyType?.toLowerCase().includes('house') ||
                     item.propertyType?.toLowerCase().includes('apartment') ||
@@ -217,7 +217,7 @@ const AllPropertiesScreen = ({ navigation, route }) => {
             } else if (category === 'Commercial') {
                 console.log('?? Loading Commercial Properties...');
                 const response = await getRecentFeaturedProperties(50);
-                propertyData = (response || []).filter(item => 
+                propertyData = (response || []).filter(item =>
                     item.propertyType?.toLowerCase().includes('commercial') ||
                     item.propertyType?.toLowerCase().includes('office') ||
                     item.propertyType?.toLowerCase().includes('shop')
@@ -225,7 +225,7 @@ const AllPropertiesScreen = ({ navigation, route }) => {
             } else if (category === 'Rent') {
                 console.log('?? Loading Rental Properties...');
                 const response = await getRecentFeaturedProperties(50);
-                propertyData = (response || []).filter(item => 
+                propertyData = (response || []).filter(item =>
                     item.purpose?.toLowerCase().includes('rent') ||
                     item.purpose?.toLowerCase().includes('lease')
                 );
@@ -365,11 +365,11 @@ const AllPropertiesScreen = ({ navigation, route }) => {
         // Handle uploads path
         if (imageData.startsWith('uploads/') || imageData.startsWith('/uploads/')) {
             if (isPostedByAdmin) {
-                const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+                const baseUrl = 'https://gharplotbackend.gntechnology.de';
                 const cleanPath = imageData.replace(/^\/+/, '');
                 return `${baseUrl}/${cleanPath}`;
             } else {
-                const baseUrl = 'https://ghar-plot-backend1.onrender.com';
+                const baseUrl = 'https://gharplotbackend.gntechnology.de';
                 const cleanPath = imageData.replace(/^\/+/, '');
                 return `${baseUrl}/${cleanPath}`;
             }
@@ -408,7 +408,7 @@ const AllPropertiesScreen = ({ navigation, route }) => {
                 {/* Enhanced Info Container */}
                 <View style={styles.infoContainer}>
                     {/* Favorite Button + Property Type Badge Row */}
-                    <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8}}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                         {/* Modern Favorite Button */}
                         <TouchableOpacity
                             onPress={() => toggleFavorite(item._id)}
@@ -423,8 +423,8 @@ const AllPropertiesScreen = ({ navigation, route }) => {
 
                         {/* Property Type Badge */}
                         {item.propertyType && (
-                            <View style={{backgroundColor: theme.COLORS.primary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6}}>
-                                <Text style={{color: theme.COLORS.white, fontSize: 12, fontWeight: '600'}}>
+                            <View style={{ backgroundColor: theme.COLORS.primary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
+                                <Text style={{ color: theme.COLORS.white, fontSize: 12, fontWeight: '600' }}>
                                     {item.propertyType}
                                 </Text>
                             </View>

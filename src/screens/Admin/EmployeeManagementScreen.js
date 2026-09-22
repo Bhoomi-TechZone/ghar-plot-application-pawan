@@ -179,7 +179,7 @@ const EmployeeManagementScreen = ({ navigation }) => {
         return;
       }
 
-      const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+      const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
       // Fetch reminders for this employee
       const response = await fetch(`${CRM_BASE_URL}/api/reminder/employee/${employeeId}`, {

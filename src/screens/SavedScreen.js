@@ -18,7 +18,7 @@ import {
 import Icon from "react-native-vector-icons/Ionicons";
 import { DeviceEventEmitter } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-// NOTE: Make sure formatImageUrl correctly prepends your base URL (e.g., https://ghar-plot-backend1.onrender.com/)
+// NOTE: Make sure formatImageUrl correctly prepends your base URL (e.g., https://gharplotbackend.gntechnology.de/)
 import { formatImageUrl, formatPrice } from '../services/homeApi';
 
 // --- Import the API function from the new service file ---
@@ -45,8 +45,8 @@ const getPropertyImageUrl = (imageData, isPostedByAdmin) => {
 
     // Route to correct domain based on property source
     const domain = isPostedByAdmin
-        ? 'https://ghar-plot-backend1.onrender.com'
-        : 'https://ghar-plot-backend1.onrender.com';
+        ? 'https://gharplotbackend.gntechnology.de'
+        : 'https://gharplotbackend.gntechnology.de';
 
     // Remove leading slash if present
     const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
