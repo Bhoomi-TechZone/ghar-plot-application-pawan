@@ -248,7 +248,9 @@ const CreateAlertScreen = ({ navigation, route }) => {
                 date: dateStr,
                 time: timeStr,
                 scheduledDateTime: new Date(dateStr + 'T' + timeStr).toISOString(), // 🔥 Mandatory for backend cron
-                repeatDaily: formData.repeatFrequency === 'daily', // 🔥 FIX: Only true for daily, NOT for custom
+                repeatFrequency: formData.repeatFrequency,
+                repeatDaily: formData.repeatFrequency === 'daily', // 🔥 Strictly true ONLY for daily
+                repeatMetadata: repeatMetadata,
                 customRepeatMinutes: formData.customIntervalMinutes, // 🔥 Mandatory for backend cron
                 type: finalNotificationType, // ✅ Explicit type
                 notificationType: finalNotificationType, // ✅ Backward compatibility

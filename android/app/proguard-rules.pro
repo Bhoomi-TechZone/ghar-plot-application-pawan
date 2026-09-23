@@ -88,3 +88,10 @@
 # Preserve line numbers for better crash reports
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# Expo Modules and Expo Sharing
+-keep class expo.modules.** { *; }
+-dontwarn expo.modules.**
+-dontwarn expo.modules.interfaces.filesystem.**
+-dontwarn expo.modules.interfaces.filesystem.FilePermissionModuleInterface
+-dontwarn expo.modules.interfaces.filesystem.Permission

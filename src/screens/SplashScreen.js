@@ -82,7 +82,7 @@ const SplashScreen = ({ navigation }) => {
                                   notificationData['gharplot.localFallback'] === true;
           
           const notificationType = String(
-            notificationData.type || notificationData.notificationType || ''
+            notificationData.type || notificationData.notificationType || notificationData.category || ''
           ).toLowerCase();
 
           // These notifications show the in-app reminder dialog when tapped
@@ -97,29 +97,23 @@ const SplashScreen = ({ navigation }) => {
             'employee_due_reminder',
             'alert',
             'system_alert',
-          ].includes(notificationType) || !!notificationData.alertId || !!notificationData.reminderId || isLocalFallback; // ← iOS local fallback always shows popup
+          ].includes(notificationType) || !!notificationData.alertId || !!notificationData.reminderId || /reminder|alert|follow/i.test(notificationType) || isLocalFallback; // ← iOS local fallback always shows popup
           
-          // Check if user is logged in
-          const adminToken = await AsyncStorage.getItem('adminToken');
-          const userToken = await AsyncStorage.getItem('userToken');
-          const crmToken = await AsyncStorage.getItem('crm_token');
-          
-          if (adminToken || userToken || crmToken) {
-            if (opensReminderPopup) {
-              console.log('🚀 SplashScreen: Queuing reminder/alert popup for cold start');
-              await AsyncStorage.setItem('pendingNotificationData', JSON.stringify({
-                triggerReminderPopup: true,
-                data: {
-                  ...notificationData,
-                  fromTap: true,
-                  type: notificationData.alertId ? 'admin_reminder' : (notificationType || 'reminder'),
-                  title: notificationData.title || remoteMessage.notification?.title || (notificationType === 'alert' ? 'Alert' : 'Reminder'),
-                  note: notificationData.note || notificationData.reason || notificationData.body || notificationData.message || remoteMessage.notification?.body || '',
-                },
-                timestamp: Date.now()
-              }));
-              shouldDoAutoLogin = true; 
-            }
+          if (opensReminderPopup) {
+            console.log('🚀 SplashScreen: Queuing reminder/alert popup for cold start');
+            const isActuallyAlert = notificationType === 'alert' || notificationType === 'system_alert' || /alert|emergency|urgent/i.test(notificationType);
+            await AsyncStorage.setItem('pendingNotificationData', JSON.stringify({
+              triggerReminderPopup: true,
+              data: {
+                ...notificationData,
+                fromTap: true,
+                type: notificationData.alertId ? 'admin_reminder' : (isActuallyAlert ? 'alert' : 'reminder'),
+                title: notificationData.title || remoteMessage.notification?.title || (isActuallyAlert ? 'Alert' : 'Reminder'),
+                note: notificationData.note || notificationData.reason || notificationData.body || notificationData.message || remoteMessage.notification?.body || '',
+              },
+              timestamp: Date.now()
+            }));
+            shouldDoAutoLogin = true; 
           }
         }
       } catch (error) {

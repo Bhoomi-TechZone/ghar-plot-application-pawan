@@ -37,6 +37,10 @@ const EditReminderScreen = ({ route, navigation }) => {
     fromNotification,
     isRepeating,
     repeatType,
+    repeatFrequency: origRepeatFreq,
+    repeatDaily,
+    repeatMetadata: origRepeatMetadata,
+    customIntervalMinutes: origCustomMins,
     scheduledDateTime // 🔥 Get the scheduled date from params
   } = route.params || {};
 
@@ -117,8 +121,13 @@ const EditReminderScreen = ({ route, navigation }) => {
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [repeatFrequency, setRepeatFrequency] = useState(isRepeating ? (repeatType || 'daily') : 'none');
-  const [customIntervalMinutes, setCustomIntervalMinutes] = useState(route.params?.customIntervalMinutes || '');
+  const [repeatFrequency, setRepeatFrequency] = useState(
+    origRepeatFreq ||
+    (repeatDaily === true || repeatDaily === 'true' ? 'daily' : (isRepeating ? (repeatType || 'daily') : 'none'))
+  );
+  const [customIntervalMinutes, setCustomIntervalMinutes] = useState(
+    origCustomMins || origRepeatMetadata?.customIntervalMinutes || route.params?.customIntervalMinutes || ''
+  );
   const [showRepeatModal, setShowRepeatModal] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [showCustomManualInput, setShowCustomManualInput] = useState(false);
@@ -380,8 +389,10 @@ const EditReminderScreen = ({ route, navigation }) => {
                 date: reminderPayload.date,
                 time: reminderPayload.time,
                 scheduledDateTime: scheduledDateTimeISO,
+                repeatFrequency: reminderPayload.repeatFrequency,
+                repeatDaily: reminderPayload.repeatDaily, // Strictly true ONLY for daily
+                repeatMetadata: reminderPayload.repeatMetadata,
                 customRepeatMinutes: customIntervalMinutes,
-                repeatDaily: reminderPayload.repeatDaily || repeatFrequency === 'custom',
                 type: 'admin_reminder',
                 notificationType: 'admin_reminder',
                 fcmToken: fcmToken,

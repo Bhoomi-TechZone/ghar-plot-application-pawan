@@ -459,13 +459,23 @@ class NotificationHandler {
           return;
         } catch (_) {}
 
+        const effectiveFreq = notificationData.repeatFrequency || 
+          (notificationData.repeatDaily === 'true' || notificationData.repeatDaily === true ? 'daily' : 'none');
+        const customMins = notificationData.customRepeatMinutes || 
+          notificationData.customIntervalMinutes || 
+          (typeof notificationData.repeatMetadata === 'object' ? notificationData.repeatMetadata?.customIntervalMinutes : null) || '';
+
         const params = {
           alertId: cleanAlertId,
           originalTitle: popupData.title,
           originalReason: popupData.note,
           originalDate: notificationData.scheduledDate || notificationData.date || notificationData.reminderTime || '',
           originalTime: notificationData.scheduledTime || notificationData.time || '',
-          repeatDaily: (notificationData.repeatDaily === 'true' || notificationData.repeatDaily === true || notificationData.repeatFrequency === 'daily')
+          scheduledDateTime: notificationData.nextScheduledAt || notificationData.scheduledDateTime || notificationData.scheduledAt || '',
+          repeatFrequency: effectiveFreq,
+          repeatDaily: effectiveFreq === 'daily',
+          customIntervalMinutes: customMins,
+          repeatMetadata: notificationData.repeatMetadata,
         };
 
         console.log('📤 Alert navigation params (fallback):', params);

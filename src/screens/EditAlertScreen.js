@@ -117,7 +117,9 @@ const EditAlertScreen = ({ route, navigation }) => {
     return new Date();
   });
   const [repeatFrequency, setRepeatFrequency] = useState(origRepeatFreq || (repeatDaily === 'true' || repeatDaily === true ? 'daily' : 'none'));
-  const [customIntervalMinutes, setCustomIntervalMinutes] = useState(origCustomMins || '');
+  const [customIntervalMinutes, setCustomIntervalMinutes] = useState(
+    origCustomMins || origRepeatMetadata?.customIntervalMinutes || ''
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showRepeatModal, setShowRepeatModal] = useState(false);
@@ -391,8 +393,10 @@ const EditAlertScreen = ({ route, navigation }) => {
                 date: updateData.date,
                 time: updateData.time,
                 scheduledDateTime: scheduledDateTime, // 🔥 Mandatory for cron
+                repeatFrequency: repeatFrequency,
+                repeatDaily: repeatFrequency === 'daily', // 🔥 Strictly true ONLY for daily
+                repeatMetadata: updateData.repeatMetadata,
                 customRepeatMinutes: customIntervalMinutes, // 🔥 Fix: Renamed for backend
-                repeatDaily: repeatFrequency === 'daily' || repeatFrequency === 'custom',
                 type: finalNotificationType,
                 notificationType: finalNotificationType,
                 fcmToken: fcmToken,

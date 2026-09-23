@@ -144,6 +144,49 @@ const formatDate = (iso) => {
 // Handles: daily (move to tomorrow if passed), custom/minutes (next future occurrence)
 const getNextScheduledDisplay = (item) => {
   try {
+    if (!item) return null;
+
+    const rawFreq = String(item.repeatFrequency || '').toLowerCase();
+    const customMins = parseInt(
+      item.repeatMetadata?.customIntervalMinutes ||
+      item.customIntervalMinutes ||
+      item.customRepeatMinutes ||
+      item.repeatInterval ||
+      0
+    );
+
+    const isCustom = rawFreq === 'custom' || rawFreq === '1 min' || rawFreq === '1_min' || customMins > 0;
+    const effectiveMins = (rawFreq === '1 min' || rawFreq === '1_min') ? 1 : (customMins || 1);
+
+    // 1. If backend already computed scheduledDateTime or nextScheduledAt, use it!
+    const targetIso = item.nextScheduledAt || item.scheduledDateTime;
+    if (targetIso) {
+      const sDate = new Date(targetIso);
+      if (!isNaN(sDate.getTime())) {
+        const nowMs = Date.now();
+        let nextMs = sDate.getTime();
+
+        // If it's custom repeating and the stored time has already passed, advance it to future
+        if (isCustom && nextMs <= nowMs) {
+          const intervalMs = effectiveMins * 60 * 1000;
+          while (nextMs <= nowMs) {
+            nextMs += intervalMs;
+          }
+        }
+
+        const nextDate = new Date(nextMs);
+        const dateStr = nextDate.toLocaleDateString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit', month: '2-digit', year: 'numeric',
+        });
+        const timeStr = nextDate.toLocaleTimeString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          hour: 'numeric', minute: '2-digit', hour12: true,
+        }).toLowerCase();
+        return `${dateStr} • ${timeStr}`;
+      }
+    }
+
     const dateStr = item.date;
     const timeStr = item.time;
     if (!dateStr || !timeStr) return null;
@@ -162,30 +205,42 @@ const getNextScheduledDisplay = (item) => {
     const hours = Number(timeMatch[1]);
     const minutes = Number(timeMatch[2]);
 
-    // Get current IST time using Intl (avoids device timezone issues)
-    const istParts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hour12: false,
-    }).formatToParts(new Date());
-    const ist = {};
-    istParts.forEach(p => { if (p.type !== 'literal') ist[p.type] = Number(p.value); });
+    if (isCustom) {
+      // Minutes/custom repeat: find next future occurrence
+      const istOffsetMs = 5.5 * 60 * 60 * 1000;
+      const baseMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
+      const intervalMs = effectiveMins * 60 * 1000;
+      const nowMs = Date.now();
+      let nextMs = baseMs;
+      while (nextMs <= nowMs) {
+        nextMs += intervalMs;
+      }
+      const nextDate = new Date(nextMs);
+      const dateStrOut = nextDate.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+      });
+      const timeStrOut = nextDate.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric', minute: '2-digit', hour12: true,
+      }).toLowerCase();
+      return `${dateStrOut} • ${timeStrOut}`;
+    }
 
-    const candidateValue = year * 100000000 + month * 1000000 + day * 10000 + hours * 100 + minutes;
-    const nowValue = ist.year * 100000000 + ist.month * 1000000 + ist.day * 10000 + ist.hour * 100 + ist.minute;
+    // Daily repeat (only if NOT custom)
+    const isDaily = rawFreq === 'daily' || item.repeatDaily;
+    if (isDaily) {
+      const istParts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+      }).formatToParts(new Date());
+      const ist = {};
+      istParts.forEach(p => { if (p.type !== 'literal') ist[p.type] = Number(p.value); });
 
-    // Check repeat type
-    const repeatFrequency = item.repeatFrequency || (item.repeatDaily ? 'daily' : 'none');
-    const customMins = parseInt(
-      item.repeatMetadata?.customIntervalMinutes ||
-      item.customIntervalMinutes ||
-      item.customRepeatMinutes ||
-      item.repeatInterval ||
-      0
-    );
+      const candidateValue = year * 100000000 + month * 1000000 + day * 10000 + hours * 100 + minutes;
+      const nowValue = ist.year * 100000000 + ist.month * 1000000 + ist.day * 10000 + ist.hour * 100 + ist.minute;
 
-    if (repeatFrequency === 'daily' || item.repeatDaily) {
-      // Daily: if today's time has already passed, show tomorrow
       if (candidateValue <= nowValue) {
         const nextDay = new Date(Date.UTC(year, month - 1, day));
         nextDay.setUTCDate(nextDay.getUTCDate() + 1);
@@ -193,32 +248,10 @@ const getNextScheduledDisplay = (item) => {
         month = nextDay.getUTCMonth() + 1;
         day = nextDay.getUTCDate();
       }
-    } else if (repeatFrequency === 'custom' && customMins > 0) {
-      // Minutes/custom repeat: find next future occurrence
-      // Always construct UTC from IST wall clock date+time (independent of DB timezone corruption)
-      const istOffsetMs = 5.5 * 60 * 60 * 1000;
-      const baseMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
-      const intervalMs = customMins * 60 * 1000;
-      const nowMs = Date.now();
-      let nextMs = baseMs;
-      // Advance by intervals until we are in the future
-      while (nextMs <= nowMs) {
-        nextMs += intervalMs;
-      }
-      const nextDate = new Date(nextMs);
-      const dateStr = nextDate.toLocaleDateString('en-IN', {
-        timeZone: 'Asia/Kolkata',
-        day: '2-digit', month: '2-digit', year: 'numeric',
-      });
-      const timeStr = nextDate.toLocaleTimeString('en-IN', {
-        timeZone: 'Asia/Kolkata',
-        hour: 'numeric', minute: '2-digit', hour12: true,
-      }).toLowerCase();
-      return `${dateStr} • ${timeStr}`;
     }
 
     const h = hours;
-    const period = h >= 12 ? 'PM' : 'AM';
+    const period = h >= 12 ? 'pm' : 'am';
     const hour12 = h % 12 || 12;
     const formattedDate =
       `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
@@ -412,12 +445,11 @@ const formatDateTime = (iso, reminderTime = null) => {
       // KEY FIX: Pass item.time (already IST, e.g. '13:27') so EditAlert uses it
       // directly for the time picker without UTCâ†’IST double-conversion.
       originalTime: alert.time,
-      repeatDaily: alert.repeatDaily,
+      repeatFrequency: alert.repeatFrequency || (alert.repeatDaily ? 'daily' : 'none'),
+      repeatDaily: alert.repeatFrequency === 'daily', // 🔥 Strictly true ONLY for daily
       // Pass scheduledDateTime only for DATE part (used to get correct future date)
       // EditAlertScreen will extract date from nextScheduledAt and time from originalTime
       scheduledDateTime: alert.nextScheduledAt || alert.scheduledDateTime || `${alert.date}T${alert.time}`,
-      repeatFrequency: alert.repeatFrequency || (alert.repeatDaily ? 'daily' : 'none'),
-      // FIX: Pass existing repeat configuration to preserve it
       customIntervalMinutes: customMins,
       repeatMetadata: alert.repeatMetadata, // Pass complete repeatMetadata object
     });

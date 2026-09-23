@@ -135,6 +135,12 @@ const AppMain = () => {
         const cleanId = normalizeId(rawId);
         const nType = String(normalizedReminder.type || normalizedReminder.notificationType || normalizedReminder.category || '').toLowerCase();
 
+        const effectiveFreq = normalizedReminder.repeatFrequency || 
+          (normalizedReminder.repeatDaily === 'true' || normalizedReminder.repeatDaily === true ? 'daily' : 'none');
+        const customMins = normalizedReminder.customRepeatMinutes || 
+          normalizedReminder.customIntervalMinutes || 
+          (typeof normalizedReminder.repeatMetadata === 'object' ? normalizedReminder.repeatMetadata?.customIntervalMinutes : null) || '';
+
         if (isActuallyAlert || nType === 'admin_reminder' || normalizedReminder.alertId) {
           console.log('🚀 Navigating to EditAlert screen');
           navigationRef.current.navigate('EditAlert', {
@@ -143,7 +149,11 @@ const AppMain = () => {
             originalReason: normalizedReminder.alertReason || normalizedReminder.reason || normalizedReminder.message || normalizedReminder.note || '',
             originalDate: normalizedReminder.scheduledDate || normalizedReminder.date || normalizedReminder.reminderTime || '',
             originalTime: normalizedReminder.scheduledTime || normalizedReminder.time || '',
-            repeatDaily: (normalizedReminder.repeatDaily === 'true' || normalizedReminder.repeatDaily === true || normalizedReminder.repeatFrequency === 'daily')
+            scheduledDateTime: normalizedReminder.nextScheduledAt || normalizedReminder.scheduledDateTime || normalizedReminder.scheduledAt || '',
+            repeatFrequency: effectiveFreq,
+            repeatDaily: effectiveFreq === 'daily',
+            customIntervalMinutes: customMins,
+            repeatMetadata: normalizedReminder.repeatMetadata,
           });
         } else if (nType === 'employee_reminder_to_admin') {
           console.log('🚀 Navigating to AdminReminderDetailsScreen (Employee-to-Admin)');
@@ -562,7 +572,7 @@ const AppMain = () => {
               console.log('🔔🔔 BACKGROUND TAP (FCM) - Notification opened:', JSON.stringify(remoteMessage, null, 2));
 
               const notifData = remoteMessage.data || {};
-              const notifType = String(notifData.type || notifData.notificationType || '').toLowerCase();
+              const notifType = String(notifData.type || notifData.notificationType || notifData.category || '').toLowerCase();
               console.log('🎯 Notification Type:', notifType);
 
               const isReminderOrAlert = [
@@ -573,16 +583,17 @@ const AppMain = () => {
                 'admin_reminder',
                 'employee_reminder_to_admin',
                 'employee_due_reminder',
-              ].includes(notifType) || !!notifData.alertId || !!notifData.reminderId;
+              ].includes(notifType) || !!notifData.alertId || !!notifData.reminderId || /reminder|alert|follow/i.test(notifType);
 
               if (isReminderOrAlert) {
                 console.log('🚀🚀🚀 REMINDER/ALERT DETECTED (FCM BACKGROUND TAP) - Triggering/queueing popup');
 
+                const isActuallyAlert = notifType === 'alert' || notifType === 'system_alert' || /alert|emergency|urgent/i.test(notifType);
                 const popupPayload = {
                   ...notifData,
                   fromTap: true,
-                  type: notifData.alertId ? 'admin_reminder' : (notifType || 'reminder'),
-                  title: remoteMessage.notification?.title || notifData.title || notifData.reminderTitle || (notifType === 'alert' ? 'Alert' : 'Reminder'),
+                  type: notifData.alertId ? 'admin_reminder' : (isActuallyAlert ? 'alert' : 'reminder'),
+                  title: remoteMessage.notification?.title || notifData.title || notifData.reminderTitle || (isActuallyAlert ? 'Alert' : 'Reminder'),
                   note: remoteMessage.notification?.body || notifData.note || notifData.reason || notifData.message || notifData.body || '',
                 };
 
@@ -1004,6 +1015,7 @@ const AppMain = () => {
         note={adminPopupData?.note || ''}
         scheduledAt={adminPopupData?.scheduledAt || adminPopupData?.scheduledDateTime || adminPopupData?.reminderDateTime || ''}
         nextScheduledAt={adminPopupData?.nextScheduledAt || ''}
+        nextScheduledDisplay={adminPopupData?.nextScheduledDisplay || ''}
         time={adminPopupData?.time || ''} // 🔥 Pass time for scheduled display
         date={adminPopupData?.date || ''} // 🔥 Pass date as fallback
         createdAt={adminPopupData?.createdAt || (adminPopupData?.date && adminPopupData?.time ? (() => { try { const [y,mo,d] = adminPopupData.date.split('-').map(Number); const [h,min] = adminPopupData.time.split(':').map(Number); return new Date(Date.UTC(y, mo-1, d, h, min, 0) - 5.5*3600*1000).toISOString(); } catch(_){ return ''; } })() : '')} // 🔥 IST-aware construction (avoids UTC date shift)

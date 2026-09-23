@@ -322,28 +322,27 @@ export const setupForegroundNotificationHandler = () => {
             } catch (_) { return null; }
           };
 
-          // Scheduled time (clock icon)
-          const _scheduledIso = data.scheduledAt || data.scheduledDateTime;
-          if (_scheduledIso) {
-            const formatted = _fmtTime(_scheduledIso);
-            if (formatted) richBody = `${richBody}\n⏰ Scheduled: ${formatted}`;
-          } else if (data.date && data.time) {
-            let timeStr = typeof data.time === 'object'
-              ? `${String(data.time.hour || 0).padStart(2, '0')}:${String(data.time.minute || 0).padStart(2, '0')}`
-              : String(data.time);
-            // No AM/PM for fallback
-            richBody = `${richBody}\n⏰ Scheduled: ${timeStr}`;
-          }
+          // Scheduled time, next scheduled time, and period
+          if (!richBody.includes('⏰ Scheduled:')) {
+            const _scheduledIso = data.scheduledAt || data.scheduledDateTime;
+            if (_scheduledIso) {
+              const formatted = _fmtTime(_scheduledIso);
+              if (formatted) richBody = `${richBody} ⏰ Scheduled: ${formatted}`;
+            } else if (data.date && data.time) {
+              let timeStr = typeof data.time === 'object'
+                ? `${String(data.time.hour || 0).padStart(2, '0')}:${String(data.time.minute || 0).padStart(2, '0')}`
+                : String(data.time);
+              richBody = `${richBody} ⏰ Scheduled: ${timeStr}`;
+            }
 
-          // Next scheduled (repeat icon)
-          if (data.nextScheduledAt) {
-            const nextFormatted = _fmtTime(data.nextScheduledAt);
-            if (nextFormatted) richBody = `${richBody}\n🔁 Next: ${nextFormatted}`;
-          }
+            if (data.nextScheduledAt) {
+              const nextFormatted = _fmtTime(data.nextScheduledAt);
+              if (nextFormatted) richBody = `${richBody} 🔁 Next: ${nextFormatted}`;
+            }
 
-          // Period (hourglass icon)
-          if (data.period) {
-            richBody = `${richBody}\n⏳ In ${data.period}`;
+            if (data.period) {
+              richBody = `${richBody} ⏳ In ${data.period}`;
+            }
           }
 
           await notifee.createChannel({
@@ -657,45 +656,45 @@ export const backgroundMessageHandler = async (remoteMessage) => {
       // 🔥 RICH FORMATTING: Add scheduled time & next scheduled time at bottom
       let richBody = notifBody;
 
-      // Format time as h:mm AM/PM
+      // Format time as h:mm AM/PM in IST
       const _fmtTimeBg = (isoStr) => {
         try {
           const d = new Date(isoStr);
           if (isNaN(d.getTime())) return null;
-          let h = d.getHours();
-          const m = String(d.getMinutes()).padStart(2, '0');
-          const ampm = h >= 12 ? 'PM' : 'AM';
-          h = h % 12;
-          if (h === 0) h = 12;
-          return `${h}:${m} ${ampm}`;
+          return d.toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          }).toUpperCase();
         } catch (_) { return null; }
       };
 
-      // Scheduled time (clock icon)
-      const _scheduledIsoBg = data.scheduledAt || data.scheduledDateTime;
-      if (_scheduledIsoBg) {
-        const formatted = _fmtTimeBg(_scheduledIsoBg);
-        if (formatted) richBody = `${richBody}\n⏰ Scheduled: ${formatted}`;
-      } else if (data.date && data.time) {
-        try {
-          let timeStr = typeof data.time === 'object'
-            ? `${String(data.time.hour || 0).padStart(2, '0')}:${String(data.time.minute || 0).padStart(2, '0')}`
-            : String(data.time);
-          richBody = `${richBody}\n⏰ Scheduled: ${timeStr}`;
-        } catch (e) { }
-      }
+      // Scheduled time, next scheduled time, and period
+      if (!richBody.includes('⏰ Scheduled:')) {
+        const _scheduledIsoBg = data.scheduledAt || data.scheduledDateTime;
+        if (_scheduledIsoBg) {
+          const formatted = _fmtTimeBg(_scheduledIsoBg);
+          if (formatted) richBody = `${richBody} ⏰ Scheduled: ${formatted}`;
+        } else if (data.date && data.time) {
+          try {
+            let timeStr = typeof data.time === 'object'
+              ? `${String(data.time.hour || 0).padStart(2, '0')}:${String(data.time.minute || 0).padStart(2, '0')}`
+              : String(data.time);
+            richBody = `${richBody} ⏰ Scheduled: ${timeStr}`;
+          } catch (e) { }
+        }
 
-      // Next scheduled (repeat icon)
-      if (data.nextScheduledAt) {
-        try {
-          const nextFormatted = _fmtTimeBg(data.nextScheduledAt);
-          if (nextFormatted) richBody = `${richBody}\n🔁 Next: ${nextFormatted}`;
-        } catch (e) { }
-      }
+        if (data.nextScheduledAt) {
+          try {
+            const nextFormatted = _fmtTimeBg(data.nextScheduledAt);
+            if (nextFormatted) richBody = `${richBody} 🔁 Next: ${nextFormatted}`;
+          } catch (e) { }
+        }
 
-      // Period (hourglass icon)
-      if (data.period) {
-        richBody = `${richBody}\n⏳ In ${data.period}`;
+        if (data.period) {
+          richBody = `${richBody} ⏳ In ${data.period}`;
+        }
       }
 
       // 🛡️ DEDUPLICATION (Background Admin Alert Only): 

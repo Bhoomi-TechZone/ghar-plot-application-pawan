@@ -453,12 +453,6 @@ const AdminNotificationPopup = ({
       // ========================================================
       // Check whether reminder is DAILY
       // ========================================================
-
-      const isDaily =
-        repeatDaily === true ||
-        String(repeatFrequency).toLowerCase() === 'daily';
-
-      // ========================================================
       // Check whether reminder is CUSTOM/MINUTES repeat
       // ========================================================
       const customMins = parseInt(
@@ -473,9 +467,17 @@ const AdminNotificationPopup = ({
         customIntervalMinutes ||
         0
       );
+      const rawFreq = String(repeatFrequency || '').toLowerCase();
       const isCustomMinutes =
-        String(repeatFrequency).toLowerCase() === 'custom' &&
+        rawFreq === 'custom' ||
+        rawFreq === '1 min' ||
+        rawFreq === '1_min' ||
         customMins > 0;
+      const effectiveMins = (rawFreq === '1 min' || rawFreq === '1_min') ? 1 : (customMins || 1);
+
+      const isDaily =
+        (repeatDaily === true || rawFreq === 'daily') &&
+        !isCustomMinutes;
 
       // ========================================================
       // Compare calendar date/time without converting through
@@ -503,9 +505,8 @@ const AdminNotificationPopup = ({
         // Build base Date in IST (treat date+time as IST local wall clock)
         // Use UTC constructor with IST offset correction
         const istOffsetMs = 5.5 * 60 * 60 * 1000;
-        // date+time as UTC would be wrong; shift by IST offset to get correct UTC equivalent
         const baseUTC = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
-        const intervalMs = customMins * 60 * 1000;
+        const intervalMs = effectiveMins * 60 * 1000;
         const nowMs = Date.now();
         let nextMs = baseUTC;
         // Advance by intervals until we are in the future
@@ -529,7 +530,7 @@ const AdminNotificationPopup = ({
       // DAILY / HOURLY / WEEKLY / MONTHLY REMINDER
       // ========================================================
 
-      const freq = String(repeatFrequency).toLowerCase();
+      const freq = rawFreq;
       if (isDaily || freq === 'daily') {
         if (candidateValue <= nowValue) {
           const nextDay = new Date(Date.UTC(year, month - 1, day));
@@ -631,24 +632,29 @@ const AdminNotificationPopup = ({
   // ============================================================
   // NEXT SCHEDULED:
   //
-  // Priority 1: Use nextScheduledDisplay prop if passed from parent (e.g. Alerts.js card)
-  // Priority 2: Use nextScheduledAt from FCM/backend if present (exact next occurrence)
+  // Priority 1: Use nextScheduledAt from FCM/backend if present (exact next occurrence)
+  // Priority 2: Use nextScheduledDisplay prop if passed from parent (e.g. Alerts.js card)
   // Priority 3: Calculate from date + time + repeat info (fallback)
   // ============================================================
 
-  let formattedNext = nextScheduledDisplay || null;
+  let formattedNext = null;
 
-  // Priority 2: calculate from date + time + repeat settings
-  if (!formattedNext) {
-    formattedNext = getNextScheduledDisplay();
-  }
-
-  // Priority 3: use nextScheduledAt from FCM/backend if above couldn't calculate
-  if (!formattedNext && nextScheduledAt) {
+  // Priority 1: Use nextScheduledAt from FCM/backend
+  if (nextScheduledAt) {
     const parsed = formatDateTime(nextScheduledAt);
     if (parsed) {
       formattedNext = parsed;
     }
+  }
+
+  // Priority 2: Use nextScheduledDisplay prop if passed from parent (e.g. Alerts.js card)
+  if (!formattedNext && nextScheduledDisplay) {
+    formattedNext = nextScheduledDisplay;
+  }
+
+  // Priority 3: calculate from date + time + repeat settings
+  if (!formattedNext) {
+    formattedNext = getNextScheduledDisplay();
   }
 
   return (
