@@ -378,6 +378,60 @@ export const addManualEnquiry = async (enquiryData) => {
 };
 
 /**
+ * Update enquiry (Manual or Client)
+ */
+export const updateEnquiry = async (enquiryId, enquiryData) => {
+  try {
+    console.log('📝 Updating enquiry:', enquiryId, enquiryData);
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${CRM_BASE_URL}/api/inquiry/update/${enquiryId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(enquiryData),
+    });
+
+    const data = await response.json();
+    return {
+      success: response.ok && data.success !== false,
+      data: data.data || data,
+      message: data.message || 'Enquiry updated successfully'
+    };
+  } catch (error) {
+    console.error('❌ Error updating enquiry:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to update enquiry'
+    };
+  }
+};
+
+/**
+ * Delete enquiry (Manual or Client)
+ */
+export const deleteEnquiry = async (enquiryId) => {
+  try {
+    console.log('🗑️ Deleting enquiry:', enquiryId);
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${CRM_BASE_URL}/api/inquiry/delete/${enquiryId}`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    const data = await response.json();
+    return {
+      success: response.ok && data.success !== false,
+      message: data.message || 'Enquiry deleted successfully'
+    };
+  } catch (error) {
+    console.error('❌ Error deleting enquiry:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to delete enquiry'
+    };
+  }
+};
+
+/**
  * Get available employees for assignment
  */
 export const getAvailableEmployees = async () => {
@@ -515,7 +569,11 @@ export const createReminder = async (reminderData) => {
       location: reminderData.location,
       reminderDateTime: reminderData.reminderDateTime || reminderData.scheduledDate,
       note: reminderData.note || reminderData.comment || reminderData.message,
-      isRepeating: reminderData.isRepeating || (reminderData.repeatType && reminderData.repeatType !== 'none') || false
+      isRepeating: reminderData.isRepeating || (reminderData.repeatType && reminderData.repeatType !== 'none') || false,
+      enquiryId: reminderData.enquiryId,
+      assignedEmployeeId: reminderData.assignedEmployeeId,
+      repeatType: reminderData.repeatType,
+      customIntervalMinutes: reminderData.customIntervalMinutes
     };
 
     const response = await fetch(`${CRM_BASE_URL}/api/reminder/create`, {

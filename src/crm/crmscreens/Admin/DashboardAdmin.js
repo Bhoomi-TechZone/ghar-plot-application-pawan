@@ -25,6 +25,7 @@ import { startAdminNotificationPolling, stopAdminNotificationPolling } from '../
 
 import { BASE_URL } from '../../../services/api';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
+import { syncFCMTokenOnAutoLogin } from '../../../utils/fcmService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -83,6 +84,8 @@ const AdminDashboardScreen = ({ navigation, user }) => {
   useEffect(() => {
     fetchDashboardData();
     fetchUnreadNotifCount();
+    // 🚀 Ensure FCM token is synced to Admin model and alert documents on dashboard mount
+    syncFCMTokenOnAutoLogin().catch(e => console.warn('DashboardAdmin FCM sync failed:', e.message));
 
     // 🔑 TEMP: Print admin token for curl testing (remove after use)
     (async () => {
@@ -163,10 +166,11 @@ const AdminDashboardScreen = ({ navigation, user }) => {
     };
   }, []);
 
-  // 🔔 Refresh unread count whenever this screen gains focus (e.g. after coming back from Inbox)
+  // 🔔 Refresh unread count and verify FCM token sync whenever this screen gains focus
   useFocusEffect(
     useCallback(() => {
       fetchUnreadNotifCount();
+      syncFCMTokenOnAutoLogin().catch(e => console.warn('DashboardAdmin FCM sync failed on focus:', e.message));
     }, [])
   );
 

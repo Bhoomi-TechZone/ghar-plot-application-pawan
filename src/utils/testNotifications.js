@@ -28,7 +28,7 @@ export const simulatePropertyAddedNotification = async (propertyData) => {
  */
 export const simulateInquiryNotification = async (propertyId, inquirerName) => {
   try {
-    const { addInquiryNotification } = await import('../utils/notificationManager');
+    const { addInquiryNotification } = require('../utils/notificationManager');
     
     const notification = await addInquiryNotification({
       inquiryId: Date.now().toString(),
@@ -49,7 +49,7 @@ export const simulateInquiryNotification = async (propertyId, inquirerName) => {
  */
 export const simulateChatNotification = async (senderName, message) => {
   try {
-    const { addChatNotification } = await import('../utils/notificationManager');
+    const { addChatNotification } = require('../utils/notificationManager');
     
     const notification = await addChatNotification({
       chatId: Date.now().toString(),

@@ -16,7 +16,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/Ionicons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getFCMToken } from '../../../utils/fcmService';
+import { getFCMToken, syncFCMTokenOnAutoLogin } from '../../../utils/fcmService';
 import { resetAdminNotificationState } from '../../../services/AdminNotificationPollingService';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
@@ -53,7 +53,8 @@ const AdminLogin = () => {
 
       // If we have valid token, navigate directly
       if (adminToken) {
-        console.log('✅ Valid token found, navigating to AdminApp');
+        console.log('✅ Valid token found, syncing FCM and navigating to AdminApp');
+        syncFCMTokenOnAutoLogin().catch(e => console.warn('FCM sync error:', e.message));
         navigation.reset({
           index: 0,
           routes: [{ name: 'AdminApp' }],

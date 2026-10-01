@@ -158,27 +158,49 @@ export const setupForegroundNotificationHandler = () => {
     // 🔥 MORE LOGS: Show the RAW message to identify why it might be skipped
     console.log('🚨🚨🚨 [DEBUG FCM] RAW Foreground Message:', JSON.stringify(remoteMessage.data, null, 2));
 
+    const data = remoteMessage.data || {};
+    const rawNotif = remoteMessage.notification || {};
+
+    // 🛡️ Guard against empty data pings or dryRun verification pings
+    const hasAnyContent = !!(
+      rawNotif.title || rawNotif.body ||
+      data.title || data.body || data.message || data.note || data.reason ||
+      data.reminderId || data.alertId || data.enquiryId || data.chatId ||
+      data.clientName
+    );
+
+    if (data.dryRunPing === 'true' || !hasAnyContent) {
+      console.log('⏭️ Skipping empty / test / ping FCM message (no reminder or alert payload)');
+      return;
+    }
+
     // Get notification details - Support both data-only and notification+data formats
     const title = remoteMessage.notification?.title || remoteMessage.data?.title || '🔔 सूचना';
     const body = remoteMessage.notification?.body || remoteMessage.data?.body || remoteMessage.data?.message || '';
-    const data = remoteMessage.data || {};
 
     // 🔥 Skip welcome/greeting notifications - don't show popup
-    if (
+    const isWelcomeOrGreeting =
       title?.toLowerCase().includes('welcome') ||
       body?.toLowerCase().includes('welcome back') ||
       body?.toLowerCase().includes('welcome to our platform') ||
       data?.type === 'welcome' ||
-      data?.type === 'greeting' ||
-      // 🔥 Skip "Notification Scheduled" confirmation messages from backend
-      title?.toLowerCase().includes('scheduled') ||
-      body?.toLowerCase().includes('scheduled')
-    ) {
-      console.log('⏭️ Skipping meta notification (welcome/scheduled)');
+      data?.type === 'greeting';
+
+    // Meta confirmation: ONLY skip if it's explicitly a scheduling confirmation and has NO reminderId or alertId
+    const isMetaScheduledConfirm =
+      !data?.reminderId &&
+      !data?.alertId &&
+      !data?.enquiryId &&
+      (title?.toLowerCase() === 'notification scheduled' ||
+       title?.toLowerCase().includes('scheduled successfully') ||
+       body?.toLowerCase().includes('scheduled successfully'));
+
+    if (isWelcomeOrGreeting || isMetaScheduledConfirm) {
+      console.log('⏭️ Skipping meta notification (welcome/scheduled confirmation)');
       return;
     }
-    // 🚀 FIXED: Default to 'reminder' instead of 'system' for broad compatibility
-    const notificationType = data.type || data.notificationType || 'reminder';
+    // 🚀 FIXED: Default to 'reminder' only if genuine reminder/alert or unspecified CRM content
+    const notificationType = data.type || data.notificationType || (data.reminderId ? 'reminder' : (data.alertId ? 'alert' : 'reminder'));
 
     // 🔥 FIXED: Robust Timestamp Check
     const rawTimestamp = data.timestamp || remoteMessage.sentTime;
@@ -352,15 +374,9 @@ export const setupForegroundNotificationHandler = () => {
             sound: 'default',
           });
 
-          // 🎯 DEDUPLICATION: In the foreground, prioritize the PROFESSIONAL POPUP.
-          // Only show the TRAY notification (Notifee) if it's NOT a reminder/alert
-          // (which already shows a massive popup) or if it's explicitly desired.
-          const shouldShowTrayNotif =
-            !isDuplicateTrayAlert &&
-            (Platform.OS === 'ios' ||
-              !isReminderLike ||
-              notificationType === 'chat' ||
-              notificationType === 'system');
+          // 🎯 Show heads-up tray notification in foreground as well so user gets sound/vibration
+          // and a banner even when the app is actively in use.
+          const shouldShowTrayNotif = !isDuplicateTrayAlert;
 
           if (shouldShowTrayNotif) {
             await notifee.displayNotification({
@@ -453,7 +469,7 @@ export const setupForegroundNotificationHandler = () => {
 
     // Save notification to local storage
     try {
-      const { addNotification } = await import('./notificationManager');
+      const { addNotification } = require('./notificationManager');
 
       // Support both data-only and notification+data formats
       if (remoteMessage && (remoteMessage.notification || remoteMessage.data)) {
@@ -545,12 +561,17 @@ export const backgroundMessageHandler = async (remoteMessage) => {
     const ageMs = Date.now() - msgTimestamp;
     const STALENESS_LIMIT_MS = 12 * 60 * 60 * 1000; // Increased to 12 hours for background too
 
-    // 🔥 Skip "Notification Scheduled" confirmation messages in background too
-    if (
-      title?.toLowerCase().includes('scheduled') ||
-      body?.toLowerCase().includes('scheduled')
-    ) {
-      console.log('⏭️ Skipping meta background notification (scheduled)');
+    // 🔥 Skip "Notification Scheduled" confirmation messages in background too (only if no reminderId/alertId)
+    const isMetaScheduledConfirmBG =
+      !data?.reminderId &&
+      !data?.alertId &&
+      !data?.enquiryId &&
+      (title?.toLowerCase() === 'notification scheduled' ||
+       title?.toLowerCase().includes('scheduled successfully') ||
+       body?.toLowerCase().includes('scheduled successfully'));
+
+    if (isMetaScheduledConfirmBG) {
+      console.log('⏭️ Skipping meta background notification (scheduled confirmation)');
       return;
     }
 
@@ -564,7 +585,7 @@ export const backgroundMessageHandler = async (remoteMessage) => {
 
     // 1️⃣ Save to local storage for "Notifications" screen (Inbox)
     try {
-      const { addNotification } = await import('./notificationManager');
+      const { addNotification } = require('./notificationManager');
       const storageNotification = {
         id: remoteMessage.messageId || (Date.now() + Math.random().toString(36).substr(2, 9)),
         type: notificationType,
@@ -953,7 +974,7 @@ export const checkFCMConfiguration = async () => {
  * Send FCM token to backend for storage
  * Saves to BOTH User and Employee models for complete coverage
  */
-export const sendTokenToBackend = async (userId, token) => {
+export const sendTokenToBackend = async (userId, token, options = {}) => {
   try {
     if (!userId || !token) {
       console.warn('⚠️ Missing userId or token for backend sync');
@@ -966,9 +987,23 @@ export const sendTokenToBackend = async (userId, token) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-    // Check if current user is admin
-    const adminId = await AsyncStorage.getItem('adminId');
-    const isAdminUser = !!adminId;
+    // Check if current user is admin (resolve from adminId, admin_user, or admin_email)
+    let adminId = await AsyncStorage.getItem('adminId');
+    const adminToken = (await AsyncStorage.getItem('admin_token')) || (await AsyncStorage.getItem('adminToken'));
+    if (!adminId) {
+      try {
+        const adminUserStr = await AsyncStorage.getItem('admin_user');
+        if (adminUserStr) {
+          const parsed = JSON.parse(adminUserStr);
+          adminId = parsed?._id || parsed?.id;
+          if (adminId) await AsyncStorage.setItem('adminId', String(adminId));
+        }
+      } catch (_) {}
+    }
+    if (!adminId) {
+      adminId = await AsyncStorage.getItem('admin_email');
+    }
+    const isAdminUser = !!adminToken && (!!adminId || !!userId || userId === 'admin');
 
     let deviceId = await AsyncStorage.getItem('@device_id');
     if (!deviceId) {
@@ -984,18 +1019,23 @@ export const sendTokenToBackend = async (userId, token) => {
       try {
         const adminResponse = await fetch('https://gharplotbackend.gntechnology.de/api/save-admin-token', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {})
+          },
           body: JSON.stringify({
-            adminId: adminId,
+            adminId: adminId || userId,
             fcmToken: token,
             oldToken: oldToken || undefined,
             deviceId: deviceId,
-            deviceInfo: deviceInfo
+            deviceInfo: deviceInfo,
+            isLoginEvent: options.isLoginEvent ?? true
           }),
           signal: controller.signal
         });
         if (adminResponse.ok) {
           console.log('✅ FCM token saved to Admin model');
+          await AsyncStorage.setItem('@fcm_token_prev', token);
         } else {
           console.warn('⚠️ Admin token save response not ok');
         }
@@ -1018,24 +1058,40 @@ export const sendTokenToBackend = async (userId, token) => {
         console.warn('⚠️ User token save failed:', userError.message);
       }
 
-      // 2️⃣ Save to Employee model
-      try {
-        const employeeResponse = await fetch('https://gharplotbackend.gntechnology.de/api/save-employee-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            employeeId: userId,
-            fcmToken: token,
-            oldToken: oldToken || undefined,
-            deviceId: deviceId,
-            deviceInfo: deviceInfo
-          }),
-        });
-        if (employeeResponse.ok) {
-          console.log('✅ FCM token saved to Employee model');
+      // 2️⃣ Save to Employee model (resolve employeeId if needed)
+      let employeeId = userId;
+      if (!employeeId) {
+        employeeId = await AsyncStorage.getItem('employeeId');
+        if (!employeeId) {
+          try {
+            const empUserStr = await AsyncStorage.getItem('employee_user');
+            if (empUserStr) {
+              const parsed = JSON.parse(empUserStr);
+              employeeId = parsed?._id || parsed?.id;
+            }
+          } catch (_) {}
         }
-      } catch (empError) {
-        console.warn('⚠️ Employee token save failed (user might not be employee):', empError.message);
+      }
+
+      if (employeeId) {
+        try {
+          const employeeResponse = await fetch('https://gharplotbackend.gntechnology.de/api/save-employee-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              employeeId: employeeId,
+              fcmToken: token,
+              oldToken: oldToken || undefined,
+              deviceId: deviceId,
+              deviceInfo: deviceInfo
+            }),
+          });
+          if (employeeResponse.ok) {
+            console.log('✅ FCM token saved to Employee model');
+          }
+        } catch (empError) {
+          console.warn('⚠️ Employee token save failed (user might not be employee):', empError.message);
+        }
       }
     }
 
@@ -1053,6 +1109,90 @@ export const sendTokenToBackend = async (userId, token) => {
       console.warn('⚠️ Failed to send FCM token to backend:', error.message);
     }
     // Don't throw error to prevent app crash
+    return false;
+  }
+};
+
+/**
+ * 🔥 CRITICAL AUTO-LOGIN & COLD START SYNC FUNCTION
+ * Automatically syncs fresh FCM token to backend for whichever user type is logged in
+ * (Admin, Employee, or Customer).
+ * Ensures that even if the device was off for 5 days, MongoDB gets the active token immediately.
+ */
+export const syncFCMTokenOnAutoLogin = async (forceRefresh = false) => {
+  try {
+    console.log('🔄 [FCM-AutoSync] Starting FCM token sync on auto-login/startup...');
+
+    // 1. Get fresh token
+    let token = null;
+    if (forceRefresh) {
+      token = await forceRefreshFCMToken();
+    } else {
+      token = await getFCMToken();
+    }
+
+    if (!token) {
+      console.warn('⚠️ [FCM-AutoSync] No FCM token available to sync');
+      return false;
+    }
+
+    // 2. Resolve Admin session
+    let adminId = await AsyncStorage.getItem('adminId');
+    const adminToken = (await AsyncStorage.getItem('admin_token')) || (await AsyncStorage.getItem('adminToken'));
+    if (!adminId) {
+      try {
+        const adminUserStr = await AsyncStorage.getItem('admin_user');
+        if (adminUserStr) {
+          const parsed = JSON.parse(adminUserStr);
+          adminId = parsed?._id || parsed?.id;
+          if (adminId) await AsyncStorage.setItem('adminId', String(adminId));
+        }
+      } catch (_) {}
+    }
+    if (!adminId) {
+      adminId = await AsyncStorage.getItem('admin_email');
+    }
+
+    // If Admin session exists, sync directly to Admin model
+    if (adminToken) {
+      console.log(`📤 [FCM-AutoSync] Detected logged-in Admin (${adminId || 'token'}), syncing FCM token to DB...`);
+      return await sendTokenToBackend(adminId || 'admin', token, { isLoginEvent: true });
+    }
+
+    // 3. Resolve Employee session
+    let employeeId = await AsyncStorage.getItem('employeeId');
+    const empToken = (await AsyncStorage.getItem('employee_token')) ||
+      (await AsyncStorage.getItem('employeeToken')) ||
+      (await AsyncStorage.getItem('employee_auth_token'));
+
+    if (!employeeId) {
+      try {
+        const empUserStr = await AsyncStorage.getItem('employee_user');
+        if (empUserStr) {
+          const parsed = JSON.parse(empUserStr);
+          employeeId = parsed?._id || parsed?.id;
+          if (employeeId) await AsyncStorage.setItem('employeeId', String(employeeId));
+        }
+      } catch (_) {}
+    }
+
+    if (employeeId && empToken) {
+      console.log(`📤 [FCM-AutoSync] Detected logged-in Employee (${employeeId}), syncing FCM token to DB...`);
+      return await sendTokenToBackend(employeeId, token, { isLoginEvent: true });
+    }
+
+    // 4. Resolve Customer/User session
+    const userId = await AsyncStorage.getItem('userId');
+    const userToken = await AsyncStorage.getItem('userToken');
+    if (userId && userToken) {
+      console.log(`📤 [FCM-AutoSync] Detected logged-in User (${userId}), syncing FCM token to DB...`);
+      return await sendTokenToBackend(userId, token);
+    }
+
+    console.log('ℹ️ [FCM-AutoSync] No active session found to sync token');
+    return false;
+  } catch (err) {
+    console.warn('⚠️ [FCM-AutoSync] Error during auto-sync:', err.message);
     return false;
   }
 };

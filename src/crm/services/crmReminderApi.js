@@ -82,7 +82,7 @@ export const createBulkReminders = async (remindersData) => {
  */
 export const updateReminder = async (reminderId, reminderData) => {
   try {
-    const response = await fetch(`${CRM_BASE_URL}/api/crm/reminders/${reminderId}`, {
+    const response = await fetch(`${CRM_BASE_URL}/api/reminder/update/${reminderId}`, {
       method: 'PUT',
       headers: await getCRMAuthHeaders(),
       body: JSON.stringify(reminderData),
@@ -118,7 +118,7 @@ export const reassignReminder = async (reminderId, reassignData) => {
  */
 export const deleteReminder = async (reminderId) => {
   try {
-    const response = await fetch(`${CRM_BASE_URL}/api/crm/reminders/${reminderId}`, {
+    const response = await fetch(`${CRM_BASE_URL}/api/reminder/delete/${reminderId}`, {
       method: 'DELETE',
       headers: await getCRMAuthHeaders(),
     });

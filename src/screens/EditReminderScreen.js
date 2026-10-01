@@ -5,7 +5,7 @@
  * User can modify reminder message and reschedule it
  * Uses FCM API for backend updates
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -132,6 +132,60 @@ const EditReminderScreen = ({ route, navigation }) => {
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [showCustomManualInput, setShowCustomManualInput] = useState(false);
   const [manualMinutes, setManualMinutes] = useState('');
+
+  // Track if changes are saved or being discarded to avoid redundant prompts
+  const isSavedRef = useRef(false);
+  const initialValuesRef = useRef({
+    title: clientName || '',
+    message: originalMessage || '',
+    repeatFrequency: origRepeatFreq || (repeatDaily === true || repeatDaily === 'true' ? 'daily' : (isRepeating ? (repeatType || 'daily') : 'none')),
+    customIntervalMinutes: origCustomMins || origRepeatMetadata?.customIntervalMinutes || route.params?.customIntervalMinutes || '',
+  });
+
+  const hasUnsavedChanges = () => {
+    if (isSavedRef.current) return false;
+    const init = initialValuesRef.current;
+    const currentTitle = (title || '').trim();
+    const currentMessage = (message || '').trim();
+    const initTitle = (init.title || '').trim();
+    const initMessage = (init.message || '').trim();
+
+    return currentTitle !== initTitle || 
+           currentMessage !== initMessage ||
+           repeatFrequency !== init.repeatFrequency ||
+           String(customIntervalMinutes || '') !== String(init.customIntervalMinutes || '');
+  };
+
+  // 🔥 Intercept back press (hardware back, header arrow, gesture) when user has unsaved changes
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!hasUnsavedChanges()) {
+        return;
+      }
+
+      // Prevent default behavior of leaving the screen
+      e.preventDefault();
+
+      // Prompt the user before leaving the screen
+      Alert.alert(
+        'Discard Changes?',
+        'You have unsaved changes. Are you sure you want to discard them?',
+        [
+          { text: 'Keep Editing', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              isSavedRef.current = true;
+              navigation.dispatch(e.data.action);
+            },
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, title, message, repeatFrequency, customIntervalMinutes]);
 
   useEffect(() => {
     if (!reminderId) {
@@ -413,7 +467,10 @@ const EditReminderScreen = ({ route, navigation }) => {
           [
             {
               text: 'OK',
-              onPress: () => navigation.goBack(),
+              onPress: () => {
+                isSavedRef.current = true;
+                navigation.goBack();
+              },
             },
           ]
         );
@@ -439,14 +496,26 @@ const EditReminderScreen = ({ route, navigation }) => {
   };
 
   const handleCancel = () => {
-    CrossPlatformAlert.alert(
-      'Cancel Edit',
-      'Are you sure you want to discard changes?',
-      [
-        { text: 'No', style: 'cancel' },
-        { text: 'Yes', onPress: () => navigation.goBack() },
-      ]
-    );
+    if (hasUnsavedChanges()) {
+      Alert.alert(
+        'Discard Changes?',
+        'You have unsaved changes. Are you sure you want to discard them?',
+        [
+          { text: 'Keep Editing', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              isSavedRef.current = true;
+              navigation.goBack();
+            },
+          },
+        ]
+      );
+    } else {
+      isSavedRef.current = true;
+      navigation.goBack();
+    }
   };
 
   const handleDelete = () => {
@@ -468,7 +537,13 @@ const EditReminderScreen = ({ route, navigation }) => {
                 CrossPlatformAlert.alert(
                   'Success',
                   'Reminder deleted successfully',
-                  [{ text: 'OK', onPress: () => navigation.goBack() }]
+                  [{
+                    text: 'OK',
+                    onPress: () => {
+                      isSavedRef.current = true;
+                      navigation.goBack();
+                    }
+                  }]
                 );
               } else {
                 throw new Error(result?.message || 'Failed to delete reminder');

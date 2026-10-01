@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Add Enquiry Modal Component
  * Form for adding manual enquiries
  */
@@ -25,6 +25,7 @@ import ReminderNotificationService from '../../../../services/ReminderNotificati
 import { createManualEnquiry } from '../../../services/enquiryService';
 import { assignEnquiriesToEmployee } from '../../../services/assignmentService';
 import { getAllEmployees } from '../../../services/crmEmployeeManagementApi';
+import { getClients } from '../../../services/adminSitesApi';
 import CrossPlatformAlert from '../../../../utils/crossPlatformAlert';
 
 const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnquiries = 0, navigation }) => {
@@ -48,6 +49,12 @@ const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnqu
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [assignmentPriority, setAssignmentPriority] = useState('medium');
   const [employeesLoading, setEmployeesLoading] = useState(false);
+
+  // Client dropdown sheet states
+  const [clients, setClients] = useState([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [showClientSheet, setShowClientSheet] = useState(false);
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
   
   const [formData, setFormData] = useState({
     s_No: 1,
@@ -200,6 +207,7 @@ const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnqu
     if (visible) {
       generateNextCodes();
       fetchEmployeesForAssignment();
+      fetchClientsForDropdown();
       
       // ✅ DEBUG: Add debugging capabilities for reminder testing
       if (__DEV__) {
@@ -293,6 +301,44 @@ const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnqu
     }
   };
 
+  const fetchClientsForDropdown = async () => {
+    try {
+      setClientsLoading(true);
+      console.log('👥 Fetching clients for dropdown sheet...');
+      const result = await getClients();
+      if (Array.isArray(result)) {
+        setClients(result);
+        console.log(`✅ [AddEnquiryModal] Loaded ${result.length} clients for dropdown`);
+      } else if (result?.data && Array.isArray(result.data)) {
+        setClients(result.data);
+        console.log(`✅ [AddEnquiryModal] Loaded ${result.data.length} clients for dropdown`);
+      } else {
+        setClients([]);
+      }
+    } catch (error) {
+      console.warn('⚠️ [AddEnquiryModal] Error fetching clients:', error.message);
+      setClients([]);
+    } finally {
+      setClientsLoading(false);
+    }
+  };
+
+  const handleSelectClient = (client) => {
+    const selectedName = client.name || client.fullName || '';
+    const selectedPhone = client.contactNumber || client.phone || '';
+    const selectedAddress = client.address || '';
+
+    setFormData(prev => ({
+      ...prev,
+      clientName: selectedName,
+      contactNumber: selectedPhone || prev.contactNumber,
+      address: selectedAddress && !prev.address ? selectedAddress : prev.address,
+    }));
+
+    setShowClientSheet(false);
+    setClientSearchQuery('');
+  };
+
   const generateNextCodes = async () => {
     try {
       // IMPORTANT: If no enquiries exist (totalEnquiries = 0), start from 1
@@ -330,7 +376,7 @@ const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnqu
       console.log('🔍 Checking for duplicate contact:', contactNumber);
       
       // Import the API function
-      const { getAllEnquiries } = await import('../../../services/crmEnquiryApi');
+      const { getAllEnquiries } = require('../../../services/crmEnquiryApi');
       const result = await getAllEnquiries();
       
       if (result && result.success && result.data) {
@@ -647,7 +693,7 @@ const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnqu
       console.log('📤 Adding reminder to ReminderManager...');
       
       // ✅ CRITICAL FIX: Use the SAME reminder manager that handles popups
-      const reminderManager = (await import('../../../services/reminderManager')).default;
+      const reminderManager = require('../../../services/reminderManager').default;
       const addedReminder = await reminderManager.addReminder(reminderData);
       
       console.log('✅ Reminder added to ReminderManager successfully:', addedReminder.id);
@@ -692,7 +738,7 @@ const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnqu
 
       // Also try API creation (but local is guaranteed)
       try {
-        const { createReminderFromLead } = await import('../../../services/crmEnquiryApi');
+        const { createReminderFromLead } = require('../../../services/crmEnquiryApi');
         const apiResult = await createReminderFromLead(reminderData);
         
         if (apiResult.success) {
@@ -888,7 +934,51 @@ const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnqu
               />
             </View>
             
-            {renderInput('Client Name', 'clientName', 'Enter client name', { required: true })}
+            {/* Client Name with Dropdown Sheet Picker */}
+            <View style={styles.inputGroup}>
+              <View style={styles.clientLabelRow}>
+                <Text style={styles.label}>
+                  Client Name <Text style={styles.required}>*</Text>
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowClientSheet(true)}
+                  style={styles.selectClientBadgeButton}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="people" size={15} color="#2563eb" style={{ marginRight: 4 }} />
+                  <Text style={styles.selectClientBadgeText}>
+                    {clients.length > 0 ? `Select Client (${clients.length})` : 'Select Client'}
+                  </Text>
+                  <Icon name="arrow-drop-down" size={18} color="#2563eb" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.clientInputContainer}>
+                <TextInput
+                  style={styles.clientTextInput}
+                  placeholder="Select client from list or enter name..."
+                  placeholderTextColor="#9ca3af"
+                  value={formData.clientName}
+                  onChangeText={(value) => handleInputChange('clientName', value)}
+                />
+                {formData.clientName ? (
+                  <TouchableOpacity
+                    onPress={() => handleInputChange('clientName', '')}
+                    style={styles.clientInputClearButton}
+                  >
+                    <Icon name="close" size={18} color="#9ca3af" />
+                  </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity
+                  onPress={() => setShowClientSheet(true)}
+                  style={styles.clientDropdownTriggerButton}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="arrow-drop-down" size={24} color="#2563eb" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {renderInput('Contact Number', 'contactNumber', '+91-XXXXXXXXXX', { required: true, keyboardType: 'phone-pad' })}
             
             {renderSelect('Property Type', 'productType', productTypes, true)}
@@ -1093,6 +1183,174 @@ const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnqu
           }}
         />
       )}
+
+      {/* 👥 CLIENT DROPDOWN SHEET MODAL */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showClientSheet}
+        onRequestClose={() => {
+          setShowClientSheet(false);
+          setClientSearchQuery('');
+        }}
+      >
+        <View style={styles.clientSheetOverlay}>
+          <TouchableOpacity
+            style={styles.clientSheetBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              setShowClientSheet(false);
+              setClientSearchQuery('');
+            }}
+          />
+          <View style={styles.clientSheetContainer}>
+            {/* Drag Handle */}
+            <View style={styles.sheetHandle} />
+
+            {/* Sheet Header */}
+            <View style={styles.clientSheetHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={styles.clientHeaderIconCircle}>
+                  <Icon name="people" size={20} color="#2563eb" />
+                </View>
+                <View style={{ marginLeft: 10 }}>
+                  <Text style={styles.clientSheetTitle}>Select Client</Text>
+                  <Text style={styles.clientSheetSubtitle}>
+                    {clients.length} registered client{clients.length === 1 ? '' : 's'} available
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowClientSheet(false);
+                  setClientSearchQuery('');
+                }}
+                style={styles.sheetCloseButton}
+              >
+                <Icon name="close" size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Bar */}
+            <View style={styles.clientSearchBarContainer}>
+              <Icon name="search" size={20} color="#64748b" style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.clientSearchInput}
+                placeholder="Search by name or contact number..."
+                placeholderTextColor="#9ca3af"
+                value={clientSearchQuery}
+                onChangeText={setClientSearchQuery}
+              />
+              {clientSearchQuery ? (
+                <TouchableOpacity onPress={() => setClientSearchQuery('')}>
+                  <Icon name="close" size={18} color="#9ca3af" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {/* Option to use custom typed text if not matched */}
+            {clientSearchQuery.trim() ? (
+              <TouchableOpacity
+                style={styles.useCustomNameButton}
+                onPress={() => {
+                  handleInputChange('clientName', clientSearchQuery.trim());
+                  setShowClientSheet(false);
+                  setClientSearchQuery('');
+                }}
+              >
+                <Icon name="add" size={18} color="#2563eb" style={{ marginRight: 6 }} />
+                <Text style={styles.useCustomNameText}>
+                  Use <Text style={{ fontWeight: '700' }}>"{clientSearchQuery.trim()}"</Text> as Client Name
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {/* Clients List */}
+            {clientsLoading ? (
+              <View style={styles.clientsLoadingContainer}>
+                <ActivityIndicator size="large" color="#2563eb" />
+                <Text style={styles.clientsLoadingText}>Loading clients...</Text>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.clientListScroll}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={true}
+              >
+                {(() => {
+                  const filtered = clients.filter(c => {
+                    if (!clientSearchQuery) return true;
+                    const q = clientSearchQuery.toLowerCase().trim();
+                    const nameMatch = (c.name || c.fullName || '').toLowerCase().includes(q);
+                    const phoneMatch = (c.contactNumber || c.phone || '').toLowerCase().includes(q);
+                    return nameMatch || phoneMatch;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <View style={styles.noClientsContainer}>
+                        <Icon name="person-off" size={42} color="#cbd5e1" style={{ marginBottom: 8 }} />
+                        <Text style={styles.noClientsTitle}>No clients found</Text>
+                        <Text style={styles.noClientsSub}>
+                          {clientSearchQuery ? `No client matches "${clientSearchQuery}"` : 'No clients registered in the system yet.'}
+                        </Text>
+                      </View>
+                    );
+                  }
+
+                  return filtered.map((client, index) => {
+                    const cName = client.name || client.fullName || 'Unnamed Client';
+                    const cPhone = client.contactNumber || client.phone || 'No phone';
+                    const isSelected = formData.clientName && formData.clientName.toLowerCase() === cName.toLowerCase();
+                    const initials = cName.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'C';
+
+                    return (
+                      <TouchableOpacity
+                        key={client._id || client.id || `client_${index}`}
+                        style={[
+                          styles.clientItemRow,
+                          isSelected && styles.clientItemRowActive
+                        ]}
+                        onPress={() => handleSelectClient(client)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.clientAvatarCircle, isSelected && styles.clientAvatarCircleActive]}>
+                          <Text style={[styles.clientAvatarText, isSelected && styles.clientAvatarTextActive]}>
+                            {initials}
+                          </Text>
+                        </View>
+                        <View style={styles.clientItemDetails}>
+                          <Text style={[styles.clientItemName, isSelected && styles.clientItemNameActive]}>
+                            {cName}
+                          </Text>
+                          <View style={styles.clientPhoneRow}>
+                            <Icon name="phone" size={13} color="#64748b" style={{ marginRight: 4 }} />
+                            <Text style={styles.clientItemPhone}>{cPhone}</Text>
+                            {client.clientType ? (
+                              <View style={styles.clientTypeTag}>
+                                <Text style={styles.clientTypeTagText}>
+                                  {typeof client.clientType === 'object' ? client.clientType.name : client.clientType}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </View>
+                        {isSelected ? (
+                          <View style={styles.checkCircle}>
+                            <Icon name="check" size={15} color="#ffffff" />
+                          </View>
+                        ) : (
+                          <Icon name="chevron-right" size={20} color="#cbd5e1" />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  });
+                })()}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -1342,6 +1600,257 @@ const styles = StyleSheet.create({
   },
   priorityTextActive: {
     color: '#ffffff',
+  },
+  // Client selection styles
+  clientLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  selectClientBadgeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  selectClientBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  clientInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  clientTextInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1f2937',
+    padding: 0,
+  },
+  clientInputClearButton: {
+    padding: 4,
+    marginRight: 4,
+  },
+  clientDropdownTriggerButton: {
+    padding: 4,
+    borderLeftWidth: 1,
+    borderLeftColor: '#e5e7eb',
+    paddingLeft: 8,
+  },
+  // Client Dropdown Sheet Modal Styles
+  clientSheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  clientSheetBackdrop: {
+    flex: 1,
+  },
+  clientSheetContainer: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#cbd5e1',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  clientSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  clientHeaderIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientSheetTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  clientSheetSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  sheetCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientSearchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  clientSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0f172a',
+    padding: 0,
+  },
+  useCustomNameButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    marginHorizontal: 20,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  useCustomNameText: {
+    fontSize: 13,
+    color: '#2563eb',
+  },
+  clientsLoadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientsLoadingText: {
+    marginTop: 10,
+    color: '#64748b',
+    fontSize: 14,
+  },
+  clientListScroll: {
+    paddingHorizontal: 20,
+    maxHeight: 380,
+  },
+  clientItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  clientItemRowActive: {
+    backgroundColor: '#eff6ff',
+  },
+  clientAvatarCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  clientAvatarCircleActive: {
+    backgroundColor: '#2563eb',
+  },
+  clientAvatarText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  clientAvatarTextActive: {
+    color: '#ffffff',
+  },
+  clientItemDetails: {
+    flex: 1,
+  },
+  clientItemName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  clientItemNameActive: {
+    color: '#2563eb',
+  },
+  clientPhoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  clientItemPhone: {
+    fontSize: 13,
+    color: '#64748b',
+    marginRight: 8,
+  },
+  clientTypeTag: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  clientTypeTagText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noClientsContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noClientsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  noClientsSub: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });
 

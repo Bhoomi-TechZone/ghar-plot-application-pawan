@@ -108,6 +108,18 @@ const DRAWER_MENU_ITEMS = [
     color: '#0f766e',
   },
   {
+    name: 'Project Daily Sheet',
+    route: 'EmployeeDailySheet',
+    icon: 'document-text-outline',
+    color: '#2563eb',
+  },
+  {
+    name: 'Site Cash Flow',
+    route: 'EmployeeCashFlow',
+    icon: 'wallet-outline',
+    color: '#059669',
+  },
+  {
     name: 'Alerts',
     route: 'EmployeeAlerts',
     icon: 'warning-outline',
@@ -607,6 +619,16 @@ const EmployeeDrawerNavigator = () => {
       
       {/* Additional Screens from Drawer */}
       <Stack.Screen name="EmployeeExpenses" component={EmployeeExpensesScreen} />
+      <Stack.Screen 
+        name="EmployeeDailySheet" 
+        component={EmployeeExpensesScreen} 
+        initialParams={{ initialTab: 'daily_sheet' }} 
+      />
+      <Stack.Screen 
+        name="EmployeeCashFlow" 
+        component={EmployeeExpensesScreen} 
+        initialParams={{ initialTab: 'cash_flow' }} 
+      />
       <Stack.Screen name="EmployeeAlerts" component={Alerts} />
       <Stack.Screen name="CreateAlert" component={CreateAlertScreen} />
       <Stack.Screen name="EmployeeProfile" component={EmployeeProfile} />

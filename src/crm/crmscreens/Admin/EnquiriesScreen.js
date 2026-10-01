@@ -1,4 +1,4 @@
-﻿/**
+/**
  * EnquiriesScreen.js
  * Comprehensive CRM Admin screen for managing customer enquiries
  * Refactored with modular components and full CRM features
@@ -35,9 +35,12 @@ import {
   createReminder,
   createFollowUp,
   addManualEnquiry,
+  updateEnquiry,
+  deleteEnquiry,
   getEnquiryDetails,
   getEnquiryReminders
 } from '../../services/crmEnquiryApi';
+import { deleteReminder } from '../../services/crmReminderApi';
 import { getAllEmployees } from '../../services/crmEmployeeManagementApi';
 
 // Import components
@@ -54,7 +57,9 @@ import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 // Import debug helper in development mode
 if (__DEV__) {
-  import('./enquiriesDebug');
+  try {
+    require('./enquiriesDebug');
+  } catch (_) {}
 }
 
 const EnquiriesScreen = ({ navigation, route }) => {
@@ -90,6 +95,7 @@ const EnquiriesScreen = ({ navigation, route }) => {
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [autoAssignModalVisible, setAutoAssignModalVisible] = useState(false);
   const [reminderModalVisible, setReminderModalVisible] = useState(false);
+  const [reminderToEdit, setReminderToEdit] = useState(null);
   const [followUpModalVisible, setFollowUpModalVisible] = useState(false);
 
   // Permission states
@@ -658,7 +664,71 @@ const EnquiriesScreen = ({ navigation, route }) => {
 
   const handleSetReminder = (enquiry) => {
     setSelectedEnquiry(enquiry);
+    setReminderToEdit(null);
     setReminderModalVisible(true);
+  };
+
+  const handleEditReminder = (reminder, enquiry) => {
+    setSelectedEnquiry(enquiry || selectedEnquiry);
+    setReminderToEdit(reminder);
+    setReminderModalVisible(true);
+  };
+
+  const handleDeleteReminder = (reminderId) => {
+    CrossPlatformAlert.alert(
+      'Delete Reminder',
+      'Are you sure you want to delete this reminder?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await deleteReminder(reminderId);
+              if (res.success) {
+                showSuccessToast('Reminder deleted successfully');
+                if (selectedEnquiry) {
+                  showEnquiryDetails(selectedEnquiry);
+                }
+              } else {
+                showErrorToast(res.message || 'Failed to delete reminder');
+              }
+            } catch (err) {
+              showErrorToast('Failed to delete reminder');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteEnquiry = (enquiry) => {
+    CrossPlatformAlert.alert(
+      'Delete Lead',
+      `Are you sure you want to delete the lead for "${enquiry.clientName}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await deleteEnquiry(enquiry._id);
+              if (res.success) {
+                setDetailsModalVisible(false);
+                showSuccessToast('Lead deleted successfully');
+                fetchEnquiries();
+              } else {
+                showErrorToast(res.message || 'Failed to delete lead');
+              }
+            } catch (err) {
+              showErrorToast('Failed to delete lead');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleFollowUp = (enquiry) => {
@@ -839,6 +909,7 @@ const EnquiriesScreen = ({ navigation, route }) => {
         onSetReminder={handleSetReminder}
         onFollowUp={handleFollowUp}
         onUnassign={handleUnassign}
+        onDelete={handleDeleteEnquiry}
         canSelect={canSelect}
         showCheckbox={selectionMode}
       />
@@ -1237,13 +1308,24 @@ const EnquiriesScreen = ({ navigation, route }) => {
                               </View>
                             )}
 
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
                               <Text style={{ fontSize: 10, color: '#9ca3af' }}>
-                                By: {reminder.createdBy?.fullName || 'Unknown'}
+                                By: {reminder.createdBy?.fullName || 'Admin'} • {new Date(reminder.createdAt).toLocaleDateString('en-IN')}
                               </Text>
-                              <Text style={{ fontSize: 10, color: '#9ca3af' }}>
-                                {new Date(reminder.createdAt).toLocaleDateString('en-IN')}
-                              </Text>
+                              <View style={{ flexDirection: 'row', gap: 6 }}>
+                                <TouchableOpacity
+                                  style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#dbeafe', borderRadius: 4 }}
+                                  onPress={() => handleEditReminder(reminder, selectedEnquiry)}
+                                >
+                                  <Text style={{ fontSize: 11, color: '#1d4ed8', fontWeight: '600' }}>✏️ Edit</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#fee2e2', borderRadius: 4 }}
+                                  onPress={() => handleDeleteReminder(reminder._id || reminder.id)}
+                                >
+                                  <Text style={{ fontSize: 11, color: '#dc2626', fontWeight: '600' }}>🗑️ Delete</Text>
+                                </TouchableOpacity>
+                              </View>
                             </View>
                           </View>
                         ))}
@@ -1276,6 +1358,25 @@ const EnquiriesScreen = ({ navigation, route }) => {
                       ))}
                     </View>
                   )}
+
+                  {/* Delete Lead Button */}
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: '#fee2e2',
+                      borderColor: '#fca5a5',
+                      borderWidth: 1,
+                      borderRadius: 8,
+                      paddingVertical: 12,
+                      alignItems: 'center',
+                      marginTop: 16,
+                      marginBottom: 24,
+                    }}
+                    onPress={() => handleDeleteEnquiry(selectedEnquiry)}
+                  >
+                    <Text style={{ color: '#dc2626', fontSize: 14, fontWeight: '700' }}>
+                      🗑️ Delete Lead
+                    </Text>
+                  </TouchableOpacity>
                 </>
               )}
             </ScrollView>
@@ -1314,10 +1415,17 @@ const EnquiriesScreen = ({ navigation, route }) => {
 
       <ReminderModal
         visible={reminderModalVisible}
-        onClose={() => setReminderModalVisible(false)}
+        onClose={() => {
+          setReminderModalVisible(false);
+          setReminderToEdit(null);
+        }}
         enquiry={selectedEnquiry}
+        reminderToEdit={reminderToEdit}
         createReminderAPI={createReminder}
-        onSuccess={() => handleReminderSuccess(selectedEnquiry)}
+        onSuccess={() => {
+          setReminderToEdit(null);
+          handleReminderSuccess(selectedEnquiry);
+        }}
       />
 
       <FollowUpModal

@@ -1,4 +1,4 @@
-﻿// src/screens/ChatDetailScreen.js
+// src/screens/ChatDetailScreen.js
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
@@ -319,7 +319,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 // Mark chat as read (best-effort)
                 try {
                     route.params && typeof route.params.onOpen === 'function' && route.params.onOpen();
-                    const { default: eventBus } = await import('../utils/eventBus');
+                    const eventBus = require('../utils/eventBus').default;
                     eventBus && eventBus.emit && eventBus.emit('chatOpened', { chatId: resolvedId });
                     markChatAsRead(resolvedId).catch(e => console.warn('markChatAsRead failed:', e && e.message ? e.message : e));
                 } catch (e) {

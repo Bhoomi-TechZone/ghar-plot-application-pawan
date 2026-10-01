@@ -141,12 +141,37 @@ export const checkAutoLogin = async (navigation) => {
     console.log('🔍 Checking auto-login status...');
     
     // Check admin token FIRST - admins should go directly to AdminApp
-    const adminToken = await AsyncStorage.getItem('admin_token');
+    const adminToken = (await AsyncStorage.getItem('admin_token')) || (await AsyncStorage.getItem('adminToken'));
     if (adminToken) {
-      console.log('✅ Admin token found, navigating to AdminApp');
+      console.log('✅ Admin token found, triggering FCM sync & navigating to AdminApp');
+      try {
+        const { syncFCMTokenOnAutoLogin } = require('./fcmService');
+        syncFCMTokenOnAutoLogin(false).catch(e => console.warn('FCM sync error:', e.message));
+      } catch (fcmErr) {
+        console.warn('⚠️ FCM sync module error:', fcmErr.message);
+      }
       navigation.reset({
         index: 0,
         routes: [{ name: 'AdminApp' }],
+      });
+      return;
+    }
+
+    // Check employee token
+    const employeeToken = (await AsyncStorage.getItem('employee_token')) || 
+                          (await AsyncStorage.getItem('employeeToken')) || 
+                          (await AsyncStorage.getItem('employee_auth_token'));
+    if (employeeToken) {
+      console.log('✅ Employee token found, triggering FCM sync & navigating to EmployeeApp');
+      try {
+        const { syncFCMTokenOnAutoLogin } = require('./fcmService');
+        syncFCMTokenOnAutoLogin(false).catch(e => console.warn('FCM sync error:', e.message));
+      } catch (fcmErr) {
+        console.warn('⚠️ FCM sync module error:', fcmErr.message);
+      }
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'EmployeeApp' }],
       });
       return;
     }
@@ -159,7 +184,13 @@ export const checkAutoLogin = async (navigation) => {
     });
     
     if (credentials.isLoggedIn) {
-      console.log('✅ User is logged in, navigating to Home');
+      console.log('✅ User is logged in, triggering FCM sync & navigating to Home');
+      try {
+        const { syncFCMTokenOnAutoLogin } = require('./fcmService');
+        syncFCMTokenOnAutoLogin(false).catch(e => console.warn('FCM sync error:', e.message));
+      } catch (fcmErr) {
+        console.warn('⚠️ FCM sync module error:', fcmErr.message);
+      }
       navigation.replace('Home');
     } else {
       console.log('❌ User not logged in, navigating to Login');

@@ -37,11 +37,12 @@ if (Platform.OS !== 'web') {
 
 // Import FCM debug helper in development mode (native only)
 if (__DEV__ && Platform.OS !== 'web') {
-  import('./src/utils/fcmDebugHelper').catch(() => console.log('fcmDebugHelper not found'));
-  import('./src/utils/fcmReminderTestHelper').catch(() => console.log('fcmReminderTestHelper not found'));
-  // import('./test-notification-navigation'); // Temporarily disabled
-  // import('./src/utils/testFCM'); // Temporarily disabled
-  // import('./test-background-alert-navigation'); // Temporarily disabled
+  try {
+    require('./src/utils/fcmDebugHelper');
+  } catch (_) {}
+  try {
+    require('./src/utils/fcmReminderTestHelper');
+  } catch (_) {}
 }
 
 const AppMain = () => {
@@ -82,10 +83,32 @@ const AppMain = () => {
     const rawId = reminder.reminderId || reminder._id || reminder.id || reminder.alertId;
     const remId = normalizeId(rawId) || `rem_${now}`;
 
+    // 🛡️ DUMMY POPUP GUARD:
+    // Ensure the reminder has genuine content or a valid ID.
+    // An empty/dummy ping has no ID, no real title (or just default '🔔 सूचना'/'Reminder'), no note, and no client name.
+    const hasIdentifier = !!(reminder.reminderId || reminder._id || reminder.id || reminder.alertId || reminder.enquiryId);
+    const hasCustomTitle = !!(reminder.title && reminder.title !== '🔔 सूचना' && reminder.title !== 'Reminder' && reminder.title !== 'Alert');
+    const hasCustomContent = !!(reminder.note || reminder.body || reminder.message || reminder.comment || reminder.reason);
+    const hasRealClient = !!(reminder.clientName || (reminder.name && reminder.name !== 'Gharplot Client'));
+
+    if (!hasIdentifier && !hasCustomTitle && !hasCustomContent && !hasRealClient) {
+      console.log('🛑 [DUMMY GUARD] Suppressed dummy popup with empty payload:', JSON.stringify(reminder));
+      return;
+    }
+
     // 🔥 Build a composite key that is UNIQUE PER OCCURRENCE.
-    const scheduledMin = reminder.scheduledDateTime
-      ? new Date(reminder.scheduledDateTime).toISOString().slice(0, 16)
-      : (reminder.scheduledAt ? new Date(reminder.scheduledAt).toISOString().slice(0, 16) : '');
+    let scheduledMin = '';
+    try {
+      const dt = reminder.scheduledDateTime || reminder.scheduledAt || reminder.reminderDateTime;
+      if (dt) {
+        const d = new Date(dt);
+        if (!isNaN(d.getTime())) {
+          scheduledMin = d.toISOString().slice(0, 16);
+        } else {
+          scheduledMin = String(dt).replace(/[^a-zA-Z0-9]/g, '_').slice(0, 16);
+        }
+      }
+    } catch (_) {}
     const occurrenceKey = scheduledMin ? `${remId}_${scheduledMin}` : remId;
 
     // 🔥 Identify Type FIRST (Priority: Alert > Admin > Standard)
@@ -271,6 +294,12 @@ const AppMain = () => {
       // When app comes to FOREGROUND from BACKGROUND
       if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
         console.log('🎬 App came to FOREGROUND - Checking pending notifications');
+
+        // 🚀 Ensure FCM token is kept active and in sync when app wakes up from background / idle state
+        try {
+          const { syncFCMTokenOnAutoLogin } = require('./src/utils/fcmService');
+          syncFCMTokenOnAutoLogin(false).catch(err => console.warn('Foreground FCM sync failed:', err.message));
+        } catch (_) {}
 
         // 🔥 Prevent multiple processing
         if (isProcessingNavigation) {
@@ -728,16 +757,10 @@ const AppMain = () => {
 
             // Send updated token to backend
             try {
-              const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-              const userId = await AsyncStorage.getItem('userId');
-
-              if (userId && newToken) {
-                // You can add your backend token update API call here
-                console.log('📤 Should send updated FCM token to backend for user:', userId);
-                // await sendTokenToBackend(userId, newToken);
-              }
+              const { syncFCMTokenOnAutoLogin } = require('./src/utils/fcmService');
+              await syncFCMTokenOnAutoLogin(false);
             } catch (syncError) {
-              console.warn('⚠️ Token sync failed (non-critical):', syncError.message);
+              console.warn('⚠️ Token sync failed on refresh (non-critical):', syncError.message);
             }
           },
 
@@ -801,6 +824,12 @@ const AppMain = () => {
           // Store token locally for debugging
           const AsyncStorage = require('@react-native-async-storage/async-storage').default;
           await AsyncStorage.setItem('current_fcm_token', result.token);
+
+          // 🚀 Sync FCM token on app launch / startup so DB always has active token for logged in admin/user
+          try {
+            const { syncFCMTokenOnAutoLogin } = require('./src/utils/fcmService');
+            syncFCMTokenOnAutoLogin(false).catch(err => console.warn('Startup FCM sync failed:', err.message));
+          } catch (_) {}
 
         } else if (!result.configured) {
           console.warn('⚠️ FCM not properly configured:', result.error);
@@ -1021,6 +1050,7 @@ const AppMain = () => {
         createdAt={adminPopupData?.createdAt || (adminPopupData?.date && adminPopupData?.time ? (() => { try { const [y,mo,d] = adminPopupData.date.split('-').map(Number); const [h,min] = adminPopupData.time.split(':').map(Number); return new Date(Date.UTC(y, mo-1, d, h, min, 0) - 5.5*3600*1000).toISOString(); } catch(_){ return ''; } })() : '')} // 🔥 IST-aware construction (avoids UTC date shift)
         type={adminPopupData?.type || adminPopupData?.notificationType || 'admin_reminder'}
         repeatFrequency={adminPopupData?.repeatFrequency || (adminPopupData?.repeatDaily ? 'daily' : '')} // 🔥 Pass for Next Scheduled calc
+        repeatType={adminPopupData?.repeatType || ''} // 🔥 Pass repeatType
         repeatDaily={adminPopupData?.repeatDaily === true || adminPopupData?.repeatDaily === 'true'} // 🔥 Pass for Next Scheduled calc
         repeatMetadata={adminPopupData?.repeatMetadata || {}} // 🔥 Pass for minutes/custom repeat calc
         customRepeatMinutes={parseInt(adminPopupData?.customRepeatMinutes || adminPopupData?.customIntervalMinutes || 0)} // 🔥 Direct minutes field

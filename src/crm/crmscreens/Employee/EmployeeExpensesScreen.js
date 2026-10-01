@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,12 +22,19 @@ import * as adminSitesApi from '../../services/adminSitesApi';
 
 const { width } = Dimensions.get('window');
 
-const EmployeeExpensesScreen = ({ navigation }) => {
+const EmployeeExpensesScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const statusBarTop = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
 
-  // Active sub-tab: 'add_expense' or 'daily_sheet'
-  const [activeTab, setActiveTab] = useState('add_expense');
+  // Active sub-tab / mode: 'add_expense', 'daily_sheet', or 'cash_flow'
+  const initialMode = route?.params?.initialTab || 'add_expense';
+  const [activeTab, setActiveTab] = useState(initialMode);
+
+  useEffect(() => {
+    if (route?.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+    }
+  }, [route?.params?.initialTab]);
 
   // Logged-in Employee info
   const [currentEmployee, setCurrentEmployee] = useState(null);
@@ -193,15 +200,56 @@ const EmployeeExpensesScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
-    if (activeTab === 'daily_sheet' && currentEmployee) {
+    if (currentEmployee) {
       fetchTodayProjectSheet(sheetProjectFilter);
-    } else if (activeTab === 'cash_flow') {
-      const targetAssoc = cashFlowForm.associateId || currentEmployee?._id || currentEmployee?.id;
-      if (targetAssoc) {
-        fetchAssociateCashFlowData(targetAssoc);
+      if (activeTab === 'cash_flow') {
+        const targetAssoc = cashFlowForm.associateId || currentEmployee?._id || currentEmployee?.id;
+        if (targetAssoc) {
+          fetchAssociateCashFlowData(targetAssoc);
+        }
       }
     }
   }, [activeTab, currentEmployee, sheetProjectFilter]);
+
+  // Real-time Search Query for Daily Sheet
+  const [sheetSearchQuery, setSheetSearchQuery] = useState('');
+
+  // Filtered Daily Sheet Data based on search query
+  const filteredDailySheetData = useMemo(() => {
+    if (!sheetSearchQuery.trim()) return dailySheetData;
+    const q = sheetSearchQuery.toLowerCase().trim();
+    return dailySheetData.map(group => {
+      const matchingExpenses = (group.expenses || []).filter(item => 
+        (item.itemName && item.itemName.toLowerCase().includes(q)) ||
+        (item.paidTo && item.paidTo.toLowerCase().includes(q)) ||
+        (item.category && item.category.toLowerCase().includes(q)) ||
+        (item.paymentType && item.paymentType.toLowerCase().includes(q)) ||
+        (group.projectName && group.projectName.toLowerCase().includes(q)) ||
+        (group.clientName && group.clientName.toLowerCase().includes(q))
+      );
+      return {
+        ...group,
+        expenses: matchingExpenses,
+        itemsCount: matchingExpenses.length,
+        projectSubtotal: matchingExpenses.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0),
+      };
+    }).filter(group => group.expenses.length > 0);
+  }, [dailySheetData, sheetSearchQuery]);
+
+  // Flattened Today's Logged Expenses for the live feed on the Site Expenses screen
+  const allTodayExpenses = useMemo(() => {
+    const list = [];
+    dailySheetData.forEach(group => {
+      (group.expenses || []).forEach(exp => {
+        list.push({
+          ...exp,
+          projectName: group.projectName,
+          clientName: group.clientName,
+        });
+      });
+    });
+    return list;
+  }, [dailySheetData]);
 
   // Fetch associate cashflow data & previous closing balance
   const fetchAssociateCashFlowData = async (associateId) => {
@@ -537,6 +585,8 @@ const EmployeeExpensesScreen = ({ navigation }) => {
         remarks: '',
       }));
 
+      await fetchTodayProjectSheet();
+
       Alert.alert('Success', 'Expense logged successfully for today!', [
         { text: 'Add More', style: 'cancel' },
         { text: 'View Today\'s Sheet', onPress: () => setActiveTab('daily_sheet') },
@@ -582,6 +632,7 @@ const EmployeeExpensesScreen = ({ navigation }) => {
 
       await adminSitesApi.createBatchExpenses(formattedItems);
       setDraftQueue([]);
+      await fetchTodayProjectSheet();
       Alert.alert('Success', `Successfully logged ${formattedItems.length} expenses for today!`, [
         { text: 'OK', onPress: () => setActiveTab('daily_sheet') },
       ]);
@@ -803,9 +854,19 @@ const EmployeeExpensesScreen = ({ navigation }) => {
             <Icon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Site Expenses</Text>
+            <Text style={styles.headerTitle}>
+              {activeTab === 'add_expense'
+                ? 'Site Expenses'
+                : activeTab === 'daily_sheet'
+                ? 'Project Daily Sheet'
+                : 'Site Cash Flow'}
+            </Text>
             <Text style={styles.headerSubtitle}>
-              {currentEmployee?.name ? `Associate: ${currentEmployee.name}` : 'Employee Panel'}
+              {activeTab === 'add_expense'
+                ? (currentEmployee?.name ? `Log Expenses • ${currentEmployee.name}` : 'Log Materials & Site Costs')
+                : activeTab === 'daily_sheet'
+                ? "Today's Project-wise Report"
+                : 'Associate Cash & Settlement'}
             </Text>
           </View>
           <TouchableOpacity
@@ -816,7 +877,7 @@ const EmployeeExpensesScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Top Navigation Tabs */}
+        {/* View Switcher Pills */}
         <View style={styles.tabBar}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'add_expense' && styles.tabButtonActive]}
@@ -824,9 +885,9 @@ const EmployeeExpensesScreen = ({ navigation }) => {
           >
             <MaterialIcons
               name="add-shopping-cart"
-              size={18}
+              size={16}
               color={activeTab === 'add_expense' ? '#0f766e' : '#ccfbf1'}
-              style={{ marginRight: 6 }}
+              style={{ marginRight: 5 }}
             />
             <Text style={[styles.tabText, activeTab === 'add_expense' && styles.tabTextActive]}>
               Log Expenses {draftQueue.length > 0 ? `(${draftQueue.length})` : ''}
@@ -839,12 +900,12 @@ const EmployeeExpensesScreen = ({ navigation }) => {
           >
             <MaterialIcons
               name="table-chart"
-              size={17}
+              size={16}
               color={activeTab === 'daily_sheet' ? '#0f766e' : '#ccfbf1'}
-              style={{ marginRight: 4 }}
+              style={{ marginRight: 5 }}
             />
             <Text style={[styles.tabText, activeTab === 'daily_sheet' && styles.tabTextActive]}>
-              Today's Sheet
+              Daily Sheet {dailySheetTotalCount > 0 ? `(${dailySheetTotalCount})` : ''}
             </Text>
           </TouchableOpacity>
 
@@ -854,9 +915,9 @@ const EmployeeExpensesScreen = ({ navigation }) => {
           >
             <MaterialIcons
               name="account-balance-wallet"
-              size={17}
+              size={16}
               color={activeTab === 'cash_flow' ? '#0f766e' : '#ccfbf1'}
-              style={{ marginRight: 4 }}
+              style={{ marginRight: 5 }}
             />
             <Text style={[styles.tabText, activeTab === 'cash_flow' && styles.tabTextActive]}>
               Cash Flow
@@ -869,6 +930,47 @@ const EmployeeExpensesScreen = ({ navigation }) => {
         {/* TAB 1: ADD SITE EXPENSES */}
         {activeTab === 'add_expense' && (
           <View>
+            {/* TODAY'S FINANCIAL STATS CARDS */}
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+              <View style={[styles.card, { flex: 1.3, padding: 12, backgroundColor: '#f0fdfa', borderColor: '#99f6e4' }]}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#0f766e', textTransform: 'uppercase' }}>
+                  Today's Total Spent
+                </Text>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#134e4a', marginTop: 4 }}>
+                  ₹ {dailySheetGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#0f766e', marginTop: 2 }}>
+                  {dailySheetTotalCount} items logged
+                </Text>
+              </View>
+
+              <View style={[styles.card, { flex: 1, padding: 12, backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>
+                  Active Sites
+                </Text>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a', marginTop: 4 }}>
+                  {dailySheetData.length}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                  {projects.length} sites total
+                </Text>
+              </View>
+
+              {draftQueue.length > 0 && (
+                <View style={[styles.card, { flex: 1, padding: 12, backgroundColor: '#fffbeb', borderColor: '#fde68a' }]}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#b45309', textTransform: 'uppercase' }}>
+                    Draft Queue
+                  </Text>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#92400e', marginTop: 4 }}>
+                    {draftQueue.length}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#b45309', marginTop: 2 }}>
+                    Pending save
+                  </Text>
+                </View>
+              )}
+            </View>
+
             {/* STRICT CURRENT DATE LOCK BANNER */}
             <View style={styles.dateLockBanner}>
               <View style={styles.dateLockIcon}>
@@ -1170,12 +1272,116 @@ const EmployeeExpensesScreen = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* TODAY'S LOGGED EXPENSES FEED / PREVIEW */}
+            <View style={[styles.card, { marginTop: 16 }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <View>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a' }}>
+                    Today's Logged Expenses ({allTodayExpenses.length})
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#64748b' }}>
+                    Already recorded for today ({todayDate})
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+                  <Text style={{ color: '#059669', fontWeight: '800', fontSize: 13 }}>
+                    ₹ {dailySheetGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              </View>
+
+              {allTodayExpenses.length === 0 ? (
+                <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                  <MaterialIcons name="receipt-long" size={36} color="#cbd5e1" />
+                  <Text style={{ color: '#64748b', fontSize: 13, marginTop: 8, textAlign: 'center' }}>
+                    No expenses logged yet today. Fill the form above and tap "Save Item Now".
+                  </Text>
+                </View>
+              ) : (
+                <View>
+                  {allTodayExpenses.map((item, idx) => {
+                    const catStyle = getCategoryColor(item.category);
+                    return (
+                      <View
+                        key={item.id || idx}
+                        style={{
+                          paddingVertical: 10,
+                          borderBottomWidth: idx === allTodayExpenses.length - 1 ? 0 : 1,
+                          borderBottomColor: '#f1f5f9',
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            <Text style={{ fontWeight: '700', fontSize: 14, color: '#1e293b' }}>
+                              {item.projectName || 'Site Project'}
+                            </Text>
+                            <View style={[styles.categoryBadge, { backgroundColor: catStyle.bg }]}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: catStyle.text }}>
+                                {item.category}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                            {item.itemName || 'Material'} • {item.quantity} {item.unit}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                            Paid to: <Text style={{ fontWeight: '600' }}>{item.paidTo || '—'}</Text> ({item.paymentType})
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                          <Text style={{ fontWeight: '800', fontSize: 14, color: '#0f766e' }}>
+                            ₹ {Number(item.amount).toLocaleString('en-IN')}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => handleDeleteTodayExpense(item.id)}
+                            style={{ padding: 4 }}
+                          >
+                            <MaterialIcons name="delete-outline" size={18} color="#ef4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })}
+
+                  <TouchableOpacity
+                    style={[styles.btn, styles.btnSecondary, { marginTop: 12, justifyContent: 'center' }]}
+                    onPress={() => setActiveTab('daily_sheet')}
+                  >
+                    <MaterialIcons name="table-chart" size={16} color="#0f766e" style={{ marginRight: 6 }} />
+                    <Text style={styles.btnSecondaryText}>View Full Project Sheet & Export ➔</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </View>
         )}
 
         {/* TAB 2: TODAY'S PROJECT EXPENSE SHEET (GROUPED BY PROJECT) */}
         {activeTab === 'daily_sheet' && (
           <View>
+            {/* SEARCH FILTER BAR */}
+            <View style={[styles.card, { marginBottom: 12, paddingVertical: 8, paddingHorizontal: 12 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <MaterialIcons name="search" size={20} color="#64748b" style={{ marginRight: 8 }} />
+                <TextInput
+                  style={{ flex: 1, fontSize: 14, color: '#0f172a', paddingVertical: 4 }}
+                  placeholder="Search item, recipient, category, site..."
+                  placeholderTextColor="#94a3b8"
+                  value={sheetSearchQuery}
+                  onChangeText={setSheetSearchQuery}
+                />
+                {sheetSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSheetSearchQuery('')} style={{ padding: 4 }}>
+                    <MaterialIcons name="cancel" size={18} color="#94a3b8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
             {/* PROJECT SELECTOR DROPDOWN */}
             <View style={[styles.card, { marginBottom: 14 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -1271,8 +1477,24 @@ const EmployeeExpensesScreen = ({ navigation }) => {
                   <Text style={styles.btnPrimaryText}>Log Today's Expense</Text>
                 </TouchableOpacity>
               </View>
+            ) : filteredDailySheetData.length === 0 ? (
+              <View style={[styles.card, { padding: 30, alignItems: 'center' }]}>
+                <MaterialIcons name="search-off" size={42} color="#cbd5e1" />
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#334155', marginTop: 10 }}>
+                  No matching expenses found
+                </Text>
+                <Text style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+                  No items match "{sheetSearchQuery}"
+                </Text>
+                <TouchableOpacity
+                  style={{ marginTop: 12 }}
+                  onPress={() => setSheetSearchQuery('')}
+                >
+                  <Text style={{ color: '#0f766e', fontWeight: '700', fontSize: 13 }}>Clear Search</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
-              dailySheetData.map((projectGroup, pIdx) => (
+              filteredDailySheetData.map((projectGroup, pIdx) => (
                 <View key={projectGroup.projectId || pIdx} style={styles.projectSheetCard}>
                   {/* Project Group Header */}
                   <View style={styles.projectHeader}>
@@ -1447,6 +1669,29 @@ const EmployeeExpensesScreen = ({ navigation }) => {
                 <Text style={styles.dateLockHint}>
                   Assign or receive cash. Any amount added automatically settles with today's expenses & balance.
                 </Text>
+              </View>
+            </View>
+
+            {/* NET AVAILABLE CASH IN HAND CARD */}
+            <View style={[styles.card, { marginBottom: 14, backgroundColor: '#0f766e', borderColor: '#0d9488' }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View>
+                  <Text style={{ fontSize: 11, color: '#ccfbf1', fontWeight: '700', textTransform: 'uppercase' }}>
+                    Available Cash In Hand
+                  </Text>
+                  <Text style={{ fontSize: 22, fontWeight: '900', color: '#ffffff', marginTop: 2 }}>
+                    ₹ {(
+                      (parseFloat(cashFlowForm.openingBalance) || 0) +
+                      cashFlowForm.entries.reduce((sum, e) => sum + (parseFloat(e.receivedAmount) || 0), 0) -
+                      dailySheetGrandTotal
+                    ).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                  <Text style={{ fontSize: 11, color: '#ffffff', fontWeight: '700' }}>
+                    Today's Spent: ₹ {dailySheetGrandTotal.toLocaleString('en-IN')}
+                  </Text>
+                </View>
               </View>
             </View>
 

@@ -4,7 +4,7 @@
  * User can modify alert reason/message and reschedule it
  * Uses FCM API for backend updates
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {
   Modal,
 } from 'react-native';
 import { updateAlert, BASE_URL } from '../services/api';
-import { deleteAlert } from '../crm/services/crmAlertApi'; // 🔥 Import deleteAlert
+import { deleteAlert, getAlertById } from '../crm/services/crmAlertApi'; // 🔥 Import deleteAlert, getAlertById
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getFCMToken } from '../utils/fcmService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -116,16 +116,98 @@ const EditAlertScreen = ({ route, navigation }) => {
     console.log('⚠️ EditAlert: No valid date found, using current date');
     return new Date();
   });
-  const [repeatFrequency, setRepeatFrequency] = useState(origRepeatFreq || (repeatDaily === 'true' || repeatDaily === true ? 'daily' : 'none'));
-  const [customIntervalMinutes, setCustomIntervalMinutes] = useState(
-    origCustomMins || origRepeatMetadata?.customIntervalMinutes || ''
-  );
+
+  // Parse repeatMetadata if passed as JSON string
+  const parsedRepeatMetadata = (() => {
+    if (!origRepeatMetadata) return null;
+    if (typeof origRepeatMetadata === 'object') return origRepeatMetadata;
+    if (typeof origRepeatMetadata === 'string') {
+      try {
+        return JSON.parse(origRepeatMetadata);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const initialCustomMins = 
+    (origCustomMins ? String(origCustomMins) : '') ||
+    (route.params?.customRepeatMinutes ? String(route.params.customRepeatMinutes) : '') ||
+    (route.params?.customIntervalMinutes ? String(route.params.customIntervalMinutes) : '') ||
+    (route.params?.repeatInterval ? String(route.params.repeatInterval) : '') ||
+    (parsedRepeatMetadata?.customIntervalMinutes ? String(parsedRepeatMetadata.customIntervalMinutes) : '') ||
+    (parsedRepeatMetadata?.customRepeatMinutes ? String(parsedRepeatMetadata.customRepeatMinutes) : '') ||
+    '';
+
+  const [repeatFrequency, setRepeatFrequency] = useState(() => {
+    if (origRepeatFreq && origRepeatFreq !== 'none') return origRepeatFreq;
+    if (initialCustomMins) return 'custom';
+    if (repeatDaily === 'true' || repeatDaily === true || route.params?.repeatDaily) return 'daily';
+    return origRepeatFreq || 'none';
+  });
+
+  const [customIntervalMinutes, setCustomIntervalMinutes] = useState(initialCustomMins);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showRepeatModal, setShowRepeatModal] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [showCustomManualInput, setShowCustomManualInput] = useState(false);
   const [manualMinutes, setManualMinutes] = useState('');
+
+  // Track if changes are saved or being discarded to avoid redundant prompts
+  const isSavedRef = useRef(false);
+  const initialValuesRef = useRef({
+    title: originalTitle || '',
+    reason: originalReason || '',
+    repeatFrequency: origRepeatFreq || 'none',
+    customIntervalMinutes: initialCustomMins || '',
+  });
+
+  const hasUnsavedChanges = () => {
+    if (isSavedRef.current) return false;
+    const init = initialValuesRef.current;
+    const currentTitle = (title || '').trim();
+    const currentReason = (reason || '').trim();
+    const initTitle = (init.title || '').trim();
+    const initReason = (init.reason || '').trim();
+
+    return currentTitle !== initTitle || 
+           currentReason !== initReason ||
+           repeatFrequency !== init.repeatFrequency ||
+           String(customIntervalMinutes || '') !== String(init.customIntervalMinutes || '');
+  };
+
+  // 🔥 Intercept back press (hardware back, header arrow, gesture) when user has unsaved changes
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!hasUnsavedChanges()) {
+        return;
+      }
+
+      // Prevent default behavior of leaving the screen
+      e.preventDefault();
+
+      // Prompt the user before leaving the screen
+      Alert.alert(
+        'Discard Changes?',
+        'You have unsaved changes. Are you sure you want to discard them?',
+        [
+          { text: 'Keep Editing', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              isSavedRef.current = true;
+              navigation.dispatch(e.data.action);
+            },
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, title, reason, repeatFrequency, customIntervalMinutes]);
 
   // 🔥 Cleanup pickers on unmount to prevent errors
   useEffect(() => {
@@ -141,6 +223,55 @@ const EditAlertScreen = ({ route, navigation }) => {
       navigation.goBack();
       return;
     }
+
+    // Fetch full alert from backend to populate any missing repeat details or verify
+    const fetchAlertData = async () => {
+      try {
+        const cleanId = String(alertId).replace(/^(alert_|reminder_)/, '');
+        const res = await getAlertById(cleanId);
+        const data = res?.alert || res?.data;
+        if (data) {
+          if (!title && data.title) setTitle(data.title);
+          if (!reason && data.reason) setReason(data.reason);
+
+          let meta = data.repeatMetadata;
+          if (typeof meta === 'string') {
+            try { meta = JSON.parse(meta); } catch (_) { meta = null; }
+          }
+          const mins = meta?.customIntervalMinutes || 
+                       meta?.customRepeatMinutes || 
+                       data.customRepeatMinutes || 
+                       data.customIntervalMinutes || 
+                       data.repeatInterval;
+
+          const freq = data.repeatFrequency || 
+                       (data.repeatDaily ? 'daily' : (mins ? 'custom' : 'none'));
+
+          if (freq && freq !== 'none') {
+            setRepeatFrequency(freq);
+          }
+
+          if (mins) {
+            setCustomIntervalMinutes(String(mins));
+            if (!freq || freq === 'none') {
+              setRepeatFrequency('custom');
+            }
+          }
+
+          // Update initial baseline values
+          initialValuesRef.current = {
+            title: data.title || title || '',
+            reason: data.reason || reason || '',
+            repeatFrequency: freq || repeatFrequency,
+            customIntervalMinutes: mins ? String(mins) : (customIntervalMinutes ? String(customIntervalMinutes) : ''),
+          };
+        }
+      } catch (e) {
+        console.log('⚠️ EditAlertScreen: Note - using route params for alert:', e.message);
+      }
+    };
+
+    fetchAlertData();
   }, [alertId]);
 
   const handleDateChange = (event, selectedDate) => {
@@ -215,13 +346,18 @@ const EditAlertScreen = ({ route, navigation }) => {
   // Get readable repeat label
   const getRepeatLabel = () => {
     if (repeatFrequency === 'custom') {
-      const mins = customIntervalMinutes;
-      if (mins >= 60) {
-        const hours = Math.floor(mins / 60);
-        const remainingMins = mins % 60;
-        return remainingMins > 0 ? `Every ${hours}h ${remainingMins}m` : `Every ${hours} hour${hours > 1 ? 's' : ''}`;
+      const mins = parseInt(customIntervalMinutes, 10);
+      if (!isNaN(mins) && mins > 0) {
+        if (mins >= 60) {
+          const hours = Math.floor(mins / 60);
+          const remainingMins = mins % 60;
+          return remainingMins > 0 
+            ? `Every ${hours}h ${remainingMins}m` 
+            : `Every ${hours} hour${hours > 1 ? 's' : ''}`;
+        }
+        return `Every ${mins} minute${mins > 1 ? 's' : ''}`;
       }
-      return `Every ${mins} minute${mins > 1 ? 's' : ''}`;
+      return 'Every 2 hours';
     }
     const labels = {
       none: 'Does not repeat',
@@ -457,7 +593,10 @@ const EditAlertScreen = ({ route, navigation }) => {
           [
             {
               text: 'OK',
-              onPress: () => navigation.goBack(),
+              onPress: () => {
+                isSavedRef.current = true;
+                navigation.goBack();
+              },
             },
           ]
         );
@@ -486,14 +625,26 @@ const EditAlertScreen = ({ route, navigation }) => {
   };
 
   const handleCancel = () => {
-    CrossPlatformAlert.alert(
-      'Cancel Edit',
-      'Are you sure you want to discard changes?',
-      [
-        { text: 'No', style: 'cancel' },
-        { text: 'Yes', onPress: () => navigation.goBack() },
-      ]
-    );
+    if (hasUnsavedChanges()) {
+      Alert.alert(
+        'Discard Changes?',
+        'You have unsaved changes. Are you sure you want to discard them?',
+        [
+          { text: 'Keep Editing', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              isSavedRef.current = true;
+              navigation.goBack();
+            },
+          },
+        ]
+      );
+    } else {
+      isSavedRef.current = true;
+      navigation.goBack();
+    }
   };
 
   const handleDelete = () => {
@@ -514,7 +665,13 @@ const EditAlertScreen = ({ route, navigation }) => {
                 CrossPlatformAlert.alert(
                   'Success',
                   'Alert deleted successfully',
-                  [{ text: 'OK', onPress: () => navigation.goBack() }]
+                  [{
+                    text: 'OK',
+                    onPress: () => {
+                      isSavedRef.current = true;
+                      navigation.goBack();
+                    }
+                  }]
                 );
               } else {
                 throw new Error(result.message || 'Failed to delete alert');
@@ -752,14 +909,14 @@ const EditAlertScreen = ({ route, navigation }) => {
                         key={option.value}
                         style={[
                           styles.customOptionItem,
-                          customIntervalMinutes === option.value && styles.customOptionItemSelected,
+                          Number(customIntervalMinutes) === option.value && styles.customOptionItemSelected,
                         ]}
                         onPress={() => handleCustomIntervalSelect(option.value)}
                       >
                         <Text
                           style={[
                             styles.customOptionItemText,
-                            customIntervalMinutes === option.value && styles.customOptionItemTextSelected,
+                            Number(customIntervalMinutes) === option.value && styles.customOptionItemTextSelected,
                           ]}
                         >
                           {option.label}

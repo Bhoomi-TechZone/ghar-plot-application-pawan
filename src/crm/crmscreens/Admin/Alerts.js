@@ -22,8 +22,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 import { formatDateToIST, formatTimeToIST } from '../../../utils/timezoneHelper'; // Import IST helpers
 import AdminNotificationPopup from '../../../components/AdminNotificationPopup';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const AlertsScreen = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0
+  );
   const filterCategory = route?.params?.filterCategory || 'alert'; // 'alert' or 'reminder'
   const screenTitle = filterCategory === 'reminder' ? 'My Reminders' : 'My Alerts';
 
@@ -479,7 +485,8 @@ const formatDateTime = (iso, reminderTime = null) => {
       repeatType: item.repeatType,
       isRepeating: item.isRepeating,
       repeatMetadata: item.repeatMetadata,
-      customIntervalMinutes: item.customIntervalMinutes,
+      customIntervalMinutes: item.customIntervalMinutes || item.customRepeatMinutes || item.repeatMetadata?.customIntervalMinutes || '',
+      customRepeatMinutes: item.customRepeatMinutes || item.customIntervalMinutes || item.repeatMetadata?.customRepeatMinutes || item.repeatMetadata?.customIntervalMinutes || '',
       type: filterCategory === 'reminder' ? 'admin_reminder' : 'alert',
     });
     setPopupVisible(true);
@@ -658,7 +665,7 @@ const formatDateTime = (iso, reminderTime = null) => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.topRow}>
+      <View style={[styles.topRow, { paddingTop: statusBarTop + 20 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
             <Icon name="arrow-back" size={24} color="#000" />
@@ -673,7 +680,7 @@ const formatDateTime = (iso, reminderTime = null) => {
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {isSelectionMode ? (
             <TouchableOpacity
               style={[styles.deleteBtn, { paddingHorizontal: 12, paddingVertical: 8 }]}
@@ -820,8 +827,8 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 16,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
     alignItems: 'center',
   },
 

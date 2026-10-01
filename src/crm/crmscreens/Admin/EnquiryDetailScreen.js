@@ -1,4 +1,4 @@
-﻿/**
+/**
  * EnquiryDetailScreen.js
  * Full enquiry detail view with edit capability
  * Accessed from notification click or enquiry card
@@ -16,7 +16,7 @@ import {
   TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAllEnquiriesMerged } from '../../services/crmEnquiryApi';
+import { getAllEnquiriesMerged, updateEnquiry, deleteEnquiry } from '../../services/crmEnquiryApi';
 import ReminderNotificationService from '../../../services/ReminderNotificationService';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
@@ -141,28 +141,79 @@ const EnquiryDetailScreen = ({ route, navigation }) => {
 
   const handleSaveChanges = async () => {
     try {
-      console.log('💾 Saving enquiry changes...');
+      setLoading(true);
+      console.log('💾 Saving enquiry changes to backend...', editedData);
 
-      // Call update API (you need to create this in your API service)
-      // For now, we'll just show success
-      CrossPlatformAlert.alert(
-        'Success',
-        'Enquiry updated successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setIsEditing(false);
-              setEnquiry(editedData);
-              fetchEnquiryDetails(); // Refresh
+      const updatePayload = {
+        clientName: editedData.clientName,
+        fullName: editedData.clientName,
+        contactNumber: editedData.contactNumber,
+        email: editedData.email,
+        location: editedData.propertyLocation,
+        propertyLocation: editedData.propertyLocation,
+        productType: editedData.propertyType,
+        caseStatus: editedData.status,
+        status: editedData.status,
+        price: editedData.price,
+      };
+
+      const res = await updateEnquiry(enquiryId, updatePayload);
+
+      if (res.success) {
+        CrossPlatformAlert.alert(
+          'Success',
+          'Enquiry updated successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setIsEditing(false);
+                setEnquiry(prev => ({ ...prev, ...editedData }));
+                fetchEnquiryDetails();
+              }
             }
-          }
-        ]
-      );
+          ]
+        );
+      } else {
+        CrossPlatformAlert.alert('Error', res.message || 'Failed to update enquiry');
+      }
     } catch (error) {
       console.error('❌ Error saving enquiry:', error);
       CrossPlatformAlert.alert('Error', 'Failed to save changes.');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleDeleteEnquiry = () => {
+    CrossPlatformAlert.alert(
+      'Delete Lead',
+      `Are you sure you want to delete lead for "${enquiry?.clientName || 'this client'}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const res = await deleteEnquiry(enquiryId);
+              if (res.success) {
+                CrossPlatformAlert.alert('Deleted', 'Lead deleted successfully', [
+                  { text: 'OK', onPress: () => navigation.goBack() }
+                ]);
+              } else {
+                CrossPlatformAlert.alert('Error', res.message || 'Failed to delete lead');
+              }
+            } catch (err) {
+              CrossPlatformAlert.alert('Error', 'Network error while deleting lead');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleSetReminder = async () => {
@@ -434,7 +485,16 @@ const EnquiryDetailScreen = ({ route, navigation }) => {
 
           <View style={styles.field}>
             <Text style={styles.label}>Status</Text>
-            <Text style={styles.value}>{displayData.status || 'Pending'}</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.editInput}
+                value={displayData.status}
+                onChangeText={(value) => handleEditChange('status', value)}
+                placeholder="e.g. Open, In Progress, Closed"
+              />
+            ) : (
+              <Text style={styles.value}>{displayData.status || 'Pending'}</Text>
+            )}
           </View>
 
           <View style={styles.field}>
@@ -555,6 +615,12 @@ const EnquiryDetailScreen = ({ route, navigation }) => {
               onPress={() => setIsEditing(true)}
             >
               <Text style={styles.buttonText}>✎ Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#ef4444' }]}
+              onPress={handleDeleteEnquiry}
+            >
+              <Text style={styles.buttonText}>🗑️ Delete</Text>
             </TouchableOpacity>
           </>
         )}

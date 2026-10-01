@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,16 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
@@ -23,6 +27,9 @@ import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const USPEmployeesScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const modalScrollRef = useRef(null);
+
   // Main Data States
   const [employees, setEmployees] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -36,6 +43,24 @@ const USPEmployeesScreen = ({ navigation }) => {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('system'); // 'system' or 'manual'
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  // Track keyboard visibility for smooth modal footer layout
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Filter State
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -64,6 +89,70 @@ const USPEmployeesScreen = ({ navigation }) => {
   // Category creation states
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+
+  // Reminder & Schedule States
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderTitle, setReminderTitle] = useState('');
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
+  const [reminderDateObj, setReminderDateObj] = useState(new Date());
+  const [reminderTimeObj, setReminderTimeObj] = useState(new Date());
+  const [showReminderDatePicker, setShowReminderDatePicker] = useState(false);
+  const [showReminderTimePicker, setShowReminderTimePicker] = useState(false);
+  const [showReminderRepeatModal, setShowReminderRepeatModal] = useState(false);
+  const [reminderRepeatFrequency, setReminderRepeatFrequency] = useState('none');
+  const [customIntervalMinutes, setCustomIntervalMinutes] = useState('');
+  const [showCustomIntervalInput, setShowCustomIntervalInput] = useState(false);
+  const [showCustomManualInput, setShowCustomManualInput] = useState(false);
+  const [manualMinutes, setManualMinutes] = useState('');
+
+  // Preset custom interval options — same as CreateAlertScreen
+  const customIntervalOptions = [
+    { label: '10 Minutes', value: 10 },
+    { label: '30 Minutes', value: 30 },
+    { label: '1 Hour', value: 60 },
+    { label: '2 Hours', value: 120 },
+    { label: '3 Hours', value: 180 },
+    { label: '4 Hours', value: 240 },
+    { label: '5 Hours', value: 300 },
+    { label: '6 Hours', value: 360 },
+    { label: '7 Hours', value: 420 },
+    { label: '8 Hours', value: 480 },
+    { label: '9 Hours', value: 540 },
+    { label: '10 Hours', value: 600 },
+    { label: '11 Hours', value: 660 },
+  ];
+
+  const getReminderRepeatLabel = () => {
+    if (reminderRepeatFrequency === 'custom') {
+      const mins = customIntervalMinutes;
+      if (mins >= 60) {
+        const hrs = Math.floor(mins / 60);
+        const rem = mins % 60;
+        return rem > 0 ? `Every ${hrs}h ${rem}m` : `Every ${hrs} hour${hrs > 1 ? 's' : ''}`;
+      }
+      return mins ? `Every ${mins} minute${mins > 1 ? 's' : ''}` : 'Custom';
+    }
+    const labels = { none: 'Does not repeat', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly' };
+    return labels[reminderRepeatFrequency] || 'Does not repeat';
+  };
+
+  const handleReminderRepeatSelect = (freq) => {
+    setReminderRepeatFrequency(freq);
+    if (freq === 'custom') {
+      setShowCustomIntervalInput(true);
+    } else {
+      setShowCustomIntervalInput(false);
+      setShowReminderRepeatModal(false);
+    }
+  };
+
+  const handleCustomIntervalSelect = (minutes) => {
+    setCustomIntervalMinutes(minutes);
+    setShowCustomIntervalInput(false);
+    setShowCustomManualInput(false);
+    setShowReminderRepeatModal(false);
+  };
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
 
   // Statistics
   const [statistics, setStatistics] = useState({
@@ -391,6 +480,29 @@ const USPEmployeesScreen = ({ navigation }) => {
         experienceYears: employee.experienceYears?.toString() || '',
         description: employee.description || '',
       });
+
+      // Populate reminder fields
+      const hasReminder = !!(employee.scheduledDateTime || employee.isReminderActive);
+      setReminderEnabled(hasReminder);
+      setReminderTitle(employee.reminderTitle || '');
+      setAssignedEmployeeId(employee.assignedEmployee?._id || employee.assignedEmployee || '');
+      setReminderRepeatFrequency(employee.repeatType || 'none');
+      setCustomIntervalMinutes(employee.customDurationMinutes ? String(employee.customDurationMinutes) : '');
+      setShowCustomIntervalInput(employee.repeatType === 'custom');
+      setShowCustomManualInput(false);
+      setManualMinutes('');
+
+      if (employee.scheduledDateTime) {
+        const dt = new Date(employee.scheduledDateTime);
+        setReminderDateObj(dt);
+        setReminderTimeObj(dt);
+      } else {
+        const now = new Date();
+        const defaultTime = new Date();
+        defaultTime.setHours(10, 0, 0, 0);
+        setReminderDateObj(now);
+        setReminderTimeObj(defaultTime);
+      }
     } else {
       // Add mode
       setEditingEmployee(null);
@@ -403,12 +515,30 @@ const USPEmployeesScreen = ({ navigation }) => {
         experienceYears: '',
         description: '',
       });
+
+      setReminderEnabled(false);
+      setReminderTitle('');
+      setAssignedEmployeeId('');
+      const now = new Date();
+      const defaultTime = new Date();
+      defaultTime.setHours(10, 0, 0, 0);
+      setReminderDateObj(now);
+      setReminderTimeObj(defaultTime);
+      setShowReminderDatePicker(false);
+      setShowReminderTimePicker(false);
+      setShowReminderRepeatModal(false);
+      setReminderRepeatFrequency('none');
+      setCustomIntervalMinutes('');
+      setShowCustomIntervalInput(false);
+      setShowCustomManualInput(false);
+      setManualMinutes('');
     }
 
     // Reset search state
     setSearchQuery('');
     setSearchResults([]);
     setShowSearchDropdown(false);
+    setShowEmployeeDropdown(false);
 
     setShowModal(true);
     setError('');
@@ -417,16 +547,19 @@ const USPEmployeesScreen = ({ navigation }) => {
 
   // Handle Close Modal
   const handleCloseModal = () => {
+    Keyboard.dismiss();
     setShowModal(false);
     setEditingEmployee(null);
     setModalType('system');
     setError('');
     setSuccess('');
+    setSubmitting(false);
 
     // Reset search state
     setSearchQuery('');
     setSearchResults([]);
     setShowSearchDropdown(false);
+    setShowEmployeeDropdown(false);
   };
 
   // Handle Input Change
@@ -466,13 +599,54 @@ const USPEmployeesScreen = ({ navigation }) => {
 
   // Handle Submit
   const handleSubmit = async () => {
+    Keyboard.dismiss();
     setError('');
     setSuccess('');
 
     if (!validateForm()) return;
 
+    setSubmitting(true);
     try {
       const headers = await getAuthHeaders();
+
+      // Prepare Reminder Payload if enabled
+      let calculatedScheduledDT = null;
+      if (reminderEnabled) {
+        try {
+          const dateOnly = new Date(reminderDateObj);
+          const timeOnly = new Date(reminderTimeObj);
+          calculatedScheduledDT = new Date(
+            dateOnly.getFullYear(),
+            dateOnly.getMonth(),
+            dateOnly.getDate(),
+            timeOnly.getHours(),
+            timeOnly.getMinutes(),
+            0, 0
+          );
+        } catch (e) {
+          console.warn('Date parse error:', e);
+        }
+      }
+
+      // Format time for display (HH:MM AM/PM)
+      const formatTimeDisplay = (d) => {
+        let h = d.getHours();
+        const m = String(d.getMinutes()).padStart(2, '0');
+        const period = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${String(h).padStart(2, '0')}:${m} ${period}`;
+      };
+
+      const reminderPayload = {
+        reminderTitle: reminderEnabled ? (reminderTitle.trim() || `Team USP - ${formData.name || 'Reminder'}`) : '',
+        assignedEmployeeId: reminderEnabled && assignedEmployeeId ? assignedEmployeeId : null,
+        scheduledDate: reminderEnabled && calculatedScheduledDT ? calculatedScheduledDT.toISOString() : null,
+        scheduledTime: reminderEnabled ? formatTimeDisplay(reminderTimeObj) : '',
+        scheduledDateTime: reminderEnabled && calculatedScheduledDT ? calculatedScheduledDT.toISOString() : null,
+        scheduleType: reminderEnabled ? (reminderRepeatFrequency === 'none' ? 'one_time' : 'recurring') : 'one_time',
+        repeatType: reminderEnabled ? reminderRepeatFrequency : 'none',
+        customDurationMinutes: reminderEnabled && reminderRepeatFrequency === 'custom' ? (parseInt(customIntervalMinutes, 10) || 15) : 0,
+      };
 
       if (editingEmployee) {
         // Update mode
@@ -481,6 +655,7 @@ const USPEmployeesScreen = ({ navigation }) => {
           expertise: formData.expertise,
           experienceYears: formData.experienceYears ? parseInt(formData.experienceYears) : undefined,
           description: formData.description,
+          ...reminderPayload,
         };
 
         if (editingEmployee.employeeType === 'manual') {
@@ -503,6 +678,7 @@ const USPEmployeesScreen = ({ navigation }) => {
             expertise: formData.expertise,
             experienceYears: formData.experienceYears ? parseInt(formData.experienceYears) : undefined,
             description: formData.description,
+            ...reminderPayload,
           };
           await axios.post(
             `${API_BASE_URL}/api/usp-employees/add-by-id`,
@@ -517,6 +693,7 @@ const USPEmployeesScreen = ({ navigation }) => {
             expertise: formData.expertise,
             experienceYears: formData.experienceYears ? parseInt(formData.experienceYears) : undefined,
             description: formData.description,
+            ...reminderPayload,
           };
           await axios.post(
             `${API_BASE_URL}/api/usp-employees/add-manually`,
@@ -530,9 +707,11 @@ const USPEmployeesScreen = ({ navigation }) => {
       await fetchEmployees();
       setTimeout(() => {
         handleCloseModal();
-      }, 1500);
+      }, 1200);
     } catch (error) {
       setError(error.response?.data?.message || error.message || 'An error occurred');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -650,6 +829,28 @@ const USPEmployeesScreen = ({ navigation }) => {
             <View style={styles.descriptionContainer}>
               <Icon name="description" size={16} color="#10b981" />
               <Text style={styles.descriptionText}>{employee.description}</Text>
+            </View>
+          )}
+
+          {employee.scheduledDateTime && (
+            <View style={styles.cardReminderRow}>
+              <View style={styles.cardReminderIconBox}>
+                <Icon name="alarm" size={16} color="#d97706" />
+              </View>
+              <View style={styles.cardReminderInfo}>
+                <Text style={styles.cardReminderTitle} numberOfLines={1}>
+                  {employee.reminderTitle || 'Reminder Scheduled'}
+                </Text>
+                <Text style={styles.cardReminderTime}>
+                  ⏰ {new Date(employee.scheduledDateTime).toLocaleString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true,
+                  })} • 👤 {employee.assignedEmployee?.name ? `To: ${employee.assignedEmployee.name}` : 'Admin only'}
+                </Text>
+              </View>
             </View>
           )}
 
@@ -797,18 +998,38 @@ const USPEmployeesScreen = ({ navigation }) => {
           onRequestClose={handleCloseModal}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={styles.modalBackdropArea}
+              onPress={handleCloseModal}
+            />
+
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={styles.modalContent}
+            >
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
-                  {editingEmployee ? 'Edit Team\'s USP' :
+                  {editingEmployee ? "Edit Team's USP" :
                     modalType === 'system' ? 'Add from System' : 'Add Manually'}
                 </Text>
-                <TouchableOpacity onPress={handleCloseModal}>
+                <TouchableOpacity
+                  onPress={handleCloseModal}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
                   <Icon name="close" size={24} color="#6b7280" />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.modalBody}>
+              <ScrollView
+                ref={modalScrollRef}
+                style={styles.modalBody}
+                contentContainerStyle={styles.modalBodyContent}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+              >
                 {/* Error/Success Messages */}
                 {error ? (
                   <View style={styles.errorAlert}>
@@ -833,6 +1054,7 @@ const USPEmployeesScreen = ({ navigation }) => {
                     <TextInput
                       style={styles.addCategoryInput}
                       placeholder="Add new category"
+                      placeholderTextColor="#9ca3af"
                       value={newCategoryName}
                       onChangeText={setNewCategoryName}
                     />
@@ -922,6 +1144,7 @@ const USPEmployeesScreen = ({ navigation }) => {
                         <TextInput
                           style={styles.input}
                           placeholder="Type name or phone number..."
+                          placeholderTextColor="#9ca3af"
                           value={searchQuery}
                           onChangeText={setSearchQuery}
                           onFocus={() => {
@@ -1002,6 +1225,7 @@ const USPEmployeesScreen = ({ navigation }) => {
                         <TextInput
                           style={styles.input}
                           placeholder="Enter full name"
+                          placeholderTextColor="#9ca3af"
                           value={formData.name}
                           onChangeText={(value) => handleInputChange('name', value)}
                         />
@@ -1015,6 +1239,7 @@ const USPEmployeesScreen = ({ navigation }) => {
                         <TextInput
                           style={styles.input}
                           placeholder="Enter phone number"
+                          placeholderTextColor="#9ca3af"
                           value={formData.phone}
                           onChangeText={(value) => handleInputChange('phone', value)}
                           keyboardType="phone-pad"
@@ -1032,6 +1257,7 @@ const USPEmployeesScreen = ({ navigation }) => {
                     <TextInput
                       style={styles.input}
                       placeholder="e.g., Commercial Real Estate"
+                      placeholderTextColor="#9ca3af"
                       value={formData.expertise}
                       onChangeText={(value) => handleInputChange('expertise', value)}
                     />
@@ -1046,9 +1272,15 @@ const USPEmployeesScreen = ({ navigation }) => {
                     <TextInput
                       style={styles.input}
                       placeholder="e.g., 5"
+                      placeholderTextColor="#9ca3af"
                       value={formData.experienceYears}
                       onChangeText={(value) => handleInputChange('experienceYears', value)}
                       keyboardType="numeric"
+                      onFocus={() => {
+                        setTimeout(() => {
+                          modalScrollRef.current?.scrollToEnd({ animated: true });
+                        }, 250);
+                      }}
                     />
                   </View>
                 </View>
@@ -1061,19 +1293,244 @@ const USPEmployeesScreen = ({ navigation }) => {
                     <TextInput
                       style={styles.textArea}
                       placeholder="Brief description of expertise and achievements"
+                      placeholderTextColor="#9ca3af"
                       value={formData.description}
                       onChangeText={(value) => handleInputChange('description', value)}
                       multiline
                       numberOfLines={4}
+                      onFocus={() => {
+                        setTimeout(() => {
+                          modalScrollRef.current?.scrollToEnd({ animated: true });
+                        }, 250);
+                      }}
                     />
                   </View>
                 </View>
+
+                {/* ⏰ Set Reminder Section */}
+                <View style={styles.reminderSectionContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.reminderToggleCard,
+                      reminderEnabled && styles.reminderToggleCardActive,
+                    ]}
+                    activeOpacity={0.8}
+                    onPress={() => setReminderEnabled(!reminderEnabled)}
+                  >
+                    <View style={styles.reminderToggleLeft}>
+                      <View style={[styles.reminderIconBox, reminderEnabled && styles.reminderIconBoxActive]}>
+                        <Icon name="alarm" size={22} color={reminderEnabled ? '#fff' : '#10b981'} />
+                      </View>
+                      <View style={styles.reminderToggleTexts}>
+                        <Text style={styles.reminderToggleTitle}>
+                          {reminderEnabled ? 'Reminder Scheduled (Active)' : 'Set Reminder / Schedule'}
+                        </Text>
+                        <Text style={styles.reminderToggleSub}>
+                          {reminderEnabled ? 'Admin & Assigned employee will be alerted' : 'Tap to set date, time & repeat'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[styles.checkboxOutline, reminderEnabled && styles.checkboxFilled]}>
+                      {reminderEnabled && <Icon name="check" size={16} color="#fff" />}
+                    </View>
+                  </TouchableOpacity>
+
+                  {reminderEnabled && (
+                    <View style={styles.reminderFormBody}>
+                      {/* Created At info badge */}
+                      <View style={styles.createdAtBadge}>
+                        <Icon name="history" size={16} color="#6b7280" />
+                        <Text style={styles.createdAtText}>
+                          {editingEmployee?.createdAt
+                            ? `Created: ${new Date(editingEmployee.createdAt).toLocaleString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true,
+                              })}`
+                            : `Created: Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}`}
+                        </Text>
+                      </View>
+
+                      {/* Reminder Title */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.label}>Reminder Title</Text>
+                        <View style={styles.inputContainer}>
+                          <Icon name="title" size={20} color="#10b981" />
+                          <TextInput
+                            style={styles.input}
+                            placeholder="e.g., Follow up regarding USP discussion"
+                            placeholderTextColor="#9ca3af"
+                            value={reminderTitle}
+                            onChangeText={setReminderTitle}
+                          />
+                        </View>
+                      </View>
+
+                      {/* Assign Reminder to Employee */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.label}>Assign Reminder to Employee</Text>
+                        <Text style={styles.helperText}>
+                          Reminder will go to you (Admin) AND the selected employee
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.selectEmployeeButton}
+                          onPress={() => setShowEmployeeDropdown(!showEmployeeDropdown)}
+                        >
+                          <Icon name="person-pin" size={20} color="#10b981" />
+                          <Text style={styles.selectEmployeeButtonText} numberOfLines={1}>
+                            {assignedEmployeeId
+                              ? (systemEmployees.find(e => e._id === assignedEmployeeId)?.name || 'Selected Employee')
+                              : '👤 Admin Only (No specific employee)'}
+                          </Text>
+                          <Icon name={showEmployeeDropdown ? 'expand-less' : 'expand-more'} size={20} color="#6b7280" />
+                        </TouchableOpacity>
+
+                        {showEmployeeDropdown && (
+                          <View style={styles.employeeDropdownList}>
+                            <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled>
+                              <TouchableOpacity
+                                style={[
+                                  styles.employeeDropdownItem,
+                                  !assignedEmployeeId && styles.employeeDropdownItemSelected,
+                                ]}
+                                onPress={() => {
+                                  setAssignedEmployeeId('');
+                                  setShowEmployeeDropdown(false);
+                                }}
+                              >
+                                <Text style={[
+                                  styles.employeeDropdownItemText,
+                                  !assignedEmployeeId && styles.employeeDropdownItemTextSelected,
+                                ]}>
+                                  👤 Admin Only (Don't notify employee)
+                                </Text>
+                              </TouchableOpacity>
+                              {systemEmployees.map(emp => (
+                                <TouchableOpacity
+                                  key={emp._id}
+                                  style={[
+                                    styles.employeeDropdownItem,
+                                    assignedEmployeeId === emp._id && styles.employeeDropdownItemSelected,
+                                  ]}
+                                  onPress={() => {
+                                    setAssignedEmployeeId(emp._id);
+                                    setShowEmployeeDropdown(false);
+                                  }}
+                                >
+                                  <Text style={[
+                                    styles.employeeDropdownItemText,
+                                    assignedEmployeeId === emp._id && styles.employeeDropdownItemTextSelected,
+                                  ]}>
+                                    👤 {emp.name} ({emp.phone || emp.email || 'Employee'})
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Date — exact CreateAlertScreen style */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.label}>
+                          Date <Text style={styles.requiredStar}>*</Text>
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.dateTimePickerRow}
+                          onPress={() => setShowReminderDatePicker(true)}
+                        >
+                          <Text style={styles.dateTimePickerText}>
+                            {(() => {
+                              const d = reminderDateObj;
+                              return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+                            })()}
+                          </Text>
+                          <Ionicons name="calendar-outline" size={20} color="#6b7280" style={styles.dateTimePickerIcon} />
+                        </TouchableOpacity>
+                      </View>
+
+                      {showReminderDatePicker && (
+                        <DateTimePicker
+                          value={reminderDateObj}
+                          mode="date"
+                          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                          minimumDate={new Date()}
+                          onChange={(event, selectedDate) => {
+                            setShowReminderDatePicker(Platform.OS === 'ios');
+                            if (selectedDate) setReminderDateObj(selectedDate);
+                          }}
+                        />
+                      )}
+
+                      {/* Time — exact CreateAlertScreen style */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.label}>
+                          Time <Text style={styles.requiredStar}>*</Text>
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.dateTimePickerRow}
+                          onPress={() => setShowReminderTimePicker(true)}
+                        >
+                          <Text style={styles.dateTimePickerText}>
+                            {(() => {
+                              const d = reminderTimeObj;
+                              let h = d.getHours();
+                              const m = String(d.getMinutes()).padStart(2,'0');
+                              const ap = h >= 12 ? 'PM' : 'AM';
+                              h = h % 12 || 12;
+                              return `${String(h).padStart(2,'0')}:${m} ${ap}`;
+                            })()}
+                          </Text>
+                          <Ionicons name="time-outline" size={20} color="#6b7280" style={styles.dateTimePickerIcon} />
+                        </TouchableOpacity>
+                      </View>
+
+                      {showReminderTimePicker && (
+                        <DateTimePicker
+                          value={reminderTimeObj}
+                          mode="time"
+                          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                          is24Hour={false}
+                          onChange={(event, selectedTime) => {
+                            setShowReminderTimePicker(Platform.OS === 'ios');
+                            if (selectedTime) setReminderTimeObj(selectedTime);
+                          }}
+                        />
+                      )}
+
+                      {/* Repeat — exact CreateAlertScreen style */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.label}>Repeat</Text>
+                        <TouchableOpacity
+                          style={styles.dateTimePickerRow}
+                          onPress={() => setShowReminderRepeatModal(true)}
+                        >
+                          <Text style={styles.dateTimePickerText}>{getReminderRepeatLabel()}</Text>
+                          <Ionicons name="chevron-down-outline" size={20} color="#6b7280" style={styles.dateTimePickerIcon} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </View>
               </ScrollView>
 
-              <View style={styles.modalFooter}>
+              <View
+                style={[
+                  styles.modalFooter,
+                  {
+                    paddingBottom: isKeyboardVisible
+                      ? 12
+                      : (Platform.OS === 'ios' ? Math.max(insets.bottom, 16) : 16),
+                  },
+                ]}
+              >
                 <TouchableOpacity
                   style={styles.cancelButton}
                   onPress={handleCloseModal}
+                  disabled={submitting}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
@@ -1081,19 +1538,139 @@ const USPEmployeesScreen = ({ navigation }) => {
                 <TouchableOpacity
                   style={styles.submitButton}
                   onPress={handleSubmit}
+                  disabled={submitting}
                 >
                   <LinearGradient
                     colors={['#10b981', '#059669']}
                     style={styles.submitGradient}
                   >
-                    <Text style={styles.submitButtonText}>
-                      {editingEmployee ? 'Update Employee' : 'Add to USP'}
-                    </Text>
+                    {submitting ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.submitButtonText} numberOfLines={1}>
+                        {editingEmployee ? "Update Team's USP" : 'Add to USP'}
+                      </Text>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
-            </View>
+            </KeyboardAvoidingView>
           </View>
+        </Modal>
+
+        {/* Repeat Modal — exact CreateAlertScreen pattern */}
+        <Modal
+          visible={showReminderRepeatModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowReminderRepeatModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.uspRepeatModalOverlay}
+            activeOpacity={1}
+            onPress={() => !showCustomIntervalInput && setShowReminderRepeatModal(false)}
+          >
+            <View style={styles.uspRepeatModalContent}>
+              <Text style={styles.uspRepeatModalTitle}>Repeat</Text>
+
+              <ScrollView
+                style={styles.uspRepeatOptionsScroll}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+              >
+                {[
+                  { value: 'none',    label: 'Does not repeat' },
+                  { value: 'daily',   label: 'Daily' },
+                  { value: 'weekly',  label: 'Weekly' },
+                  { value: 'monthly', label: 'Monthly' },
+                  { value: 'yearly',  label: 'Yearly' },
+                  { value: 'custom',  label: 'Custom' },
+                ].map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.uspRepeatOption,
+                      reminderRepeatFrequency === opt.value && styles.uspRepeatOptionSelected,
+                    ]}
+                    onPress={() => handleReminderRepeatSelect(opt.value)}
+                  >
+                    <Text style={[
+                      styles.uspRepeatOptionText,
+                      reminderRepeatFrequency === opt.value && styles.uspRepeatOptionTextSelected,
+                    ]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                {/* Custom Interval Presets */}
+                {showCustomIntervalInput && (
+                  <View style={styles.uspCustomIntervalContainer}>
+                    <Text style={styles.uspCustomIntervalLabel}>Select interval:</Text>
+                    {customIntervalOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.uspCustomOptionItem,
+                          customIntervalMinutes === option.value && styles.uspCustomOptionItemSelected,
+                        ]}
+                        onPress={() => handleCustomIntervalSelect(option.value)}
+                      >
+                        <Text style={[
+                          styles.uspCustomOptionItemText,
+                          customIntervalMinutes === option.value && styles.uspCustomOptionItemTextSelected,
+                        ]}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+
+                    <TouchableOpacity
+                      style={[styles.uspCustomOptionItem, styles.uspAddCustomOption]}
+                      onPress={() => setShowCustomManualInput(!showCustomManualInput)}
+                    >
+                      <Text style={styles.uspAddCustomOptionText}>+ Add Custom</Text>
+                    </TouchableOpacity>
+
+                    {showCustomManualInput && (
+                      <View style={styles.uspManualInputContainer}>
+                        <Text style={styles.uspManualInputLabel}>Enter minutes:</Text>
+                        <View style={styles.uspManualInputRow}>
+                          <TextInput
+                            style={styles.uspManualInput}
+                            keyboardType="numeric"
+                            value={manualMinutes}
+                            onChangeText={(v) => setManualMinutes(v.replace(/[^0-9]/g, ''))}
+                            placeholder="e.g. 45"
+                            placeholderTextColor="#9ca3af"
+                          />
+                          <Text style={styles.uspManualInputUnit}>min</Text>
+                          <TouchableOpacity
+                            style={styles.uspManualConfirmButton}
+                            onPress={() => {
+                              const mins = parseInt(manualMinutes) || 60;
+                              handleCustomIntervalSelect(mins > 0 ? mins : 60);
+                            }}
+                          >
+                            <Text style={styles.uspManualConfirmText}>OK</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </ScrollView>
+
+              {!showCustomIntervalInput && (
+                <TouchableOpacity
+                  style={styles.uspRepeatModalCloseButton}
+                  onPress={() => setShowReminderRepeatModal(false)}
+                >
+                  <Text style={styles.uspRepeatModalCloseText}>Close</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
         </Modal>
       </View>
     </SafeAreaView>
@@ -1428,29 +2005,39 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  modalBackdropArea: {
+    flex: 1,
+  },
   modalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: '92%',
     flexDirection: 'column',
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
+    backgroundColor: '#fff',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#1f2937',
   },
   modalBody: {
-    padding: 20,
     flex: 1,
+  },
+  modalBodyContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 28,
   },
   errorAlert: {
     flexDirection: 'row',
@@ -1520,8 +2107,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#1f2937',
-    minHeight: 80,
+    minHeight: 90,
     textAlignVertical: 'top',
+    paddingTop: 0,
+    paddingBottom: 8,
   },
   addCategoryContainer: {
     flexDirection: 'row',
@@ -1588,35 +2177,43 @@ const styles = StyleSheet.create({
   modalFooter: {
     flexDirection: 'row',
     gap: 12,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: '#f3f4f6',
+    backgroundColor: '#fff',
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
+    minHeight: 48,
+    borderRadius: 10,
     backgroundColor: '#f3f4f6',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#6b7280',
   },
   submitButton: {
     flex: 1,
-    borderRadius: 8,
+    minHeight: 48,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   submitGradient: {
-    paddingVertical: 14,
+    minHeight: 48,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   submitButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
   },
   helperText: {
     fontSize: 12,
@@ -1689,6 +2286,549 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9ca3af',
     marginTop: 8,
+  },
+  // Card reminder badge styles
+  cardReminderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fffbeb',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    gap: 8,
+  },
+  cardReminderIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#fef3c7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardReminderInfo: {
+    flex: 1,
+  },
+  cardReminderTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400e',
+    marginBottom: 2,
+  },
+  cardReminderTime: {
+    fontSize: 12,
+    color: '#b45309',
+    fontWeight: '500',
+  },
+  // Modal reminder section styles
+  reminderSectionContainer: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  reminderToggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1.5,
+    borderColor: '#bbf7d0',
+    borderRadius: 12,
+    padding: 14,
+  },
+  reminderToggleCardActive: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#10b981',
+  },
+  reminderToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  reminderIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#dcfce7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reminderIconBoxActive: {
+    backgroundColor: '#10b981',
+  },
+  reminderToggleTexts: {
+    flex: 1,
+  },
+  reminderToggleTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#065f46',
+  },
+  reminderToggleSub: {
+    fontSize: 12,
+    color: '#047857',
+    marginTop: 2,
+  },
+  checkboxOutline: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#10b981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  checkboxFilled: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  reminderFormBody: {
+    marginTop: 12,
+    backgroundColor: '#fafaf9',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e7e5e4',
+  },
+  createdAtBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginBottom: 14,
+    gap: 6,
+  },
+  createdAtText: {
+    fontSize: 12,
+    color: '#4b5563',
+    fontWeight: '500',
+  },
+  selectEmployeeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    gap: 8,
+  },
+  selectEmployeeButtonText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
+  employeeDropdownList: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginTop: 6,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  employeeDropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  employeeDropdownItemSelected: {
+    backgroundColor: '#f0fdf4',
+  },
+  employeeDropdownItemText: {
+    fontSize: 13,
+    color: '#374151',
+  },
+  employeeDropdownItemTextSelected: {
+    color: '#10b981',
+    fontWeight: '700',
+  },
+  quickPresetRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  quickPresetChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  quickPresetText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  timePickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  timeInputBox: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    padding: 8,
+    alignItems: 'center',
+  },
+  timeInputLabel: {
+    fontSize: 11,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  timeInput: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1f2937',
+    paddingVertical: 4,
+    textAlign: 'center',
+    width: '100%',
+  },
+  timeSeparator: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#6b7280',
+  },
+  periodToggleContainer: {
+    flexDirection: 'column',
+    gap: 4,
+  },
+  periodButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  periodButtonActive: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  periodButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  periodButtonTextActive: {
+    color: '#fff',
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  typeChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  typeChipActive: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  typeChipText: {
+    fontSize: 12,
+    color: '#4b5563',
+    fontWeight: '500',
+  },
+  typeChipTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+
+  // ── Create-Reminder-matching date/time/repeat picker styles ──
+  reminderPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  reminderPickerButtonText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+  },
+
+  // Repeat / Reminder-Type Modal (bottom sheet)
+  repeatModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  repeatModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 30,
+    maxHeight: '80%',
+  },
+  repeatOptionsScroll: {
+    maxHeight: 440,
+  },
+  repeatModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  repeatSectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  repeatOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    marginBottom: 6,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  repeatOptionRowSelected: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#10b981',
+  },
+  repeatOptionText: {
+    fontSize: 15,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  repeatOptionTextSelected: {
+    color: '#065f46',
+    fontWeight: '700',
+  },
+  repeatOptionDesc: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 2,
+  },
+  repeatModalCloseButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  repeatModalCloseText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  // ── Exact CreateAlertScreen date/time picker row ──
+  dateTimePickerRow: {
+    position: 'relative',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    paddingRight: 45,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateTimePickerText: {
+    fontSize: 14,
+    color: '#374151',
+    flex: 1,
+  },
+  dateTimePickerIcon: {
+    position: 'absolute',
+    right: 12,
+    top: 14,
+  },
+  requiredStar: {
+    color: '#ef4444',
+  },
+
+  // ── Exact CreateAlertScreen repeat modal styles (usp-prefixed) ──
+  uspRepeatModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  uspRepeatModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 30,
+    maxHeight: '80%',
+  },
+  uspRepeatOptionsScroll: {
+    maxHeight: 400,
+  },
+  uspRepeatModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  uspRepeatOption: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  uspRepeatOptionSelected: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#3b82f6',
+  },
+  uspRepeatOptionText: {
+    fontSize: 15,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  uspRepeatOptionTextSelected: {
+    color: '#1e40af',
+    fontWeight: '600',
+  },
+  uspRepeatModalCloseButton: {
+    backgroundColor: '#6b7280',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  uspRepeatModalCloseText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  uspCustomIntervalContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#0ea5e9',
+  },
+  uspCustomIntervalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0369a1',
+    marginBottom: 12,
+  },
+  uspCustomOptionItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 6,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  uspCustomOptionItemSelected: {
+    backgroundColor: '#e0f2fe',
+    borderColor: '#0ea5e9',
+  },
+  uspCustomOptionItemText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  uspCustomOptionItemTextSelected: {
+    color: '#0369a1',
+    fontWeight: '600',
+  },
+  uspAddCustomOption: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#22c55e',
+    borderStyle: 'dashed',
+  },
+  uspAddCustomOptionText: {
+    fontSize: 14,
+    color: '#16a34a',
+    fontWeight: '600',
+  },
+  uspManualInputContainer: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#22c55e',
+  },
+  uspManualInputLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  uspManualInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  uspManualInput: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  uspManualInputUnit: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  uspManualConfirmButton: {
+    backgroundColor: '#22c55e',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  uspManualConfirmText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
 

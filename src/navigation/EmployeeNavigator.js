@@ -49,6 +49,18 @@ const DashboardStack = () => (
       options={{ title: 'Site Expenses', headerShown: false }}
     />
     <Stack.Screen 
+      name="EmployeeDailySheet" 
+      component={EmployeeExpensesScreen}
+      initialParams={{ initialTab: 'daily_sheet' }}
+      options={{ title: 'Project Daily Sheet', headerShown: false }}
+    />
+    <Stack.Screen 
+      name="EmployeeCashFlow" 
+      component={EmployeeExpensesScreen}
+      initialParams={{ initialTab: 'cash_flow' }}
+      options={{ title: 'Site Cash Flow', headerShown: false }}
+    />
+    <Stack.Screen 
       name="EmployeeProfile" 
       component={EmployeeProfile}
       options={{ title: 'Profile', headerShown: false }}

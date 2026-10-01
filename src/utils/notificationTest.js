@@ -127,7 +127,7 @@ export const testFCMToken = async () => {
   console.log('🧪 Testing FCM Token...');
 
   try {
-    const { getFCMToken } = await import('./fcmService');
+    const { getFCMToken } = require('./fcmService');
     const token = await getFCMToken();
 
     if (token) {

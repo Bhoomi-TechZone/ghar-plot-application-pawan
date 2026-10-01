@@ -258,6 +258,7 @@ const AdminNotificationPopup = ({
   // Repeat configuration props
   nextScheduledDisplay = '',
   repeatFrequency = '',
+  repeatType = '',
   repeatDaily = false,
   repeatMetadata = {},           // 🔥 object or JSON string
   customRepeatMinutes = 0,       // 🔥 direct minutes field
@@ -395,7 +396,7 @@ const AdminNotificationPopup = ({
   // 12/08/2026 20:55
   //        ↓ passed
   // 13/08/2026 20:55
-  // ============================================================
+  let calculatedTargetMs = null;
 
   const getNextScheduledDisplay = () => {
     if (!date || !time) {
@@ -513,6 +514,7 @@ const AdminNotificationPopup = ({
         while (nextMs <= nowMs) {
           nextMs += intervalMs;
         }
+        calculatedTargetMs = nextMs;
         const nextDate = new Date(nextMs);
         // Format in IST 12-hour AM/PM
         const dateStr = nextDate.toLocaleDateString('en-IN', {
@@ -539,6 +541,8 @@ const AdminNotificationPopup = ({
           month = nextDay.getUTCMonth() + 1;
           day = nextDay.getUTCDate();
         }
+        const istOffsetMs = 5.5 * 60 * 60 * 1000;
+        calculatedTargetMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
       } else if (freq === 'hourly') {
         const istOffsetMs = 5.5 * 60 * 60 * 1000;
         let nextMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
@@ -546,6 +550,7 @@ const AdminNotificationPopup = ({
         while (nextMs <= nowMs) {
           nextMs += 60 * 60 * 1000;
         }
+        calculatedTargetMs = nextMs;
         const nextDate = new Date(nextMs);
         const dateStr = nextDate.toLocaleDateString('en-IN', {
           timeZone: 'Asia/Kolkata',
@@ -563,6 +568,7 @@ const AdminNotificationPopup = ({
         while (nextMs <= nowMs) {
           nextMs += 7 * 24 * 60 * 60 * 1000;
         }
+        calculatedTargetMs = nextMs;
         const nextDate = new Date(nextMs);
         const dateStr = nextDate.toLocaleDateString('en-IN', {
           timeZone: 'Asia/Kolkata',
@@ -581,11 +587,18 @@ const AdminNotificationPopup = ({
           month = nextMonth.getUTCMonth() + 1;
           day = nextMonth.getUTCDate();
         }
+        const istOffsetMs = 5.5 * 60 * 60 * 1000;
+        calculatedTargetMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
       }
 
       // If one-time alert has already passed, there is NO next occurrence
       if (candidateValue <= nowValue && !isDaily && freq !== 'daily' && !isCustomMinutes && freq !== 'hourly' && freq !== 'weekly' && freq !== 'monthly') {
         return null;
+      }
+
+      const istOffsetMs = 5.5 * 60 * 60 * 1000;
+      if (!calculatedTargetMs) {
+        calculatedTargetMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
       }
 
       // ========================================================
@@ -655,6 +668,151 @@ const AdminNotificationPopup = ({
   // Priority 3: calculate from date + time + repeat settings
   if (!formattedNext) {
     formattedNext = getNextScheduledDisplay();
+  } else if (!calculatedTargetMs) {
+    // Run to calculate target timestamp for countdown calculation
+    getNextScheduledDisplay();
+  }
+
+  // ============================================================
+  // REPEAT CONFIGURATION & COUNTDOWN CALCULATION
+  // ============================================================
+
+  const resolvedMinutes = parseInt(
+    (typeof repeatMetadata === 'object' && repeatMetadata !== null
+      ? repeatMetadata.customIntervalMinutes || repeatMetadata.customRepeatMinutes
+      : null) ||
+    (typeof repeatMetadata === 'string' && repeatMetadata
+      ? (() => { try { const p = JSON.parse(repeatMetadata); return p.customIntervalMinutes || p.customRepeatMinutes; } catch (_) { return null; } })()
+      : null) ||
+    customRepeatMinutes ||
+    customIntervalMinutes ||
+    0
+  );
+
+  const normalizedFreq = String(repeatFrequency || repeatType || '').toLowerCase().trim();
+  const isDailyRepeat = repeatDaily === true || repeatDaily === 'true' || normalizedFreq === 'daily';
+  const is1MinRepeat = normalizedFreq === '1 min' || normalizedFreq === '1_min' || normalizedFreq === '1min';
+
+  // 1. Calculate repeatFrequencyLabel (e.g., "Every 1 min", "Every 2 hours", "Daily", "Weekly")
+  let repeatFrequencyLabel = '';
+  if (is1MinRepeat || (normalizedFreq === 'custom' && resolvedMinutes === 1)) {
+    repeatFrequencyLabel = 'Every 1 min';
+  } else if (resolvedMinutes > 0) {
+    if (resolvedMinutes % 1440 === 0 && resolvedMinutes >= 1440) {
+      const days = resolvedMinutes / 1440;
+      repeatFrequencyLabel = days === 1 ? 'Daily' : `Every ${days} days`;
+    } else if (resolvedMinutes % 60 === 0 && resolvedMinutes >= 60) {
+      const hrs = resolvedMinutes / 60;
+      repeatFrequencyLabel = hrs === 1 ? 'Every 1 hour' : `Every ${hrs} hours`;
+    } else if (resolvedMinutes >= 60) {
+      const hrs = Math.floor(resolvedMinutes / 60);
+      const rem = resolvedMinutes % 60;
+      repeatFrequencyLabel = `Every ${hrs} hr ${rem} min`;
+    } else {
+      repeatFrequencyLabel = `Every ${resolvedMinutes} min${resolvedMinutes > 1 ? 's' : ''}`;
+    }
+  } else if (normalizedFreq === 'hourly') {
+    repeatFrequencyLabel = 'Every 1 hour';
+  } else if (isDailyRepeat) {
+    repeatFrequencyLabel = 'Daily';
+  } else if (normalizedFreq === 'weekly') {
+    repeatFrequencyLabel = 'Weekly';
+  } else if (normalizedFreq === 'monthly') {
+    repeatFrequencyLabel = 'Monthly';
+  } else if (normalizedFreq && normalizedFreq !== 'none') {
+    repeatFrequencyLabel = normalizedFreq.charAt(0).toUpperCase() + normalizedFreq.slice(1);
+  }
+
+  // 2. Calculate repeatCountdownText ("Dialogue box mein bhi likha aana chahiye ki kitni der mein repeat hoga")
+  let repeatCountdownText = '';
+  if (repeatFrequencyLabel) {
+    let targetMs = calculatedTargetMs;
+    if (!targetMs && nextScheduledAt) {
+      const parsedMs = new Date(nextScheduledAt).getTime();
+      if (!isNaN(parsedMs) && parsedMs > 0) {
+        targetMs = parsedMs;
+      }
+    }
+
+    const nowMs = Date.now();
+    const effectiveIntervalMs = is1MinRepeat
+      ? 60 * 1000
+      : resolvedMinutes > 0
+        ? resolvedMinutes * 60 * 1000
+        : normalizedFreq === 'hourly'
+          ? 60 * 60 * 1000
+          : isDailyRepeat
+            ? 24 * 60 * 60 * 1000
+            : normalizedFreq === 'weekly'
+              ? 7 * 24 * 60 * 60 * 1000
+              : 0;
+
+    // If target timestamp has passed or is right now, roll forward by interval
+    if (targetMs && effectiveIntervalMs > 0 && targetMs <= nowMs) {
+      while (targetMs <= nowMs) {
+        targetMs += effectiveIntervalMs;
+      }
+    }
+
+    // If formattedNext was null or not set, format it from targetMs
+    if (!formattedNext && targetMs) {
+      const nextDate = new Date(targetMs);
+      const dateStr = nextDate.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+      });
+      const timeStr = nextDate.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric', minute: '2-digit', hour12: true,
+      }).toLowerCase();
+      formattedNext = `${dateStr} • ${timeStr}`;
+    }
+
+    if (targetMs && targetMs > nowMs) {
+      const diffMs = targetMs - nowMs;
+      const totalSec = Math.round(diffMs / 1000);
+      const totalMins = Math.round(diffMs / (60 * 1000));
+      const totalHours = Math.floor(diffMs / (3600 * 1000));
+      const totalDays = Math.floor(diffMs / (86400 * 1000));
+
+      if (totalSec < 60) {
+        repeatCountdownText = (is1MinRepeat || resolvedMinutes === 1)
+          ? (totalSec <= 10 ? 'Repeats in 1 min' : `Repeats in ${totalSec}s`)
+          : `Repeats in ${totalSec}s`;
+      } else if (totalMins < 60) {
+        repeatCountdownText = totalMins === 1 ? 'Repeats in 1 min' : `Repeats in ${totalMins} mins`;
+      } else if (totalHours < 24) {
+        const remMins = Math.round((diffMs % (3600 * 1000)) / (60 * 1000));
+        repeatCountdownText = remMins > 0
+          ? `Repeats in ${totalHours} hr ${remMins} min`
+          : `Repeats in ${totalHours} hour${totalHours > 1 ? 's' : ''}`;
+      } else {
+        const remHours = Math.round((diffMs % (86400 * 1000)) / (3600 * 1000));
+        repeatCountdownText = remHours > 0
+          ? `Repeats in ${totalDays} day${totalDays > 1 ? 's' : ''} ${remHours} hr`
+          : `Repeats in ${totalDays} day${totalDays > 1 ? 's' : ''}`;
+      }
+    } else {
+      // Fallback relative wording if target timestamp cannot be computed
+      if (is1MinRepeat || resolvedMinutes === 1) {
+        repeatCountdownText = 'Repeats in 1 min';
+      } else if (resolvedMinutes > 0) {
+        if (resolvedMinutes % 60 === 0) {
+          const hrs = resolvedMinutes / 60;
+          repeatCountdownText = hrs === 1 ? 'Repeats in 1 hour' : `Repeats in ${hrs} hours`;
+        } else {
+          repeatCountdownText = `Repeats in ${resolvedMinutes} mins`;
+        }
+      } else if (normalizedFreq === 'hourly') {
+        repeatCountdownText = 'Repeats in 1 hour';
+      } else if (isDailyRepeat) {
+        repeatCountdownText = 'Repeats daily';
+      } else if (normalizedFreq === 'weekly') {
+        repeatCountdownText = 'Repeats weekly';
+      } else if (normalizedFreq === 'monthly') {
+        repeatCountdownText = 'Repeats monthly';
+      }
+    }
   }
 
   return (
@@ -818,13 +976,17 @@ const AdminNotificationPopup = ({
                       {formattedCreated
                         ? `\n🗓️ Created On: ${formattedCreated}`
                         : ''}
+
+                      {repeatFrequencyLabel
+                        ? `\n🔁 Repeat: ${repeatFrequencyLabel}`
+                        : ''}
                     </Text>
                   </View>
                 </View>
               ) : null}
 
-              {/* Next Scheduled Notification */}
-              {formattedNext ? (
+              {/* Next Scheduled & Repeat Information */}
+              {(formattedNext || repeatFrequencyLabel) ? (
                 <View
                   style={[
                     styles.detailRow,
@@ -838,13 +1000,28 @@ const AdminNotificationPopup = ({
                   />
 
                   <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>
-                      Next Scheduled
-                    </Text>
+                    <View style={styles.nextScheduledHeader}>
+                      <Text style={styles.detailLabel}>
+                        Next Scheduled
+                      </Text>
+                      {repeatFrequencyLabel ? (
+                        <View style={styles.repeatBadgeContainer}>
+                          <Text style={styles.repeatBadgeText}>🔁 {repeatFrequencyLabel}</Text>
+                        </View>
+                      ) : null}
+                    </View>
 
-                    <Text style={styles.detailValue}>
-                      ⏭️ {formattedNext}
-                    </Text>
+                    {formattedNext ? (
+                      <Text style={styles.detailValue}>
+                        ⏭️ {formattedNext}
+                      </Text>
+                    ) : null}
+
+                    {repeatCountdownText ? (
+                      <Text style={styles.repeatCountdownText}>
+                        ⏳ {repeatCountdownText}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               ) : null}
@@ -1034,6 +1211,31 @@ container: {
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  nextScheduledHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  repeatBadgeContainer: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  repeatBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  repeatCountdownText: {
+    fontSize: 13,
+    color: '#059669',
+    fontWeight: '600',
+    marginTop: 4,
   },
 });
 

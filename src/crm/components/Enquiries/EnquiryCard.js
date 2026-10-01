@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Enquiry Card Component
  * Displays individual enquiry with all details and actions
  * Updated with ReminderNotificationService for background notifications
@@ -20,6 +20,7 @@ const EnquiryCard = ({
   onSetReminder, 
   onFollowUp, 
   onUnassign,
+  onDelete,
   canSelect = true,
   showCheckbox = false,
 }) => {
@@ -243,6 +244,16 @@ const EnquiryCard = ({
           <TouchableOpacity style={[styles.actionButton, styles.unassignButton]} onPress={() => onUnassign(enquiry)}>
             <Text style={{ fontSize: 18, color: '#ef4444' }}>🚫</Text>
             <Text style={styles.actionText}>Unassign</Text>
+          </TouchableOpacity>
+        )}
+
+        {onDelete && (
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#fee2e2' }]}
+            onPress={() => onDelete(enquiry)}
+          >
+            <Text style={{ fontSize: 18, color: '#ef4444' }}>🗑️</Text>
+            <Text style={[styles.actionText, { color: '#dc2626' }]}>Delete</Text>
           </TouchableOpacity>
         )}
       </View>

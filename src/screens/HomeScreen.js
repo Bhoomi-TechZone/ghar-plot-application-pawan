@@ -789,7 +789,7 @@ const Homescreen = ({ navigation }) => {
                         text: 'Fix FCM Issues',
                         onPress: async () => {
                             CrossPlatformAlert.alert('Fixing FCM', 'Attempting to fix common FCM issues...');
-                            const { quickFixFCMIssues } = await import('../utils/fcmTestService');
+                            const { quickFixFCMIssues } = require('../utils/fcmTestService');
                             const fixResult = await quickFixFCMIssues();
                             await loadNotificationCount();
 

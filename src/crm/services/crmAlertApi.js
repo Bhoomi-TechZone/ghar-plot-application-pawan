@@ -58,6 +58,24 @@ export const updateAlert = async (alertId, alertData) => {
 };
 
 /**
+ * Get alert by ID
+ */
+export const getAlertById = async (alertId) => {
+  try {
+    const cleanId = String(alertId).replace(/^(alert_|reminder_)/, '');
+    const response = await fetch(`${CRM_BASE_URL}/api/alerts/${cleanId}`, {
+      method: 'GET',
+      headers: await getCRMAuthHeaders(),
+    });
+
+    return await handleCRMResponse(response);
+  } catch (error) {
+    console.error('Error fetching alert by ID:', error);
+    throw error;
+  }
+};
+
+/**
  * Delete alert
  */
 export const deleteAlert = async (alertId) => {
@@ -349,6 +367,7 @@ export const getEmployeeAlerts = async (employeeId) => {
 
 export default {
   getAllAlerts,
+  getAlertById,
   createAlert,
   updateAlert,
   deleteAlert,

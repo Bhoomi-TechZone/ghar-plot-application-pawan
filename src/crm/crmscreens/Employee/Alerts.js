@@ -168,13 +168,24 @@ const EmployeeAlertsScreen = ({ navigation }) => {
           style={styles.iconBtn}
           onPress={() => {
             console.log('📝 Editing alert:', item._id);
+            const customMins = item.repeatMetadata?.customIntervalMinutes ||
+              item.customIntervalMinutes ||
+              item.customRepeatMinutes ||
+              item.repeatInterval ||
+              '';
+
             navigation.navigate('EditAlert', {
               alertId: item._id,
               originalTitle: item.title,
               originalReason: item.reason,
               originalDate: item.date,
               originalTime: item.time,
-              repeatDaily: item.repeatDaily
+              repeatFrequency: item.repeatFrequency || (item.repeatDaily ? 'daily' : (customMins ? 'custom' : 'none')),
+              repeatDaily: item.repeatDaily,
+              scheduledDateTime: item.nextScheduledAt || item.scheduledDateTime || `${item.date}T${item.time}`,
+              customIntervalMinutes: customMins,
+              customRepeatMinutes: customMins,
+              repeatMetadata: item.repeatMetadata,
             });
           }}
         >

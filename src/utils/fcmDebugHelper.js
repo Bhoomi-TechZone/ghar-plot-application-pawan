@@ -56,8 +56,7 @@ global.getFCMToken = async () => {
 global.checkFCMConfig = async () => {
   console.log('⚙️ Checking FCM Configuration...');
   try {
-    // Import here to avoid circular dependencies
-    const { checkFCMConfiguration } = await import('./fcmService');
+    const { checkFCMConfiguration } = require('./fcmService');
     const config = await checkFCMConfiguration();
     console.log('📋 FCM Configuration:', config);
     return config;

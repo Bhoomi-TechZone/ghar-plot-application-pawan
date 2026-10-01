@@ -118,7 +118,7 @@ export const employeeLogin = async (email, password) => {
     // 🔥 Sync FCM token to Employee model for notifications
     if (employeeId) {
       try {
-        const { getFCMToken, sendTokenToBackend } = await import('../../utils/fcmService');
+        const { getFCMToken, sendTokenToBackend } = require('../../utils/fcmService');
         const fcmToken = await getFCMToken();
         if (fcmToken) {
           await sendTokenToBackend(employeeId, fcmToken);
