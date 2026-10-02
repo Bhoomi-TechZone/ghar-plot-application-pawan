@@ -16,8 +16,9 @@ import {
   ScrollView,
   Platform,
   Modal,
+  Switch,
 } from 'react-native';
-import { updateAlert, BASE_URL } from '../services/api';
+import { updateAlert, updateReminder, BASE_URL } from '../services/api';
 import { deleteAlert, getAlertById } from '../crm/services/crmAlertApi'; // 🔥 Import deleteAlert, getAlertById
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getFCMToken } from '../utils/fcmService';
@@ -37,9 +38,15 @@ const EditAlertScreen = ({ route, navigation }) => {
     customIntervalMinutes: origCustomMins,
     scheduledDateTime, // 🔥 Get the scheduled date from params
     repeatMetadata: origRepeatMetadata, // 🔥 FIX: Get existing repeatMetadata to preserve it
+    placeReminder: initialPlaceReminderParam,
   } = route.params || {};
   
   const [loading, setLoading] = useState(false);
+  const [placeReminder, setPlaceReminder] = useState(
+    initialPlaceReminderParam !== undefined
+      ? (initialPlaceReminderParam === true || initialPlaceReminderParam === 'true')
+      : true
+  );
   const [title, setTitle] = useState(originalTitle || '');
   const [reason, setReason] = useState(originalReason || '');
   // 🔥 KEY FIX: Initialize scheduledDate correctly to avoid timezone double-conversion.
@@ -231,6 +238,9 @@ const EditAlertScreen = ({ route, navigation }) => {
         const res = await getAlertById(cleanId);
         const data = res?.alert || res?.data;
         if (data) {
+          if (data.placeReminder !== undefined) {
+            setPlaceReminder(data.placeReminder !== false);
+          }
           if (!title && data.title) setTitle(data.title);
           if (!reason && data.reason) setReason(data.reason);
 
@@ -415,6 +425,36 @@ const EditAlertScreen = ({ route, navigation }) => {
     handleCustomIntervalSelect(mins > 0 ? mins : 60);
   };
 
+  const handleTogglePlaceReminder = async (newVal) => {
+    setPlaceReminder(newVal);
+    // Option A: Immediate auto-save on toggle for instant persistence
+    try {
+      const cleanId = String(alertId).replace(/^(alert_|reminder_)/, '');
+      const autoSavePayload = {
+        title: title.trim(),
+        reason: reason.trim(),
+        comment: reason.trim(),
+        note: reason.trim(),
+        isActive: newVal,
+        placeReminder: newVal,
+      };
+      let saved = false;
+      try {
+        const resAlert = await updateAlert(cleanId, autoSavePayload);
+        if (resAlert && resAlert.success !== false) saved = true;
+      } catch (_) {}
+      if (!saved) {
+        try {
+          await updateReminder(cleanId, autoSavePayload);
+          saved = true;
+        } catch (_) {}
+      }
+      console.log(`✅ [Option A] Auto-saved alert placeReminder = ${newVal}`);
+    } catch (autoErr) {
+      console.warn('⚠️ Auto-save error on alert toggle:', autoErr?.message);
+    }
+  };
+
   const handleSave = async () => {
     if (!title.trim()) {
       CrossPlatformAlert.alert('Validation Error', 'Please enter alert title');
@@ -426,10 +466,12 @@ const EditAlertScreen = ({ route, navigation }) => {
       return;
     }
 
-    const now = new Date();
-    if (scheduledDate <= now) {
-      CrossPlatformAlert.alert('Invalid Date', 'Please select a future date and time');
-      return;
+    if (placeReminder) {
+      const now = new Date();
+      if (scheduledDate <= now) {
+        CrossPlatformAlert.alert('Invalid Date', 'Please select a future date and time');
+        return;
+      }
     }
 
     setLoading(true);
@@ -471,15 +513,45 @@ const EditAlertScreen = ({ route, navigation }) => {
         repeatMetadata: isCustom ? repeatMetadata : (['weekly', 'monthly', 'yearly'].includes(repeatFrequency) ? repeatMetadata : null), // Store day/month info for weekly/monthly/yearly/custom, null for daily
         customRepeatMinutes: isCustom ? customIntervalMinutes : '', // 🔥 Fix: Only pass for custom
         repeatDaily: repeatFrequency === 'daily', // 🔥 FIX: Only true for daily, NOT for custom
-        isActive: true, // Ensure alert stays active
+        isActive: placeReminder, // If reminder disabled, set inactive
+        placeReminder: placeReminder,
       };
 
       console.log('📤 Updating alert with ID:', alertId);
       console.log('📤 Update data:', JSON.stringify(updateData, null, 2));
       
+      const cleanId = String(alertId).replace(/^(alert_|reminder_)/, '');
+      let result = null;
+      let updateError = null;
+
       // Call API to update alert
-      // ⚠️ Backend will automatically reschedule FCM notification
-      const result = await updateAlert(alertId, updateData);
+      try {
+        result = await updateAlert(cleanId, updateData);
+      } catch (err) {
+        console.log('⚠️ updateAlert failed, trying updateReminder:', err.message);
+        updateError = err;
+      }
+
+      // If updateAlert failed or returned 404/false, fallback to updateReminder
+      if (!result || result.success === false) {
+        try {
+          const reminderData = {
+            title: updateData.title,
+            comment: updateData.reason,
+            note: updateData.reason,
+            reminderDateTime: scheduledDate.toISOString(),
+            isRepeating: repeatFrequency !== 'none',
+            repeatType: repeatFrequency,
+            customRepeatMinutes: isCustom ? Number(customIntervalMinutes) || 0 : 0,
+            isActive: placeReminder,
+            placeReminder: placeReminder,
+          };
+          result = await updateReminder(cleanId, reminderData);
+        } catch (remErr) {
+          console.error('❌ updateReminder also failed:', remErr.message);
+          throw updateError || remErr;
+        }
+      }
 
       console.log('✅ API Response:', JSON.stringify(result, null, 2));
 
@@ -491,6 +563,24 @@ const EditAlertScreen = ({ route, navigation }) => {
       console.log(`🏷️ Category: ${alertCategory} | Notification type for reschedule: ${finalNotificationType}`);
       
       if (result && result.success !== false) {
+        if (!placeReminder) {
+          console.log('ℹ️ Alert updated in note mode (placeReminder: false) - skipping FCM reschedule');
+          CrossPlatformAlert.alert(
+            '✅ Note Updated',
+            'Note updated successfully! No alerts or notifications will fire for this entry.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  isSavedRef.current = true;
+                  navigation.goBack();
+                },
+              },
+            ]
+          );
+          return;
+        }
+
         console.log('✅ Alert updated successfully - Now scheduling FCM notification via backend');
         
         // ⚠️ CRITICAL: Call backend to reschedule FCM notification
@@ -721,57 +811,86 @@ const EditAlertScreen = ({ route, navigation }) => {
           />
         </View>
 
-        {/* Date Picker */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Date *</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text style={styles.dateButtonText}>
-              {scheduledDate.toLocaleDateString('en-GB')}
+        {/* Place a Reminder Toggle Card */}
+        <View style={styles.toggleCard}>
+          <View style={styles.toggleLeft}>
+            <Text style={styles.toggleTitle}>Place a Reminder</Text>
+            <Text style={styles.toggleSubtitle}>
+              {placeReminder
+                ? '🔔 Remind on date & time with notification and popup'
+                : '📝 Saved as note only without alerts or popups'}
             </Text>
-          </TouchableOpacity>
+          </View>
+          <Switch
+            value={placeReminder}
+            onValueChange={handleTogglePlaceReminder}
+            trackColor={{ false: '#d1d5db', true: '#86efac' }}
+            thumbColor={placeReminder ? '#22c55e' : '#9ca3af'}
+          />
         </View>
 
-        {/* Time Picker */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Time *</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowTimePicker(true)}
-          >
-            <Text style={styles.dateButtonText}>
-              {scheduledDate.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: true 
-              })}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {placeReminder ? (
+          <>
+            {/* Date Picker */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Date *</Text>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={styles.dateButtonText}>
+                  {scheduledDate.toLocaleDateString('en-GB')}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-        {/* Repeat Frequency Selector */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Repeat</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowRepeatModal(true)}
-          >
-            <Text style={styles.dateButtonText}>
-              {getRepeatLabel()}
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {/* Time Picker */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Time *</Text>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Text style={styles.dateButtonText}>
+                  {scheduledDate.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: true 
+                  })}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-        {/* Scheduled For Display */}
-        <View style={styles.infoBox}>
-          <Text style={styles.infoLabel}>Alert will be scheduled for:</Text>
-          <Text style={styles.infoValue}>
-            {formatDateTime(scheduledDate)}
-            {repeatFrequency !== 'none' && `\n(${getRepeatLabel()})`}
-          </Text>
-        </View>
+            {/* Repeat Frequency Selector */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Repeat</Text>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowRepeatModal(true)}
+              >
+                <Text style={styles.dateButtonText}>
+                  {getRepeatLabel()}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Scheduled For Display */}
+            <View style={styles.infoBox}>
+              <Text style={styles.infoLabel}>Alert will be scheduled for:</Text>
+              <Text style={styles.infoValue}>
+                {formatDateTime(scheduledDate)}
+                {repeatFrequency !== 'none' && `\n(${getRepeatLabel()})`}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <View style={styles.noteOnlyBanner}>
+            <Text style={styles.noteOnlyBannerTitle}>📝 Note Only Mode</Text>
+            <Text style={styles.noteOnlyBannerText}>
+              This entry is saved as a note/comment. Date & time alerts, push notifications, and popup dialogs are disabled.
+            </Text>
+          </View>
+        )}
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
@@ -799,7 +918,9 @@ const EditAlertScreen = ({ route, navigation }) => {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.saveButtonText}>Save & Reschedule</Text>
+              <Text style={styles.saveButtonText}>
+                {placeReminder ? 'Save & Reschedule' : 'Save Note'}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -1261,6 +1382,51 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  toggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  toggleLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  toggleTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  toggleSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    lineHeight: 16,
+  },
+  noteOnlyBanner: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fef3c7',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  noteOnlyBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#b45309',
+    marginBottom: 4,
+  },
+  noteOnlyBannerText: {
+    fontSize: 12,
+    color: '#92400e',
+    lineHeight: 16,
   },
 });
 

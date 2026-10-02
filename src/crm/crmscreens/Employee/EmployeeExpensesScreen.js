@@ -22,6 +22,13 @@ import * as adminSitesApi from '../../services/adminSitesApi';
 
 const { width } = Dimensions.get('window');
 
+const getClientDisplayName = (client) => {
+  if (!client) return '';
+  if (typeof client === 'string') return client;
+  if (typeof client === 'object') return client.name || client.fullName || '';
+  return String(client);
+};
+
 const EmployeeExpensesScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const statusBarTop = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
@@ -131,7 +138,7 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
         }
 
         const [projList, catList, empList] = await Promise.all([
-          adminSitesApi.getProjects(),
+          adminSitesApi.getProjects(initialEmpId ? { employeeId: initialEmpId } : {}),
           adminSitesApi.getExpenseCategories(),
           adminSitesApi.getEmployees(),
         ]);
@@ -146,7 +153,7 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
             setFormItem(prev => ({
               ...prev,
               project: projList[0].name,
-              client: projList[0].client || '',
+              client: getClientDisplayName(projList[0].client),
             }));
           }
         }
@@ -403,7 +410,7 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
     setFormItem(prev => ({
       ...prev,
       project: projectName,
-      client: foundProj?.client || '',
+      client: getClientDisplayName(foundProj?.client),
     }));
   };
 
@@ -557,9 +564,10 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
 
     try {
       setSubmittingBatch(true);
+      const clientVal = foundProj?.client?._id || (typeof foundProj?.client === 'string' ? foundProj.client : null) || (typeof formItem.client === 'object' ? formItem.client?._id : formItem.client);
       await adminSitesApi.createExpense({
         project: foundProj.id || foundProj._id,
-        client: foundProj.client || formItem.client,
+        client: clientVal,
         businessAssociate: currentEmployee._id || currentEmployee.id,
         category: formItem.category,
         itemName: formItem.itemName.trim(),
@@ -615,7 +623,7 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
         const foundProj = projects.find(p => p.name === item.project);
         return {
           project: foundProj?.id || foundProj?._id || item.project,
-          client: foundProj?.client || item.client,
+          client: foundProj?.client?._id || (typeof foundProj?.client === 'string' ? foundProj.client : null) || (typeof item.client === 'object' ? item.client?._id : item.client),
           businessAssociate: currentEmployee._id || currentEmployee.id,
           category: item.category,
           itemName: item.itemName,
@@ -999,10 +1007,15 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
                   >
                     <Picker.Item label="Select Project / Site" value="" />
                     {projects.map((p) => (
-                      <Picker.Item key={p.id} label={`${p.name} (${p.client || 'Client'})`} value={p.name} />
+                      <Picker.Item key={p.id || p._id} label={`${p.name} (${getClientDisplayName(p.client) || 'Client'})`} value={p.name} />
                     ))}
                   </Picker>
                 </View>
+                {projects.length === 0 && !loadingMaster && (
+                  <Text style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>
+                    No projects are currently linked to your account. Please ask Admin to assign projects to you.
+                  </Text>
+                )}
               </View>
 
               {/* CLIENT (AUTO-POPULATED FROM PROJECT) */}
@@ -1010,7 +1023,7 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
                 <View style={styles.clientBadgeContainer}>
                   <MaterialIcons name="person" size={16} color="#0f766e" style={{ marginRight: 6 }} />
                   <Text style={styles.clientBadgeText}>
-                    Mapped Client: <Text style={{ fontWeight: '700' }}>{formItem.client}</Text>
+                    Mapped Client: <Text style={{ fontWeight: '700' }}>{getClientDisplayName(formItem.client)}</Text>
                   </Text>
                 </View>
               ) : null}
@@ -1332,16 +1345,10 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
                             Paid to: <Text style={{ fontWeight: '600' }}>{item.paidTo || '—'}</Text> ({item.paymentType})
                           </Text>
                         </View>
-                        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                        <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
                           <Text style={{ fontWeight: '800', fontSize: 14, color: '#0f766e' }}>
                             ₹ {Number(item.amount).toLocaleString('en-IN')}
                           </Text>
-                          <TouchableOpacity
-                            onPress={() => handleDeleteTodayExpense(item.id)}
-                            style={{ padding: 4 }}
-                          >
-                            <MaterialIcons name="delete-outline" size={18} color="#ef4444" />
-                          </TouchableOpacity>
                         </View>
                       </View>
                     );
@@ -1410,7 +1417,7 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
                 >
                   <Picker.Item label="All Projects (Separate Sheets)" value="" />
                   {projects.map((p) => (
-                    <Picker.Item key={p.id} label={`${p.name} (${p.client || 'Client'})`} value={p.name} />
+                    <Picker.Item key={p.id || p._id} label={`${p.name} (${getClientDisplayName(p.client) || 'Client'})`} value={p.name} />
                   ))}
                 </Picker>
               </View>
@@ -1506,7 +1513,7 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
                         </Text>
                       </View>
                       <Text style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                        Client: <Text style={{ fontWeight: '600', color: '#334155' }}>{projectGroup.clientName}</Text>
+                        Client: <Text style={{ fontWeight: '600', color: '#334155' }}>{getClientDisplayName(projectGroup.clientName) || '—'}</Text>
                       </Text>
                     </View>
 
@@ -1568,7 +1575,7 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
                           setFormItem(prev => ({
                             ...prev,
                             project: projectGroup.projectName,
-                            client: projectGroup.clientName,
+                            client: getClientDisplayName(projectGroup.clientName),
                           }));
                           setActiveTab('add_expense');
                         }}
@@ -1591,7 +1598,6 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
                         <Text style={[styles.tableColHeader, { width: 95 }]}>Amount</Text>
                         <Text style={[styles.tableColHeader, { width: 110 }]}>Paid To</Text>
                         <Text style={[styles.tableColHeader, { width: 85 }]}>Type</Text>
-                        <Text style={[styles.tableColHeader, { width: 60 }]}>Action</Text>
                       </View>
 
                       {/* Items */}
@@ -1636,14 +1642,6 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
                               {item.paidTo || '—'}
                             </Text>
                             <Text style={[styles.tableCell, { width: 85 }]}>{item.paymentType}</Text>
-                            <View style={{ width: 60, justifyContent: 'center', alignItems: 'center' }}>
-                              <TouchableOpacity
-                                style={styles.deleteBtn}
-                                onPress={() => handleDeleteTodayExpense(item.id)}
-                              >
-                                <MaterialIcons name="delete" size={14} color="#fff" />
-                              </TouchableOpacity>
-                            </View>
                           </View>
                         );
                       })}
@@ -1697,25 +1695,19 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
 
             {/* ASSOCIATE SELECTION & BALANCE STATUS */}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Business Associate Details</Text>
+              <Text style={styles.cardTitle}>Business Associate Account</Text>
               <View style={styles.formField}>
-                <Text style={styles.formLabel}>Assign / View Associate <Text style={styles.required}>*</Text></Text>
-                <View style={styles.pickerBorder}>
-                  <Picker
-                    selectedValue={cashFlowForm.associateName}
-                    onValueChange={(val) => handleAssociateChangeInCashFlow(val)}
-                    style={styles.picker}
-                    dropdownIconColor="#0f766e"
-                  >
-                    <Picker.Item label="Select Employee" value="" />
-                    {employeesList.map((emp) => (
-                      <Picker.Item
-                        key={emp.id || emp._id}
-                        label={`${emp.name} (${emp.department || 'Employee'})`}
-                        value={emp.name}
-                      />
-                    ))}
-                  </Picker>
+                <Text style={styles.formLabel}>Associate Account</Text>
+                <View style={[styles.input, { backgroundColor: '#f8fafc', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderColor: '#cbd5e1' }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <MaterialIcons name="person" size={20} color="#0f766e" style={{ marginRight: 8 }} />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#1e293b' }}>
+                      {currentEmployee?.name || cashFlowForm.associateName || 'Employee'}
+                    </Text>
+                  </View>
+                  <View style={{ backgroundColor: '#ccfbf1', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#0f766e' }}>Your Account</Text>
+                  </View>
                 </View>
               </View>
 

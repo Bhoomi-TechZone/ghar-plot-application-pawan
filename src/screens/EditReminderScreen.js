@@ -17,6 +17,7 @@ import {
   ScrollView,
   Platform,
   Modal,
+  Switch,
 } from 'react-native';
 import { updateReminder, BASE_URL } from '../services/api';
 import { updateAlert, deleteAlert } from '../crm/services/crmAlertApi'; // 🔥 Import alerts API
@@ -41,10 +42,16 @@ const EditReminderScreen = ({ route, navigation }) => {
     repeatDaily,
     repeatMetadata: origRepeatMetadata,
     customIntervalMinutes: origCustomMins,
-    scheduledDateTime // 🔥 Get the scheduled date from params
+    scheduledDateTime, // 🔥 Get the scheduled date from params
+    placeReminder: initialPlaceReminderParam,
   } = route.params || {};
 
   const [loading, setLoading] = useState(false);
+  const [placeReminder, setPlaceReminder] = useState(
+    initialPlaceReminderParam !== undefined
+      ? (initialPlaceReminderParam === true || initialPlaceReminderParam === 'true')
+      : true
+  );
   const [title, setTitle] = useState(clientName || '');
   const [message, setMessage] = useState(originalMessage || '');
   // 🔥 KEY FIX: Initialize scheduledDate correctly to avoid timezone double-conversion.
@@ -150,10 +157,10 @@ const EditReminderScreen = ({ route, navigation }) => {
     const initTitle = (init.title || '').trim();
     const initMessage = (init.message || '').trim();
 
-    return currentTitle !== initTitle || 
-           currentMessage !== initMessage ||
-           repeatFrequency !== init.repeatFrequency ||
-           String(customIntervalMinutes || '') !== String(init.customIntervalMinutes || '');
+    return currentTitle !== initTitle ||
+      currentMessage !== initMessage ||
+      repeatFrequency !== init.repeatFrequency ||
+      String(customIntervalMinutes || '') !== String(init.customIntervalMinutes || '');
   };
 
   // 🔥 Intercept back press (hardware back, header arrow, gesture) when user has unsaved changes
@@ -171,7 +178,7 @@ const EditReminderScreen = ({ route, navigation }) => {
         'Discard Changes?',
         'You have unsaved changes. Are you sure you want to discard them?',
         [
-          { text: 'Keep Editing', style: 'cancel', onPress: () => {} },
+          { text: 'Keep Editing', style: 'cancel', onPress: () => { } },
           {
             text: 'Discard',
             style: 'destructive',
@@ -348,6 +355,36 @@ const EditReminderScreen = ({ route, navigation }) => {
     handleCustomIntervalSelect(mins > 0 ? mins : 60);
   };
 
+  const handleTogglePlaceReminder = async (newVal) => {
+    setPlaceReminder(newVal);
+    // Option A: Immediate auto-save on toggle for instant persistence
+    try {
+      const cleanId = String(reminderId).replace(/^(alert_|reminder_)/, '');
+      const autoSavePayload = {
+        title: title.trim() || 'Reminder',
+        reason: message.trim(),
+        comment: message.trim(),
+        note: message.trim(),
+        isActive: newVal,
+        placeReminder: newVal,
+      };
+      let saved = false;
+      try {
+        const resAlert = await updateAlert(cleanId, autoSavePayload);
+        if (resAlert && resAlert.success !== false) saved = true;
+      } catch (_) { }
+      if (!saved) {
+        try {
+          await updateReminder(cleanId, autoSavePayload);
+          saved = true;
+        } catch (_) { }
+      }
+      console.log(`✅ [Option A] Auto-saved reminder placeReminder = ${newVal}`);
+    } catch (autoErr) {
+      console.warn('⚠️ Auto-save error on toggle:', autoErr?.message);
+    }
+  };
+
   const handleSave = async () => {
     if (!title.trim()) {
       CrossPlatformAlert.alert('Validation Error', 'Please enter a title');
@@ -358,10 +395,12 @@ const EditReminderScreen = ({ route, navigation }) => {
       return;
     }
 
-    const now = new Date();
-    if (scheduledDate <= now) {
-      CrossPlatformAlert.alert('Invalid Date', 'Please select a future date and time');
-      return;
+    if (placeReminder) {
+      const now = new Date();
+      if (scheduledDate <= now) {
+        CrossPlatformAlert.alert('Invalid Date', 'Please select a future date and time');
+        return;
+      }
     }
 
     await proceedWithSave();
@@ -378,7 +417,7 @@ const EditReminderScreen = ({ route, navigation }) => {
       const hours = scheduledDate.getHours().toString().padStart(2, '0');
       const minutes = scheduledDate.getMinutes().toString().padStart(2, '0');
 
-      // 🔥 UPDATE existing reminder via alerts API
+      // 🔥 UPDATE existing reminder via alerts / reminder API
       const isCustom = repeatFrequency === 'custom';
       const reminderPayload = {
         title: title.trim() || 'Reminder',
@@ -389,7 +428,8 @@ const EditReminderScreen = ({ route, navigation }) => {
         repeatDaily: repeatFrequency === 'daily',
         customRepeatMinutes: isCustom ? (customIntervalMinutes || '') : '',
         repeatMetadata: null, // Reset previous metadata so daily does not carry over stale customIntervalMinutes
-        isActive: true,
+        isActive: placeReminder,
+        placeReminder: placeReminder,
       };
 
       // 🔥 Build repeatMetadata for weekly/monthly/yearly/custom reminders
@@ -406,16 +446,64 @@ const EditReminderScreen = ({ route, navigation }) => {
         reminderPayload.repeatMetadata = { customIntervalMinutes: Number(customIntervalMinutes) };
       }
 
-      console.log('📤 Updating reminder via alerts API:', reminderPayload);
+      console.log('📤 Updating reminder via alerts / reminder API:', reminderPayload);
       console.log('🆔 Reminder ID:', reminderId);
 
-      // 🔥 Use alerts API instead of reminder API
-      const response = await updateAlert(reminderId, reminderPayload);
+      const cleanId = String(reminderId).replace(/^(alert_|reminder_)/, '');
+      let response = null;
+      let updateError = null;
+
+      // Try updateAlert first
+      try {
+        response = await updateAlert(cleanId, reminderPayload);
+      } catch (err) {
+        console.log('⚠️ updateAlert failed, trying updateReminder:', err.message);
+        updateError = err;
+      }
+
+      // If updateAlert failed or returned 404/false, fallback to updateReminder
+      if (!response || response.success === false) {
+        try {
+          const reminderData = {
+            title: reminderPayload.title,
+            comment: reminderPayload.reason,
+            note: reminderPayload.reason,
+            reminderDateTime: scheduledDate.toISOString(),
+            isRepeating: repeatFrequency !== 'none',
+            repeatType: repeatFrequency,
+            customRepeatMinutes: isCustom ? Number(customIntervalMinutes) || 0 : 0,
+            isActive: placeReminder,
+            placeReminder: placeReminder,
+          };
+          response = await updateReminder(cleanId, reminderData);
+        } catch (remErr) {
+          console.error('❌ updateReminder also failed:', remErr.message);
+          throw updateError || remErr;
+        }
+      }
 
       console.log('📥 API Response:', JSON.stringify(response, null, 2));
 
       // Check if update was successful
       if (response && response.success !== false) {
+        if (!placeReminder) {
+          console.log('ℹ️ Reminder updated in note mode (placeReminder: false) - skipping FCM reschedule');
+          CrossPlatformAlert.alert(
+            '✅ Note Updated',
+            'Note updated successfully! No alerts or notifications will fire for this entry.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  isSavedRef.current = true;
+                  navigation.goBack();
+                },
+              },
+            ]
+          );
+          return;
+        }
+
         console.log('✅ Reminder updated successfully via alerts API');
 
         // 🔥 Schedule the notification on backend to ensure correct timezone and firing
@@ -501,7 +589,7 @@ const EditReminderScreen = ({ route, navigation }) => {
         'Discard Changes?',
         'You have unsaved changes. Are you sure you want to discard them?',
         [
-          { text: 'Keep Editing', style: 'cancel', onPress: () => {} },
+          { text: 'Keep Editing', style: 'cancel', onPress: () => { } },
           {
             text: 'Discard',
             style: 'destructive',
@@ -601,54 +689,83 @@ const EditReminderScreen = ({ route, navigation }) => {
           />
         </View>
 
-        {/* Date Picker */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Date *</Text>
-          <TouchableOpacity
-            style={styles.inputField}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text style={styles.inputText}>
-              {formatDate(scheduledDate)}
+        {/* Place a Reminder Toggle Card */}
+        <View style={styles.toggleCard}>
+          <View style={styles.toggleLeft}>
+            <Text style={styles.toggleTitle}>Place a Reminder</Text>
+            <Text style={styles.toggleSubtitle}>
+              {placeReminder
+                ? '🔔 Remind on date & time with notification and popup'
+                : '📝 Saved as note only without alerts or popups'}
             </Text>
-          </TouchableOpacity>
+          </View>
+          <Switch
+            value={placeReminder}
+            onValueChange={handleTogglePlaceReminder}
+            trackColor={{ false: '#d1d5db', true: '#86efac' }}
+            thumbColor={placeReminder ? '#22c55e' : '#9ca3af'}
+          />
         </View>
 
-        {/* Time Picker */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Time *</Text>
-          <TouchableOpacity
-            style={styles.inputField}
-            onPress={() => setShowTimePicker(true)}
-          >
-            <Text style={styles.inputText}>
-              {formatTime(scheduledDate)}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {placeReminder ? (
+          <>
+            {/* Date Picker */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Date *</Text>
+              <TouchableOpacity
+                style={styles.inputField}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={styles.inputText}>
+                  {formatDate(scheduledDate)}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-        {/* Repeat Frequency Selector */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Repeat Frequency</Text>
-          <TouchableOpacity
-            style={[styles.inputField, styles.repeatSelector]}
-            onPress={() => setShowRepeatModal(true)}
-          >
-            <Text style={[styles.inputText, repeatFrequency !== 'none' && styles.repeatActiveText]}>
-              {getRepeatLabel()}
-            </Text>
-            <Text style={styles.repeatArrow}>▼</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Time Picker */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Time *</Text>
+              <TouchableOpacity
+                style={styles.inputField}
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Text style={styles.inputText}>
+                  {formatTime(scheduledDate)}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-        {/* Scheduled For Display */}
-        <View style={styles.infoBox}>
-          <Text style={styles.infoLabel}>Reminder will be scheduled for:</Text>
-          <Text style={styles.infoValue}>
-            {formatDateTime(scheduledDate)}
-            {repeatFrequency !== 'none' && `\n(${getRepeatLabel()})`}
-          </Text>
-        </View>
+            {/* Repeat Frequency Selector */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Repeat Frequency</Text>
+              <TouchableOpacity
+                style={[styles.inputField, styles.repeatSelector]}
+                onPress={() => setShowRepeatModal(true)}
+              >
+                <Text style={[styles.inputText, repeatFrequency !== 'none' && styles.repeatActiveText]}>
+                  {getRepeatLabel()}
+                </Text>
+                <Text style={styles.repeatArrow}>▼</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Scheduled For Display */}
+            <View style={styles.infoBox}>
+              <Text style={styles.infoLabel}>Reminder will be scheduled for:</Text>
+              <Text style={styles.infoValue}>
+                {formatDateTime(scheduledDate)}
+                {repeatFrequency !== 'none' && `\n(${getRepeatLabel()})`}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <View style={styles.noteOnlyBanner}>
+            <Text style={styles.noteOnlyBannerTitle}>📝 Note Only Mode</Text>
+            <Text style={styles.noteOnlyBannerText}>
+              This reminder is saved as a note/comment. Date & time alerts, push notifications, and popup dialogs are disabled.
+            </Text>
+          </View>
+        )}
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
@@ -676,7 +793,9 @@ const EditReminderScreen = ({ route, navigation }) => {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.saveButtonText}>Save & Reschedule</Text>
+              <Text style={styles.saveButtonText}>
+                {placeReminder ? 'Save & Reschedule' : 'Save Note'}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -1139,6 +1258,51 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  toggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  toggleLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  toggleTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  toggleSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    lineHeight: 16,
+  },
+  noteOnlyBanner: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fef3c7',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  noteOnlyBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#b45309',
+    marginBottom: 4,
+  },
+  noteOnlyBannerText: {
+    fontSize: 12,
+    color: '#92400e',
+    lineHeight: 16,
   },
 });
 

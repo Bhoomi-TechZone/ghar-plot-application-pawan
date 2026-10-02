@@ -4,6 +4,7 @@
  * Features: View Details, Edit, Cancel, Complete, Add Comment
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -111,9 +112,11 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
     }
   }, [reminderId]);
 
-  useEffect(() => {
-    fetchReminderDetails();
-  }, [fetchReminderDetails]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchReminderDetails();
+    }, [fetchReminderDetails])
+  );
 
   const formatDateTime = (isoString) => {
     if (!isoString) return 'Not scheduled';
@@ -171,6 +174,7 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
       scheduledDateTime: fetchedDetails?.reminderDateTime || fetchedDetails?.nextOccurrence || reminderTime,
       isRepeating,
       repeatType,
+      placeReminder: fetchedDetails?.placeReminder !== false,
     });
   };
 
@@ -284,7 +288,10 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
     }
   };
 
+  const isNote = fetchedDetails?.placeReminder === false || reminderStatus === 'inactive' || reminderStatus === 'note';
+
   const getStatusColor = () => {
+    if (isNote) return '#6B7280';
     switch (reminderStatus) {
       case 'completed': return '#10B981';
       case 'cancelled': return '#EF4444';
@@ -294,15 +301,16 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
   };
 
   const getStatusLabel = () => {
+    if (isNote) return '📝 Note';
     switch (reminderStatus) {
-      case 'completed': return '? Completed';
-      case 'cancelled': return '? Cancelled';
-      case 'overdue': return '?? Overdue';
-      default: return '?? Pending';
+      case 'completed': return '✅ Completed';
+      case 'cancelled': return '❌ Cancelled';
+      case 'overdue': return '⚠️ Overdue';
+      default: return '⏳ Pending';
     }
   };
 
-  const isActionable = reminderStatus === 'pending' || reminderStatus === 'overdue';
+  const isActionable = isNote || reminderStatus === 'pending' || reminderStatus === 'overdue';
 
   return (
     <View style={styles.container}>

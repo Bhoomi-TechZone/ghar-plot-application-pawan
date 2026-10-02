@@ -172,8 +172,8 @@ const AllLeadsScreen = ({ navigation }) => {
 
         <View style={styles.headerTop}>
          <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>All Leads</Text>
-          <Text style={styles.headerSub}>Manage & track all leads</Text>
+          <Text style={styles.headerTitle}>All Clients</Text>
+          <Text style={styles.headerSub}>Manage & track all clients</Text>
          </View>
         </View>
       </View>

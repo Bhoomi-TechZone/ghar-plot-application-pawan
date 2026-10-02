@@ -43,7 +43,7 @@ const AdminMenuScreen = ({ navigation }) => {
     {
       title: 'MY ASSIGNMENTS',
       items: [
-        { name: 'All Leads', icon: 'trending-up', route: 'Operations', screen: 'AllLeads', color: '#3b82f6' },
+        { name: 'All Clients', icon: 'trending-up', route: 'Operations', screen: 'AllLeads', color: '#3b82f6' },
         { name: 'My Reminders', icon: 'notifications', route: 'AdminMyReminders', screen: null, color: '#8b5cf6' },
         // { name: 'Follow-ups', icon: 'follow-the-signs', route: 'AdminFollowUps', screen: null, color: '#06b6d4' },
         { name: 'Alerts', icon: 'notification-important', route: 'Operations', screen: 'Alerts', color: '#ef4444' },

@@ -44,7 +44,8 @@ export const createAlert = async (alertData) => {
  */
 export const updateAlert = async (alertId, alertData) => {
   try {
-    const response = await fetch(`${CRM_BASE_URL}/api/alerts/${alertId}`, {
+    const cleanId = String(alertId).replace(/^(alert_|reminder_)/, '');
+    const response = await fetch(`${CRM_BASE_URL}/api/alerts/${cleanId}`, {
       method: 'PUT',
       headers: await getCRMAuthHeaders(),
       body: JSON.stringify(alertData),
@@ -80,7 +81,8 @@ export const getAlertById = async (alertId) => {
  */
 export const deleteAlert = async (alertId) => {
   try {
-    const response = await fetch(`${CRM_BASE_URL}/api/alerts/${alertId}`, {
+    const cleanId = String(alertId).replace(/^(alert_|reminder_)/, '');
+    const response = await fetch(`${CRM_BASE_URL}/api/alerts/${cleanId}`, {
       method: 'DELETE',
       headers: await getCRMAuthHeaders(),
     });

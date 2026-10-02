@@ -468,7 +468,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
         <View style={styles.whiteCard}>
           <View style={styles.sectionHeader}>
             <Icon name="analytics" size={20} color="#3b82f6" />
-            <Text style={styles.sectionTitle}>All Leads</Text>
+            <Text style={styles.sectionTitle}>All Clients</Text>
           </View>
 
           <View style={styles.enquiryRow}>
@@ -773,7 +773,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
                   }}
                 >
                   <Icon name="help-circle" size={20} color="#06b6d4" />
-                  <Text style={styles.drawerItemText}>All Leads</Text>
+                  <Text style={styles.drawerItemText}>All Clients</Text>
                   <Icon name="chevron-forward" size={16} color="#9ca3af" />
                 </TouchableOpacity>
 

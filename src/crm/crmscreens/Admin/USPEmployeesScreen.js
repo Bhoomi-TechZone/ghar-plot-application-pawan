@@ -26,6 +26,75 @@ import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
+// Helper: Format Note Date safely without Hermes invalid date issues
+const formatNoteDate = (dateVal) => {
+  if (!dateVal) return '';
+  if (typeof dateVal === 'string' && (dateVal.includes('AM') || dateVal.includes('PM') || isNaN(Date.parse(dateVal)))) {
+    return dateVal;
+  }
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal);
+    return d.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch (e) {
+    return String(dateVal);
+  }
+};
+
+// Helper: Parse description and notes history uniformly from either descriptionHistory array or concatenated description string
+const parseDescriptionHistory = (employee) => {
+  if (!employee) return [];
+
+  // 1. If descriptionHistory array exists and has items
+  if (Array.isArray(employee.descriptionHistory) && employee.descriptionHistory.length > 0) {
+    return employee.descriptionHistory
+      .filter(item => item && (typeof item === 'object' || typeof item === 'string'))
+      .map((item, idx) => {
+        const rawText = typeof item === 'string' ? item : (item.text || '');
+        const cleanText = rawText.replace(/^\[(?:Added|Update)[^\]]+\]:\s*/i, '').trim();
+        return {
+          text: cleanText || rawText.trim(),
+          addedAt: item.addedAt || (idx === 0 ? employee.createdAt : employee.updatedAt) || employee.createdAt,
+          addedBy: item.addedBy || 'Admin',
+        };
+      })
+      .filter(item => item.text && item.text.length > 0);
+  }
+
+  // 2. If description is a string
+  if (employee.description && typeof employee.description === 'string' && employee.description.trim().length > 0) {
+    const raw = employee.description.trim();
+    // Split by double newlines
+    const parts = raw.split(/\n\s*\n/).filter(p => p && p.trim().length > 0);
+    if (parts.length > 0) {
+      return parts.map((part, idx) => {
+        const match = part.match(/^\[(?:Added|Update)\s*([^\]]+)\]:\s*([\s\S]*)$/i);
+        if (match) {
+          return {
+            text: match[2].trim(),
+            addedAt: match[1].trim(),
+            addedBy: 'Admin',
+          };
+        }
+        return {
+          text: part.replace(/^\[(?:Added|Update)[^\]]+\]:\s*/i, '').trim(),
+          addedAt: idx === parts.length - 1 ? (employee.updatedAt || employee.createdAt) : employee.createdAt,
+          addedBy: 'Admin',
+        };
+      }).filter(item => item.text && item.text.length > 0);
+    }
+  }
+
+  return [];
+};
+
 const USPEmployeesScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const modalScrollRef = useRef(null);
@@ -45,6 +114,36 @@ const USPEmployeesScreen = ({ navigation }) => {
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  // New Description & Details Modal States
+  const [newDescription, setNewDescription] = useState('');
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState(null);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const handleOpenDetails = (employee) => {
+    setSelectedEmployeeDetails(employee);
+    setDetailsModalVisible(true);
+  };
+
+  // Check admin role
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const adminToken = (await AsyncStorage.getItem('adminToken')) || (await AsyncStorage.getItem('admin_token'));
+        const userType = (await AsyncStorage.getItem('userType')) || (await AsyncStorage.getItem('user_type'));
+        const userRole = (await AsyncStorage.getItem('userRole')) || (await AsyncStorage.getItem('user_role'));
+        const role = await AsyncStorage.getItem('role');
+
+        const isUserAdmin = !!adminToken || userType === 'admin' || userRole === 'admin' || role === 'admin';
+        setIsAdmin(isUserAdmin);
+      } catch (e) {
+        console.error('Error checking admin status:', e);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   // Track keyboard visibility for smooth modal footer layout
   useEffect(() => {
@@ -471,6 +570,7 @@ const USPEmployeesScreen = ({ navigation }) => {
     if (employee) {
       // Edit mode
       setEditingEmployee(employee);
+      setNewDescription('');
       setFormData({
         employeeId: employee.employee?._id || '',
         categoryId: employee.category?._id || '',
@@ -506,6 +606,7 @@ const USPEmployeesScreen = ({ navigation }) => {
     } else {
       // Add mode
       setEditingEmployee(null);
+      setNewDescription('');
       setFormData({
         employeeId: '',
         categoryId: '',
@@ -550,6 +651,7 @@ const USPEmployeesScreen = ({ navigation }) => {
     Keyboard.dismiss();
     setShowModal(false);
     setEditingEmployee(null);
+    setNewDescription('');
     setModalType('system');
     setError('');
     setSuccess('');
@@ -639,7 +741,7 @@ const USPEmployeesScreen = ({ navigation }) => {
 
       const reminderPayload = {
         reminderTitle: reminderEnabled ? (reminderTitle.trim() || `Team USP - ${formData.name || 'Reminder'}`) : '',
-        assignedEmployeeId: reminderEnabled && assignedEmployeeId ? assignedEmployeeId : null,
+        assignedEmployeeId: assignedEmployeeId ? assignedEmployeeId : null,
         scheduledDate: reminderEnabled && calculatedScheduledDT ? calculatedScheduledDT.toISOString() : null,
         scheduledTime: reminderEnabled ? formatTimeDisplay(reminderTimeObj) : '',
         scheduledDateTime: reminderEnabled && calculatedScheduledDT ? calculatedScheduledDT.toISOString() : null,
@@ -649,12 +751,12 @@ const USPEmployeesScreen = ({ navigation }) => {
       };
 
       if (editingEmployee) {
-        // Update mode
+        // Update mode: previous descriptions are preserved; only new description is appended
         const updateData = {
           categoryId: formData.categoryId,
           expertise: formData.expertise,
           experienceYears: formData.experienceYears ? parseInt(formData.experienceYears) : undefined,
-          description: formData.description,
+          newDescription: newDescription.trim(),
           ...reminderPayload,
         };
 
@@ -743,6 +845,47 @@ const USPEmployeesScreen = ({ navigation }) => {
     );
   };
 
+  // Handle Delete All (Admin only)
+  const handleDeleteAll = () => {
+    if (!employees || employees.length === 0) {
+      CrossPlatformAlert.alert('Info', 'No employees to delete in Team USP.');
+      return;
+    }
+
+    CrossPlatformAlert.alert(
+      'Delete All Employees',
+      `Are you sure you want to remove ALL ${employees.length} employees from Team's USP?\n\nThis action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const headers = await getAuthHeaders();
+              const response = await axios.delete(
+                `${API_BASE_URL}/api/usp-employees/delete-all`,
+                { headers }
+              );
+              if (response.data && response.data.success) {
+                CrossPlatformAlert.alert('Success', 'All Team USP employees have been removed successfully.');
+                await fetchEmployees();
+              } else {
+                CrossPlatformAlert.alert('Error', response.data?.message || 'Failed to delete all employees');
+              }
+            } catch (error) {
+              console.error('Error deleting all USP employees:', error);
+              CrossPlatformAlert.alert('Error', error.response?.data?.message || 'Failed to delete all employees');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Render Statistics Card
   const renderStatisticsCard = (title, value, icon, color) => (
     <View style={styles.statCard}>
@@ -764,39 +907,30 @@ const USPEmployeesScreen = ({ navigation }) => {
       : employee.manualPhone;
 
     return (
-      <View key={employee._id} style={styles.employeeCard}>
+      <TouchableOpacity
+        key={employee._id}
+        style={styles.employeeCard}
+        activeOpacity={0.88}
+        onPress={() => handleOpenDetails(employee)}
+      >
         <View style={styles.employeeHeader}>
           <View style={styles.employeeInfo}>
             <View style={styles.employeeNameRow}>
               <Icon name="person" size={20} color="#10b981" />
               <Text style={styles.employeeName}>{employeeName}</Text>
-              <View style={[
-                styles.typeBadge,
-                { backgroundColor: employee.employeeType === 'system' ? '#3b82f6' : '#f59e0b' }
-              ]}>
-                <Text style={styles.typeBadgeText}>
-                  {employee.employeeType === 'system' ? 'System' : 'Manual'}
-                </Text>
-              </View>
             </View>
             <View style={styles.employeeContactRow}>
               <Icon name="phone" size={14} color="#6b7280" />
               <Text style={styles.employeeContact}>{employeePhone}</Text>
             </View>
           </View>
-          <View style={styles.employeeActions}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.editButton]}
-              onPress={() => handleShowModal(employee.employeeType, employee)}
-            >
-              <Icon name="edit" size={18} color="#3b82f6" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
-              onPress={() => handleDelete(employee._id)}
-            >
-              <Icon name="delete" size={18} color="#ef4444" />
-            </TouchableOpacity>
+          <View style={[
+            styles.typeBadge,
+            { backgroundColor: employee.employeeType === 'system' ? '#3b82f6' : '#f59e0b' }
+          ]}>
+            <Text style={styles.typeBadgeText}>
+              {employee.employeeType === 'system' ? 'System' : 'Manual'}
+            </Text>
           </View>
         </View>
 
@@ -825,12 +959,45 @@ const USPEmployeesScreen = ({ navigation }) => {
             </View>
           )}
 
-          {employee.description && (
-            <View style={styles.descriptionContainer}>
-              <Icon name="description" size={16} color="#10b981" />
-              <Text style={styles.descriptionText}>{employee.description}</Text>
-            </View>
-          )}
+          {(() => {
+            const notes = parseDescriptionHistory(employee);
+            if (!notes || notes.length === 0) return null;
+            const latestNote = notes[notes.length - 1];
+            const hasMultiple = notes.length > 1;
+
+            return (
+              <View style={styles.descriptionContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Icon name="comment" size={13} color="#059669" style={{ marginRight: 5 }} />
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#065f46', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                      {hasMultiple ? `Latest Note (#${notes.length})` : 'Description / Note'}
+                    </Text>
+                  </View>
+                  {hasMultiple ? (
+                    <View style={{ backgroundColor: '#d1fae5', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#047857' }}>
+                        {notes.length} notes (Tap card)
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <Text style={styles.descriptionText} numberOfLines={3}>
+                  {latestNote.text}
+                </Text>
+
+                {latestNote.addedAt ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    <Icon name="access-time" size={11} color="#059669" />
+                    <Text style={{ fontSize: 11, color: '#059669', fontWeight: '600', marginLeft: 4 }}>
+                      {formatNoteDate(latestNote.addedAt)}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })()}
 
           {employee.scheduledDateTime && (
             <View style={styles.cardReminderRow}>
@@ -854,20 +1021,44 @@ const USPEmployeesScreen = ({ navigation }) => {
             </View>
           )}
 
-          <View style={styles.detailRow}>
-            <Icon name="info" size={16} color="#10b981" />
-            <Text style={styles.detailLabel}>Status:</Text>
-            <View style={[
-              styles.statusBadge,
-              { backgroundColor: employee.isActive ? '#10b981' : '#6b7280' }
-            ]}>
-              <Text style={styles.statusBadgeText}>
-                {employee.isActive ? 'Active' : 'Inactive'}
-              </Text>
+          {/* Card Bottom Footer: Status on left & Edit/Delete on right */}
+          <View style={styles.cardBottomRow}>
+            <View style={styles.cardStatusContainer}>
+              <Icon name="info" size={15} color="#10b981" />
+              <Text style={styles.detailLabel}>Status:</Text>
+              <View style={[
+                styles.statusBadge,
+                { backgroundColor: employee.isActive ? '#10b981' : '#6b7280' }
+              ]}>
+                <Text style={styles.statusBadgeText}>
+                  {employee.isActive ? 'Active' : 'Inactive'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.bottomActionsContainer}>
+              <TouchableOpacity
+                style={[styles.bottomActionButton, styles.bottomEditButton]}
+                onPress={() => handleShowModal(employee.employeeType, employee)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+              >
+                <Icon name="edit" size={15} color="#2563eb" />
+                <Text style={styles.bottomEditText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.bottomActionButton, styles.bottomDeleteButton]}
+                onPress={() => handleDelete(employee._id)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+              >
+                <Icon name="delete-outline" size={16} color="#ef4444" />
+                <Text style={styles.bottomDeleteText}>Delete</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -888,17 +1079,22 @@ const USPEmployeesScreen = ({ navigation }) => {
           colors={['#10b981', '#059669']}
           style={styles.header}
         >
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Team's USP</Text>
-            <Text style={styles.headerSubtitle}>
-              Manage employees featured in USP categories
-            </Text>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.7}
+            >
+              <Icon name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+
+            <View style={styles.headerTitleWrap}>
+              <Text style={styles.headerTitle}>Team's USP</Text>
+              <Text style={styles.headerSubtitle}>
+                Manage employees featured in USP categories
+              </Text>
+            </View>
           </View>
         </LinearGradient>
 
@@ -917,8 +1113,9 @@ const USPEmployeesScreen = ({ navigation }) => {
           {/* Action Buttons */}
           <View style={styles.actionButtonsContainer}>
             <TouchableOpacity
-              style={styles.addManualButton}
+              style={[styles.addManualButton, (isAdmin && employees.length > 0) && { flex: 1.3 }]}
               onPress={() => handleShowModal('manual')}
+              activeOpacity={0.85}
             >
               <LinearGradient
                 colors={['#10b981', '#059669']}
@@ -928,6 +1125,18 @@ const USPEmployeesScreen = ({ navigation }) => {
                 <Text style={styles.addButtonText}>Add Manually</Text>
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* Delete All Button (Only for Admin) */}
+            {isAdmin && employees.length > 0 && (
+              <TouchableOpacity
+                style={styles.actionDeleteAllBtn}
+                onPress={handleDeleteAll}
+                activeOpacity={0.85}
+              >
+                <Icon name="delete-sweep" size={20} color="#fff" />
+                <Text style={styles.actionDeleteAllText}>Delete All</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Filter Section */}
@@ -989,6 +1198,218 @@ const USPEmployeesScreen = ({ navigation }) => {
             )}
           </View>
         </ScrollView>
+
+        {/* ── DETAILS DIALOG MODAL ── */}
+        <Modal
+          visible={detailsModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setDetailsModalVisible(false)}
+        >
+          <View style={styles.detailsModalOverlay}>
+            <View style={styles.detailsModalContainer}>
+              {/* Header */}
+              <View style={styles.detailsModalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.detailsModalTitle}>Team USP Details</Text>
+                  <Text style={styles.detailsModalSubtitle}>
+                    {selectedEmployeeDetails?.category?.name || 'Category'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.detailsCloseBtn}
+                  onPress={() => setDetailsModalVisible(false)}
+                >
+                  <Icon name="close" size={22} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Body */}
+              <ScrollView style={styles.detailsModalBody} showsVerticalScrollIndicator={false}>
+                {selectedEmployeeDetails && (
+                  <>
+                    {/* Person Card */}
+                    <View style={styles.detailsPersonCard}>
+                      <View style={styles.detailsAvatar}>
+                        <Icon name="person" size={28} color="#fff" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 14 }}>
+                        <Text style={styles.detailsPersonName}>
+                          {selectedEmployeeDetails.employeeType === 'system'
+                            ? selectedEmployeeDetails.employee?.name
+                            : selectedEmployeeDetails.manualName}
+                        </Text>
+                        <Text style={styles.detailsPersonPhone}>
+                          📞 {selectedEmployeeDetails.employeeType === 'system'
+                            ? selectedEmployeeDetails.employee?.phone
+                            : selectedEmployeeDetails.manualPhone}
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                          <View style={[
+                            styles.typeBadge,
+                            { backgroundColor: selectedEmployeeDetails.employeeType === 'system' ? '#3b82f6' : '#f59e0b' }
+                          ]}>
+                            <Text style={styles.typeBadgeText}>
+                              {selectedEmployeeDetails.employeeType === 'system' ? 'System Employee' : 'Manual Entry'}
+                            </Text>
+                          </View>
+                          <View style={[
+                            styles.statusBadge,
+                            { backgroundColor: selectedEmployeeDetails.isActive ? '#10b981' : '#6b7280' }
+                          ]}>
+                            <Text style={styles.statusBadgeText}>
+                              {selectedEmployeeDetails.isActive ? 'Active' : 'Inactive'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Expertise & Experience */}
+                    <View style={styles.detailsSectionCard}>
+                      <Text style={styles.detailsSectionHeading}>Expertise & Experience</Text>
+                      <View style={styles.detailsInfoRow}>
+                        <Text style={styles.detailsInfoLabel}>Expertise:</Text>
+                        <Text style={styles.detailsInfoValue}>{selectedEmployeeDetails.expertise || 'Not specified'}</Text>
+                      </View>
+                      <View style={styles.detailsInfoRow}>
+                        <Text style={styles.detailsInfoLabel}>Experience:</Text>
+                        <Text style={styles.detailsInfoValue}>{selectedEmployeeDetails.experienceYears ? `${selectedEmployeeDetails.experienceYears} Years` : '0 Years'}</Text>
+                      </View>
+                      <View style={styles.detailsInfoRow}>
+                        <Text style={styles.detailsInfoLabel}>Category:</Text>
+                        <Text style={styles.detailsInfoValue}>{selectedEmployeeDetails.category?.name || 'N/A'}</Text>
+                      </View>
+                    </View>
+
+                    {/* Descriptions & History */}
+                    <View style={styles.detailsSectionCard}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Icon name="history" size={18} color="#0d9488" style={{ marginRight: 6 }} />
+                          <Text style={styles.detailsSectionHeading}>All Notes & Comments</Text>
+                        </View>
+                        {(() => {
+                          const allModalNotes = parseDescriptionHistory(selectedEmployeeDetails);
+                          return allModalNotes.length > 0 ? (
+                            <View style={{ backgroundColor: '#ccfbf1', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#0f766e' }}>
+                                {allModalNotes.length} {allModalNotes.length === 1 ? 'Note' : 'Notes'}
+                              </Text>
+                            </View>
+                          ) : null;
+                        })()}
+                      </View>
+                      {(() => {
+                        const allModalNotes = parseDescriptionHistory(selectedEmployeeDetails);
+                        if (allModalNotes.length === 0) {
+                          return (
+                            <Text style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic', paddingVertical: 4 }}>
+                              No descriptions or notes recorded yet.
+                            </Text>
+                          );
+                        }
+                        return allModalNotes.map((item, idx) => (
+                          <View key={idx} style={styles.detailsNoteItem}>
+                            <View style={styles.detailsNoteHeader}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <View style={{
+                                  width: 7,
+                                  height: 7,
+                                  borderRadius: 4,
+                                  backgroundColor: idx === allModalNotes.length - 1 ? '#10b981' : '#9ca3af',
+                                  marginRight: 6
+                                }} />
+                                <Text style={styles.detailsNoteIndex}>
+                                  Note #{idx + 1} {idx === allModalNotes.length - 1 && allModalNotes.length > 1 ? '(Latest)' : ''}
+                                </Text>
+                              </View>
+                              <Text style={styles.detailsNoteTime}>
+                                {formatNoteDate(item.addedAt)}
+                              </Text>
+                            </View>
+                            <Text style={styles.detailsNoteText}>{item.text}</Text>
+                          </View>
+                        ));
+                      })()}
+                    </View>
+
+                    {/* Reminder / Schedule */}
+                    <View style={styles.detailsSectionCard}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <Text style={styles.detailsSectionHeading}>Reminder & Scheduling</Text>
+                        <Icon name="alarm" size={18} color="#d97706" />
+                      </View>
+                      {selectedEmployeeDetails.scheduledDateTime || selectedEmployeeDetails.isReminderActive ? (
+                        <>
+                          <View style={styles.detailsInfoRow}>
+                            <Text style={styles.detailsInfoLabel}>Title:</Text>
+                            <Text style={styles.detailsInfoValue}>{selectedEmployeeDetails.reminderTitle || 'Team USP Reminder'}</Text>
+                          </View>
+                          <View style={styles.detailsInfoRow}>
+                            <Text style={styles.detailsInfoLabel}>Scheduled Date & Time:</Text>
+                            <Text style={styles.detailsInfoValue}>
+                              {selectedEmployeeDetails.scheduledDateTime ? new Date(selectedEmployeeDetails.scheduledDateTime).toLocaleString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true,
+                              }) : 'Not set'}
+                            </Text>
+                          </View>
+                          <View style={styles.detailsInfoRow}>
+                            <Text style={styles.detailsInfoLabel}>Repeat Frequency:</Text>
+                            <Text style={[styles.detailsInfoValue, { textTransform: 'capitalize', color: '#2563eb', fontWeight: '700' }]}>
+                              {selectedEmployeeDetails.repeatType === 'custom' && selectedEmployeeDetails.customDurationMinutes
+                                ? `Every ${selectedEmployeeDetails.customDurationMinutes} Minutes`
+                                : (selectedEmployeeDetails.repeatType || 'None')}
+                            </Text>
+                          </View>
+                          <View style={styles.detailsInfoRow}>
+                            <Text style={styles.detailsInfoLabel}>Assigned Employee:</Text>
+                            <Text style={styles.detailsInfoValue}>
+                              {selectedEmployeeDetails.assignedEmployee?.name
+                                ? `${selectedEmployeeDetails.assignedEmployee.name} (${selectedEmployeeDetails.assignedEmployee.phone || ''})`
+                                : 'Admin Only'}
+                            </Text>
+                          </View>
+                        </>
+                      ) : (
+                        <Text style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic', paddingVertical: 4 }}>
+                          No reminder currently scheduled for this entry.
+                        </Text>
+                      )}
+                    </View>
+                  </>
+                )}
+              </ScrollView>
+
+              {/* Footer */}
+              <View style={styles.detailsModalFooter}>
+                <TouchableOpacity
+                  style={styles.detailsEditBtn}
+                  onPress={() => {
+                    setDetailsModalVisible(false);
+                    if (selectedEmployeeDetails) {
+                      handleShowModal(selectedEmployeeDetails.employeeType, selectedEmployeeDetails);
+                    }
+                  }}
+                >
+                  <Icon name="edit" size={18} color="#fff" />
+                  <Text style={styles.detailsEditBtnText}>Edit Team's USP</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.detailsCloseActionBtn}
+                  onPress={() => setDetailsModalVisible(false)}
+                >
+                  <Text style={styles.detailsCloseActionBtnText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Add/Edit Modal */}
         <Modal
@@ -1285,27 +1706,94 @@ const USPEmployeesScreen = ({ navigation }) => {
                   </View>
                 </View>
 
-                {/* Description */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Description</Text>
-                  <View style={styles.textAreaContainer}>
-                    <Icon name="description" size={20} color="#10b981" />
-                    <TextInput
-                      style={styles.textArea}
-                      placeholder="Brief description of expertise and achievements"
-                      placeholderTextColor="#9ca3af"
-                      value={formData.description}
-                      onChangeText={(value) => handleInputChange('description', value)}
-                      multiline
-                      numberOfLines={4}
-                      onFocus={() => {
-                        setTimeout(() => {
-                          modalScrollRef.current?.scrollToEnd({ animated: true });
-                        }, 250);
-                      }}
-                    />
+                {/* Description in Edit Mode vs Add Mode */}
+                {editingEmployee ? (
+                  <View style={styles.formGroup}>
+                    {/* Previous Descriptions (Locked / Read Only) */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={styles.label}>Previous Descriptions / Notes</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                        <Icon name="lock" size={12} color="#64748b" />
+                        <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '600', marginLeft: 3 }}>Cannot be edited</Text>
+                      </View>
+                    </View>
+
+                    <View style={{
+                      backgroundColor: '#f8fafc',
+                      borderWidth: 1,
+                      borderColor: '#e2e8f0',
+                      borderRadius: 8,
+                      padding: 10,
+                      marginBottom: 12,
+                      maxHeight: 150,
+                    }}>
+                      <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
+                        {editingEmployee.descriptionHistory && editingEmployee.descriptionHistory.length > 0 ? (
+                          editingEmployee.descriptionHistory.map((item, idx) => (
+                            <View key={idx} style={{ marginBottom: idx < editingEmployee.descriptionHistory.length - 1 ? 8 : 0, borderBottomWidth: idx < editingEmployee.descriptionHistory.length - 1 ? 1 : 0, borderBottomColor: '#e2e8f0', paddingBottom: 6 }}>
+                              <Text style={{ fontSize: 13, color: '#334155', lineHeight: 18 }}>{item.text}</Text>
+                              <Text style={{ fontSize: 11, color: '#0d9488', fontWeight: '600', marginTop: 3 }}>
+                                🕒 Added: {item.addedAt ? new Date(item.addedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : ''}
+                              </Text>
+                            </View>
+                          ))
+                        ) : formData.description ? (
+                          <View>
+                            <Text style={{ fontSize: 13, color: '#334155', lineHeight: 18 }}>{formData.description}</Text>
+                            {editingEmployee.createdAt && (
+                              <Text style={{ fontSize: 11, color: '#0d9488', fontWeight: '600', marginTop: 3 }}>
+                                🕒 Added: {new Date(editingEmployee.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                              </Text>
+                            )}
+                          </View>
+                        ) : (
+                          <Text style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>No previous description recorded.</Text>
+                        )}
+                      </ScrollView>
+                    </View>
+
+                    {/* Add New Description */}
+                    <Text style={[styles.label, { color: '#0f766e', fontWeight: '700' }]}>+ Add New Description / Note</Text>
+                    <View style={[styles.textAreaContainer, { borderColor: '#0d9488' }]}>
+                      <Icon name="note-add" size={20} color="#0d9488" />
+                      <TextInput
+                        style={styles.textArea}
+                        placeholder="Type new note or description here..."
+                        placeholderTextColor="#9ca3af"
+                        value={newDescription}
+                        onChangeText={setNewDescription}
+                        multiline
+                        numberOfLines={3}
+                        onFocus={() => {
+                          setTimeout(() => {
+                            modalScrollRef.current?.scrollToEnd({ animated: true });
+                          }, 250);
+                        }}
+                      />
+                    </View>
                   </View>
-                </View>
+                ) : (
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Description</Text>
+                    <View style={styles.textAreaContainer}>
+                      <Icon name="description" size={20} color="#10b981" />
+                      <TextInput
+                        style={styles.textArea}
+                        placeholder="Brief description of expertise and achievements"
+                        placeholderTextColor="#9ca3af"
+                        value={formData.description}
+                        onChangeText={(value) => handleInputChange('description', value)}
+                        multiline
+                        numberOfLines={4}
+                        onFocus={() => {
+                          setTimeout(() => {
+                            modalScrollRef.current?.scrollToEnd({ animated: true });
+                          }, 250);
+                        }}
+                      />
+                    </View>
+                  </View>
+                )}
 
                 {/* ⏰ Set Reminder Section */}
                 <View style={styles.reminderSectionContainer}>
@@ -1343,13 +1831,13 @@ const USPEmployeesScreen = ({ navigation }) => {
                         <Text style={styles.createdAtText}>
                           {editingEmployee?.createdAt
                             ? `Created: ${new Date(editingEmployee.createdAt).toLocaleString('en-IN', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: true,
-                              })}`
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true,
+                            })}`
                             : `Created: Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}`}
                         </Text>
                       </View>
@@ -1445,7 +1933,7 @@ const USPEmployeesScreen = ({ navigation }) => {
                           <Text style={styles.dateTimePickerText}>
                             {(() => {
                               const d = reminderDateObj;
-                              return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+                              return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
                             })()}
                           </Text>
                           <Ionicons name="calendar-outline" size={20} color="#6b7280" style={styles.dateTimePickerIcon} />
@@ -1478,10 +1966,10 @@ const USPEmployeesScreen = ({ navigation }) => {
                             {(() => {
                               const d = reminderTimeObj;
                               let h = d.getHours();
-                              const m = String(d.getMinutes()).padStart(2,'0');
+                              const m = String(d.getMinutes()).padStart(2, '0');
                               const ap = h >= 12 ? 'PM' : 'AM';
                               h = h % 12 || 12;
-                              return `${String(h).padStart(2,'0')}:${m} ${ap}`;
+                              return `${String(h).padStart(2, '0')}:${m} ${ap}`;
                             })()}
                           </Text>
                           <Ionicons name="time-outline" size={20} color="#6b7280" style={styles.dateTimePickerIcon} />
@@ -1579,12 +2067,12 @@ const USPEmployeesScreen = ({ navigation }) => {
                 nestedScrollEnabled={true}
               >
                 {[
-                  { value: 'none',    label: 'Does not repeat' },
-                  { value: 'daily',   label: 'Daily' },
-                  { value: 'weekly',  label: 'Weekly' },
+                  { value: 'none', label: 'Does not repeat' },
+                  { value: 'daily', label: 'Daily' },
+                  { value: 'weekly', label: 'Weekly' },
                   { value: 'monthly', label: 'Monthly' },
-                  { value: 'yearly',  label: 'Yearly' },
-                  { value: 'custom',  label: 'Custom' },
+                  { value: 'yearly', label: 'Yearly' },
+                  { value: 'custom', label: 'Custom' },
                 ].map((opt) => (
                   <TouchableOpacity
                     key={opt.value}
@@ -1698,33 +2186,44 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   header: {
-    paddingTop: 16,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  backButton: {
-    marginBottom: 12,
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  headerContent: {
-    marginTop: 8,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  headerTitleWrap: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#fff',
-    marginBottom: 4,
+    letterSpacing: 0.3,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.92)',
+    marginTop: 2,
+    lineHeight: 18,
   },
   content: {
     flex: 1,
@@ -1769,7 +2268,8 @@ const styles = StyleSheet.create({
   },
   actionButtonsContainer: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    gap: 10,
     marginBottom: 16,
   },
   addSystemButton: {
@@ -1781,6 +2281,27 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 12,
     overflow: 'hidden',
+  },
+  actionDeleteAllBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ef4444',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    gap: 6,
+    elevation: 3,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  actionDeleteAllText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   gradientButton: {
     flexDirection: 'row',
@@ -1911,25 +2432,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6b7280',
   },
-  employeeActions: {
+  cardBottomRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  cardStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  bottomActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    justifyContent: 'center',
+  bottomActionButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
+    gap: 4,
   },
-  editButton: {
+  bottomEditButton: {
     backgroundColor: '#eff6ff',
-    borderColor: '#3b82f6',
+    borderColor: '#bfdbfe',
   },
-  deleteButton: {
+  bottomEditText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  bottomDeleteButton: {
     backgroundColor: '#fef2f2',
-    borderColor: '#ef4444',
+    borderColor: '#fecaca',
+  },
+  bottomDeleteText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ef4444',
   },
   employeeDetails: {
     gap: 10,
@@ -1971,18 +2518,17 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   descriptionContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#dcfce7',
     padding: 10,
     borderRadius: 8,
-    marginTop: 4,
+    marginTop: 8,
   },
   descriptionText: {
     fontSize: 13,
-    color: '#6b7280',
-    lineHeight: 18,
-    flex: 1,
+    color: '#374151',
+    lineHeight: 19,
   },
   emptyState: {
     alignItems: 'center',
@@ -2829,6 +3375,185 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+
+  // Details Modal Styles
+  detailsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  detailsModalContainer: {
+    width: '100%',
+    maxHeight: '85%',
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    overflow: 'hidden',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  detailsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#f8fafc',
+  },
+  detailsModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  detailsModalSubtitle: {
+    fontSize: 13,
+    color: '#10b981',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  detailsCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsModalBody: {
+    padding: 16,
+  },
+  detailsPersonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+  },
+  detailsAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#3b82f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsPersonName: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1e3a8a',
+  },
+  detailsPersonPhone: {
+    fontSize: 13,
+    color: '#475569',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  detailsSectionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  detailsSectionHeading: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  detailsInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 4,
+  },
+  detailsInfoLabel: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '600',
+    flex: 1,
+  },
+  detailsInfoValue: {
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '600',
+    flex: 1.5,
+    textAlign: 'right',
+  },
+  detailsNoteItem: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#0d9488',
+  },
+  detailsNoteHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  detailsNoteIndex: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0d9488',
+  },
+  detailsNoteTime: {
+    fontSize: 11,
+    color: '#94a3b8',
+  },
+  detailsNoteText: {
+    fontSize: 13,
+    color: '#334155',
+    lineHeight: 18,
+  },
+  detailsModalFooter: {
+    flexDirection: 'row',
+    padding: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    backgroundColor: '#f8fafc',
+    gap: 10,
+  },
+  detailsEditBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  detailsEditBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  detailsCloseActionBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsCloseActionBtnText: {
+    color: '#475569',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 

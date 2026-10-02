@@ -11,6 +11,7 @@ import {
   StatusBar,
   Platform,
   Modal,
+  Switch,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -44,6 +45,7 @@ const CreateAlertScreen = ({ navigation, route }) => {
     repeatFrequency: alertToEdit?.repeatFrequency || 'none', // none, daily, weekly, monthly, yearly, custom
     repeatDaily: alertToEdit?.repeatDaily || false, // Keep for backward compatibility
     customIntervalMinutes: alertToEdit?.customIntervalMinutes || '', // Custom interval in minutes
+    placeReminder: alertToEdit?.placeReminder !== undefined ? alertToEdit.placeReminder : true,
   });
   const [showCustomInput, setShowCustomInput] = useState(alertToEdit?.repeatFrequency === 'custom');
   const [showCustomManualInput, setShowCustomManualInput] = useState(false);
@@ -183,6 +185,8 @@ const CreateAlertScreen = ({ navigation, route }) => {
       // forceCategoryFromNav is read at component top level to avoid closure issues
       const finalCategory = forceCategoryFromNav || (isAdmin ? 'reminder' : 'alert');
       console.log('📦 Creating alert with category:', finalCategory, '| forceCategory:', forceCategoryFromNav, '| isAdmin:', isAdmin);
+      const isPlaceReminder = formData.placeReminder !== false;
+
       // Prepare alert data
       const alertData = {
         title: formData.title,
@@ -194,6 +198,7 @@ const CreateAlertScreen = ({ navigation, route }) => {
         customRepeatMinutes: formData.customIntervalMinutes, // 🔥 Fix: Renamed for backend compatibility
         repeatDaily: formData.repeatFrequency === 'daily',
         isActive: true,
+        placeReminder: isPlaceReminder,
         category: finalCategory, // ✅ 'alert' from Alerts screen, 'reminder' from My Reminders screen
       };
 
@@ -214,7 +219,7 @@ const CreateAlertScreen = ({ navigation, route }) => {
           ? (alertToEdit._id || alertToEdit.id)
           : (result.alert?._id || result.alert?.id || result.data?._id || result.data?.id);
 
-        if (alertId) {
+        if (alertId && isPlaceReminder) {
           // Determine notification type based on category rather than just admin status
           const finalNotificationType = finalCategory === 'reminder' ? 'admin_reminder' : 'alert';
 
@@ -369,18 +374,33 @@ const CreateAlertScreen = ({ navigation, route }) => {
 
         const repeatMsg = formData.repeatFrequency !== 'none' ? ' at the scheduled time' : '';
 
-        CrossPlatformAlert.alert(
-          '✅ Success',
-          `Alert ${isEditMode ? 'updated' : 'created'} successfully!\n\n${scheduleInfo}\n\n🔔 You will receive notification${repeatMsg}`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.goBack();
-              }
-            },
-          ]
-        );
+        if (isPlaceReminder) {
+          CrossPlatformAlert.alert(
+            '✅ Success',
+            `${finalCategory === 'reminder' ? 'Reminder' : 'Alert'} ${isEditMode ? 'updated' : 'created'} successfully!\n\n${scheduleInfo}\n\n🔔 You will receive notification${repeatMsg}`,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  navigation.goBack();
+                }
+              },
+            ]
+          );
+        } else {
+          CrossPlatformAlert.alert(
+            '✅ Note Saved',
+            `Note ${isEditMode ? 'updated' : 'recorded'} successfully!\n\n(No reminder notification or popup will be sent)`,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  navigation.goBack();
+                }
+              },
+            ]
+          );
+        }
       } else {
         CrossPlatformAlert.alert('Error', result.message || 'Failed to create reminder');
       }
@@ -528,65 +548,104 @@ const CreateAlertScreen = ({ navigation, route }) => {
             />
           </View>
 
-          {/* Date Field */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Date <Text style={styles.required}>*</Text>
-            </Text>
-            <TouchableOpacity
-              style={styles.inputContainer}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={styles.dateTimeText}>{formatDate(formData.date)}</Text>
-              <Icon name="calendar-outline" size={20} color="#6b7280" style={styles.inputIcon} />
-            </TouchableOpacity>
-          </View>
-
-          {showDatePicker && (
-            <DateTimePicker
-              value={formData.date}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDateChange}
-              minimumDate={new Date()}
+          {/* Toggle: Place a Reminder */}
+          <View style={styles.toggleCard}>
+            <View style={styles.toggleLeft}>
+              <View style={[styles.toggleIconWrap, { backgroundColor: formData.placeReminder ? '#eff6ff' : '#f1f5f9' }]}>
+                <Icon
+                  name={formData.placeReminder ? "notifications" : "notifications-off-outline"}
+                  size={20}
+                  color={formData.placeReminder ? "#2563eb" : "#64748b"}
+                />
+              </View>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.toggleTitle}>Place a Reminder</Text>
+                <Text style={styles.toggleSubtitle}>
+                  {formData.placeReminder
+                    ? "Notifications & popups will trigger at due time"
+                    : "Save as Note only (no notifications or popups)"}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={formData.placeReminder}
+              onValueChange={(val) => handleInputChange('placeReminder', val)}
+              trackColor={{ false: '#cbd5e1', true: '#93c5fd' }}
+              thumbColor={formData.placeReminder ? '#2563eb' : '#f8fafc'}
             />
-          )}
-
-          {/* Time Field */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Time <Text style={styles.required}>*</Text>
-            </Text>
-            <TouchableOpacity
-              style={styles.inputContainer}
-              onPress={() => setShowTimePicker(true)}
-            >
-              <Text style={styles.dateTimeText}>{formatTimeForDisplay(formData.time)}</Text>
-              <Icon name="time-outline" size={20} color="#6b7280" style={styles.inputIcon} />
-            </TouchableOpacity>
           </View>
 
-          {showTimePicker && (
-            <DateTimePicker
-              value={formData.time}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleTimeChange}
-              is24Hour={false}
-            />
-          )}
+          {/* Date, Time & Repeat ONLY when placeReminder is ON */}
+          {formData.placeReminder ? (
+            <>
+              {/* Date Field */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Date <Text style={styles.required}>*</Text>
+                </Text>
+                <TouchableOpacity
+                  style={styles.inputContainer}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={styles.dateTimeText}>{formatDate(formData.date)}</Text>
+                  <Icon name="calendar-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+                </TouchableOpacity>
+              </View>
 
-          {/* Repeat Frequency Picker */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Repeat</Text>
-            <TouchableOpacity
-              style={styles.inputContainer}
-              onPress={() => setShowRepeatModal(true)}
-            >
-              <Text style={styles.dateTimeText}>{getRepeatLabel()}</Text>
-              <Icon name="chevron-down-outline" size={20} color="#6b7280" style={styles.inputIcon} />
-            </TouchableOpacity>
-          </View>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={formData.date}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleDateChange}
+                  minimumDate={new Date()}
+                />
+              )}
+
+              {/* Time Field */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Time <Text style={styles.required}>*</Text>
+                </Text>
+                <TouchableOpacity
+                  style={styles.inputContainer}
+                  onPress={() => setShowTimePicker(true)}
+                >
+                  <Text style={styles.dateTimeText}>{formatTimeForDisplay(formData.time)}</Text>
+                  <Icon name="time-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+                </TouchableOpacity>
+              </View>
+
+              {showTimePicker && (
+                <DateTimePicker
+                  value={formData.time}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleTimeChange}
+                  is24Hour={false}
+                />
+              )}
+
+              {/* Repeat Frequency Picker */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Repeat</Text>
+                <TouchableOpacity
+                  style={styles.inputContainer}
+                  onPress={() => setShowRepeatModal(true)}
+                >
+                  <Text style={styles.dateTimeText}>{getRepeatLabel()}</Text>
+                  <Icon name="chevron-down-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <View style={styles.noteOnlyBanner}>
+              <Icon name="information-circle-outline" size={18} color="#d97706" style={{ marginRight: 8, marginTop: 2 }} />
+              <Text style={styles.noteOnlyBannerText}>
+                Note mode active: This note will be recorded without triggering notifications or popups.
+              </Text>
+            </View>
+          )}
 
           {/* Action Buttons */}
           <View style={styles.buttonContainer}>
@@ -604,7 +663,11 @@ const CreateAlertScreen = ({ navigation, route }) => {
               disabled={isSubmitting}
             >
               <Text style={styles.createButtonText}>
-                {isSubmitting ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Alert' : 'Create Alert')}
+                {isSubmitting
+                  ? (isEditMode ? 'Updating...' : 'Saving...')
+                  : isEditMode
+                    ? (formData.placeReminder ? 'Update Reminder' : 'Update Note')
+                    : (formData.placeReminder ? 'Create Reminder' : 'Save Note')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -868,6 +931,67 @@ const styles = StyleSheet.create({
     color: '#374151',
     fontWeight: '500',
   },
+
+  // ── Toggle Card ──
+  toggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 14,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  toggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  toggleIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  toggleTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  toggleSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+
+  // ── Note Only Banner ──
+  noteOnlyBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#fffbeb',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#fef3c7',
+    padding: 12,
+    marginBottom: 20,
+  },
+  noteOnlyBannerText: {
+    fontSize: 12,
+    color: '#92400e',
+    lineHeight: 18,
+    flex: 1,
+  },
+
   buttonContainer: {
     flexDirection: 'row',
     gap: 12,

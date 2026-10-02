@@ -432,6 +432,33 @@ export const deleteEnquiry = async (enquiryId) => {
 };
 
 /**
+ * Delete all enquiries (Admin only)
+ */
+export const deleteAllEnquiries = async () => {
+  try {
+    console.log('🗑️ Deleting all enquiries');
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${CRM_BASE_URL}/api/inquiry/delete-all`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    const data = await response.json();
+    return {
+      success: response.ok && data.success !== false,
+      message: data.message || 'All clients/leads deleted successfully',
+      deletedCount: data.deletedCount || 0
+    };
+  } catch (error) {
+    console.error('❌ Error deleting all enquiries:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to delete all enquiries'
+    };
+  }
+};
+
+/**
  * Get available employees for assignment
  */
 export const getAvailableEmployees = async () => {
@@ -573,7 +600,8 @@ export const createReminder = async (reminderData) => {
       enquiryId: reminderData.enquiryId,
       assignedEmployeeId: reminderData.assignedEmployeeId,
       repeatType: reminderData.repeatType,
-      customIntervalMinutes: reminderData.customIntervalMinutes
+      customIntervalMinutes: reminderData.customIntervalMinutes,
+      placeReminder: reminderData.placeReminder !== undefined ? reminderData.placeReminder : true
     };
 
     const response = await fetch(`${CRM_BASE_URL}/api/reminder/create`, {

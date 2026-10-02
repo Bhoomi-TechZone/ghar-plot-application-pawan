@@ -122,10 +122,21 @@ export const createCashFlow = async (cashFlowData) => {
 /**
  * GET /admin/projects - Fetch all projects
  */
-export const getProjects = async () => {
+export const getProjects = async (params = {}) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${BASE_URL}/admin/projects`, {
+    let url = `${BASE_URL}/admin/projects`;
+    if (params && typeof params === 'object') {
+      const queryParts = [];
+      if (params.employeeId) queryParts.push(`employeeId=${encodeURIComponent(params.employeeId)}`);
+      if (params.status) queryParts.push(`status=${encodeURIComponent(params.status)}`);
+      if (params.client) queryParts.push(`client=${encodeURIComponent(params.client)}`);
+      if (params.search) queryParts.push(`search=${encodeURIComponent(params.search)}`);
+      if (queryParts.length > 0) {
+        url += `?${queryParts.join('&')}`;
+      }
+    }
+    const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers,
     });

@@ -37,6 +37,7 @@ import {
   addManualEnquiry,
   updateEnquiry,
   deleteEnquiry,
+  deleteAllEnquiries,
   getEnquiryDetails,
   getEnquiryReminders
 } from '../../services/crmEnquiryApi';
@@ -59,7 +60,7 @@ import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 if (__DEV__) {
   try {
     require('./enquiriesDebug');
-  } catch (_) {}
+  } catch (_) { }
 }
 
 const EnquiriesScreen = ({ navigation, route }) => {
@@ -731,6 +732,42 @@ const EnquiriesScreen = ({ navigation, route }) => {
     );
   };
 
+  const handleDeleteAllEnquiries = () => {
+    if (!enquiries || enquiries.length === 0) {
+      CrossPlatformAlert.alert('Info', 'No clients/leads to delete.');
+      return;
+    }
+
+    CrossPlatformAlert.alert(
+      'Delete All Clients / Leads',
+      `Are you sure you want to delete ALL ${enquiries.length} clients/leads?\n\nThis action will delete all enquiries and assignments. It cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const res = await deleteAllEnquiries();
+              if (res.success) {
+                showSuccessToast('All clients/leads deleted successfully');
+                await fetchEnquiries();
+              } else {
+                showErrorToast(res.message || 'Failed to delete all leads');
+              }
+            } catch (err) {
+              console.error('Error deleting all enquiries:', err);
+              showErrorToast('Failed to delete all leads');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleFollowUp = (enquiry) => {
     setSelectedEnquiry(enquiry);
     setFollowUpModalVisible(true);
@@ -987,6 +1024,17 @@ const EnquiriesScreen = ({ navigation, route }) => {
             {selectionMode ? 'Cancel' : 'Select'}
           </Text>
         </TouchableOpacity>
+
+        {/* Delete All Button (Only for Admin) */}
+        {userRole === 'admin' && enquiries.length > 0 && (
+          <TouchableOpacity
+            style={styles.deleteAllButton}
+            onPress={handleDeleteAllEnquiries}
+          >
+            <Text style={{ fontSize: 16, color: '#ffffff' }}>🗑️</Text>
+            <Text style={styles.deleteAllText}>Delete All</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Assignment Bar */}
@@ -1134,7 +1182,7 @@ const EnquiriesScreen = ({ navigation, route }) => {
                   </View>
 
                   {/* Major Comments (Previous Notes) - Moved to top */}
-                  {selectedEnquiry.majorComments && (
+                  {selectedEnquiry.majorComments ? (
                     <View style={styles.modalSection}>
                       <View style={{
                         backgroundColor: '#fef3c7',
@@ -1144,55 +1192,93 @@ const EnquiriesScreen = ({ navigation, route }) => {
                         borderLeftColor: '#f59e0b',
                         marginBottom: 10
                       }}>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#92400e', marginBottom: 4 }}>Previous Notes:</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#92400e' }}>Initial Note / Description:</Text>
+                          <Text style={{ fontSize: 11, color: '#b45309', fontWeight: '600' }}>
+                            🕒 {selectedEnquiry.createdAt ? new Date(selectedEnquiry.createdAt).toLocaleString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true,
+                            }) : ''}
+                          </Text>
+                        </View>
                         <Text style={{ fontSize: 12, color: '#78350f', lineHeight: 18 }}>
                           {selectedEnquiry.majorComments}
                         </Text>
                       </View>
                     </View>
-                  )}
+                  ) : null}
 
                   {/* Comments Section */}
                   <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>💬 Comments</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text style={styles.modalSectionTitle}>💬 Comments & Notes History</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                        <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '600' }}>🔒 Previous comments locked</Text>
+                      </View>
+                    </View>
 
                     {/* Existing Comments Array */}
                     {selectedEnquiry.comments && selectedEnquiry.comments.length > 0 ? (
                       selectedEnquiry.comments.map((comment, index) => (
                         <View key={comment._id || index} style={{
-                          backgroundColor: '#f3f4f6',
+                          backgroundColor: '#f8fafc',
                           padding: 10,
                           borderRadius: 8,
                           marginBottom: 8,
                           borderLeftWidth: 3,
-                          borderLeftColor: '#3b82f6'
+                          borderLeftColor: '#0d9488',
+                          borderWidth: 1,
+                          borderColor: '#e2e8f0',
                         }}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <Text style={{ fontSize: 12, fontWeight: '600', color: '#3b82f6' }}>
-                              {comment.addedBy || 'Unknown'}
-                            </Text>
-                            <Text style={{ fontSize: 10, color: '#9ca3af' }}>
-                              {comment.addedAt ? new Date(comment.addedAt).toLocaleString() : ''}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f766e' }}>
+                                {comment.addedBy || 'Admin'}
+                              </Text>
+                              <View style={{ backgroundColor: '#ccfbf1', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 9, color: '#0f766e', fontWeight: '700' }}>#{index + 1}</Text>
+                              </View>
+                            </View>
+                            <Text style={{ fontSize: 11, color: '#059669', fontWeight: '600' }}>
+                              🕒 {comment.addedAt ? new Date(comment.addedAt).toLocaleString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true,
+                              }) : ''}
                             </Text>
                           </View>
-                          <Text style={{ fontSize: 13, color: '#374151' }}>{comment.comment}</Text>
+                          <Text style={{ fontSize: 13, color: '#334155', lineHeight: 18 }}>{comment.comment}</Text>
                         </View>
                       ))
-                    ) : null}
+                    ) : (
+                      <Text style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', marginBottom: 4 }}>
+                        No additional comments yet. Add a new comment below.
+                      </Text>
+                    )}
                   </View>
 
                   {/* Add Comment Input */}
                   <View style={styles.modalSection}>
                     <View style={{
-                      marginTop: 10,
+                      marginTop: 4,
                       borderTopWidth: 1,
                       borderTopColor: '#e5e7eb',
                       paddingTop: 10
                     }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f766e', marginBottom: 6 }}>
+                        + Add New Comment
+                      </Text>
                       <TextInput
                         style={{
                           borderWidth: 1,
-                          borderColor: '#d1d5db',
+                          borderColor: '#0d9488',
                           borderRadius: 8,
                           paddingHorizontal: 12,
                           paddingVertical: 10,
@@ -1202,7 +1288,7 @@ const EnquiriesScreen = ({ navigation, route }) => {
                           minHeight: 70,
                           textAlignVertical: 'top'
                         }}
-                        placeholder="Add a comment..."
+                        placeholder="Type new comment or update note here..."
                         placeholderTextColor="#9ca3af"
                         value={newComment}
                         onChangeText={setNewComment}
@@ -1211,7 +1297,7 @@ const EnquiriesScreen = ({ navigation, route }) => {
                       />
                       <TouchableOpacity
                         style={{
-                          backgroundColor: isAddingComment ? '#9ca3af' : '#3b82f6',
+                          backgroundColor: isAddingComment ? '#9ca3af' : '#0d9488',
                           borderRadius: 8,
                           paddingVertical: 10,
                           alignItems: 'center',
@@ -1223,7 +1309,7 @@ const EnquiriesScreen = ({ navigation, route }) => {
                         {isAddingComment ? (
                           <ActivityIndicator size="small" color="#ffffff" />
                         ) : (
-                          <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Add Comment</Text>
+                          <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700' }}>Save New Comment</Text>
                         )}
                       </TouchableOpacity>
                     </View>
@@ -1333,6 +1419,30 @@ const EnquiriesScreen = ({ navigation, route }) => {
                     ) : (
                       <Text style={styles.modalText}>No reminders set for this enquiry</Text>
                     )}
+
+                    {/* Set / Update Reminder Button */}
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#eff6ff',
+                        borderWidth: 1,
+                        borderColor: '#bfdbfe',
+                        borderRadius: 8,
+                        paddingVertical: 10,
+                        marginTop: 10,
+                        gap: 6,
+                      }}
+                      onPress={() => {
+                        setDetailsModalVisible(false);
+                        handleSetReminder(selectedEnquiry);
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, color: '#2563eb', fontWeight: '700' }}>
+                        🔔 Set / Update Reminder
+                      </Text>
+                    </TouchableOpacity>
                   </View>
 
                   {/* Comments/Follow-ups Section */}

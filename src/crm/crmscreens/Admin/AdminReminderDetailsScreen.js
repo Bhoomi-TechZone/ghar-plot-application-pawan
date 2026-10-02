@@ -4,6 +4,7 @@
  * Features: View Details, Edit, Cancel, Complete, Add Comment, Reassign Info
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -112,9 +113,11 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
     }
   }, [reminderId]);
 
-  useEffect(() => {
-    fetchReminderDetails();
-  }, [fetchReminderDetails]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchReminderDetails();
+    }, [fetchReminderDetails])
+  );
 
   const formatDateTime = (isoString) => {
     if (!isoString) return 'Not scheduled';
@@ -161,7 +164,8 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
         originalReason: currentNote,
         originalDate: fetchedDetails?.date || fetchedDetails?.scheduledDate || '',
         originalTime: fetchedDetails?.time || fetchedDetails?.scheduledTime || '',
-        repeatDaily: fetchedDetails?.repeatDaily || fetchedDetails?.repeatFrequency === 'daily'
+        repeatDaily: fetchedDetails?.repeatDaily || fetchedDetails?.repeatFrequency === 'daily',
+        placeReminder: fetchedDetails?.placeReminder !== false
       });
     } else {
       console.log('✏️ Navigating to EditReminder');
@@ -178,7 +182,8 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
         // 🔥 Pass the scheduled date/time so EditReminder can show the correct date
         scheduledDateTime: fetchedDetails?.reminderDateTime || fetchedDetails?.nextOccurrence || reminderTime,
         isRepeating: fetchedDetails?.isRepeating || false,
-        repeatType: fetchedDetails?.repeatType || fetchedDetails?.repeatFrequency || 'daily'
+        repeatType: fetchedDetails?.repeatType || fetchedDetails?.repeatFrequency || 'daily',
+        placeReminder: fetchedDetails?.placeReminder !== false
       });
     }
   };
@@ -280,7 +285,10 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
     }
   };
 
+  const isNote = fetchedDetails?.placeReminder === false || reminderStatus === 'inactive' || reminderStatus === 'note';
+
   const getStatusColor = () => {
+    if (isNote) return '#6B7280';
     switch (reminderStatus) {
       case 'completed': return '#10B981';
       case 'cancelled': return '#EF4444';
@@ -289,7 +297,7 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  const isActionable = reminderStatus === 'pending' || reminderStatus === 'overdue';
+  const isActionable = isNote || reminderStatus === 'pending' || reminderStatus === 'overdue';
 
   return (
     <View style={styles.container}>
@@ -304,7 +312,7 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
           <Text style={styles.headerTitle}>Admin Details</Text>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20', borderColor: getStatusColor() }]}>
             <Text style={[styles.statusBadgeText, { color: getStatusColor() }]}>
-              {reminderStatus.toUpperCase()}
+              {isNote ? 'NOTE' : reminderStatus.toUpperCase()}
             </Text>
           </View>
         </View>

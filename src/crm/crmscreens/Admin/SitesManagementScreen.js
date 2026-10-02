@@ -796,24 +796,24 @@ const SitesManagementScreen = ({ route, navigation }) => {
 
     switch (datePickerConfig.targetField) {
       case 'cashFlowForm.date': {
-        setCashFlowForm(prev => ({...prev, date: formattedStr}));
+        setCashFlowForm(prev => ({ ...prev, date: formattedStr }));
         if (cashFlowForm.associate) {
           fetchAndSetOpeningBalance(cashFlowForm.associate, formattedStr);
         }
         break;
       }
-      case 'expensesForm.date': setExpensesForm(prev => ({...prev, date: formattedStr})); break;
+      case 'expensesForm.date': setExpensesForm(prev => ({ ...prev, date: formattedStr })); break;
       case 'sheetDate': setSheetDate(formattedStr); break;
-      case 'workStatusForm.date': setWorkStatusForm(prev => ({...prev, date: formattedStr})); break;
-      case 'paymentForm.date': setPaymentForm(prev => ({...prev, date: formattedStr})); break;
+      case 'workStatusForm.date': setWorkStatusForm(prev => ({ ...prev, date: formattedStr })); break;
+      case 'paymentForm.date': setPaymentForm(prev => ({ ...prev, date: formattedStr })); break;
       case 'selectedDateFilterExpenses': setSelectedDateFilter(formattedStr); break;
       case 'selectedEndDateFilterExpenses': setSelectedEndDateFilter(formattedStr); break;
       case 'selectedDateFilterWorkStatus': setSelectedDateFilter(formattedStr); break;
       case 'selectedEndDateFilterWorkStatus': setSelectedEndDateFilter(formattedStr); break;
       case 'selectedDateFilterClientPayments': setSelectedDateFilter(formattedStr); break;
-      case 'cashFlowDateFilter': 
-        setCashFlowDateFilter(formattedStr); 
-        setCashFlowPage(1); 
+      case 'cashFlowDateFilter':
+        setCashFlowDateFilter(formattedStr);
+        setCashFlowPage(1);
         break;
       case 'workStatusDateFilter': {
         const d = String(selectedDate.getDate()).padStart(2, '0');
@@ -956,7 +956,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
     try {
       const dateParts = cashFlowForm.date.split(/[-/]/);
       const formattedDate = `${dateParts[2]}-${String(dateParts[0]).padStart(2, '0')}-${String(dateParts[1]).padStart(2, '0')}`;
-      
+
       const newEntries = cashFlowForm.entries.map(e => ({
         receivedFrom: e.receivedFrom,
         receivedAmount: parseFloat(e.receivedAmount) || 0,
@@ -1487,7 +1487,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
         {/* Unified Filter Card - Stacked Vertically for mobile spacing */}
         <View style={styles.filterCard}>
           <Text style={styles.cardHeaderTitle}>Filter Projects</Text>
-          
+
           <DropdownSelector
             label="Client"
             value={selectedClientFilter}
@@ -1668,7 +1668,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
       <View style={styles.viewContainer}>
         <View style={styles.formCard}>
           <Text style={styles.formSectionTitle}>{editingProject ? 'Edit Project' : 'Add Project'} Details</Text>
-          
+
           <View style={styles.formField}>
             <Text style={styles.formLabel}>Project/Site Name <Text style={styles.required}>*</Text></Text>
             <TextInput
@@ -1679,7 +1679,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
               placeholderTextColor="#94a3b8"
             />
           </View>
-          
+
           <DropdownSelector
             label="Client"
             required
@@ -1704,10 +1704,10 @@ const SitesManagementScreen = ({ route, navigation }) => {
             onSelect={(val) => setProjectForm({ ...projectForm, status: val })}
             containerStyle={styles.formField}
           />
-          
+
           <View style={[styles.formFooter, { justifyContent: 'flex-end' }]}>
-            <TouchableOpacity 
-              style={[styles.solidTealButton, submitLoading && { opacity: 0.7 }]} 
+            <TouchableOpacity
+              style={[styles.solidTealButton, submitLoading && { opacity: 0.7 }]}
               onPress={handleSaveProject}
               disabled={submitLoading}
             >
@@ -1803,8 +1803,8 @@ const SitesManagementScreen = ({ route, navigation }) => {
             containerStyle={styles.formField}
           />
 
-          <View style={{flexDirection: 'row', gap: 10, marginBottom: 16}}>
-            <View style={{flex: 1}}>
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+            <View style={{ flex: 1 }}>
               <Text style={styles.formLabel}>Date <Text style={styles.required}>*</Text></Text>
               <TouchableOpacity onPress={() => openDatePicker('cashFlowForm.date', cashFlowForm.date)}>
                 <View style={styles.dateInputWrapper} pointerEvents="none">
@@ -1819,7 +1819,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
                 </View>
               </TouchableOpacity>
             </View>
-            <View style={{flex: 1}}>
+            <View style={{ flex: 1 }}>
               <Text style={styles.formLabel}>Opening Balance (Auto/Edit)</Text>
               <TextInput
                 style={styles.formInput}
@@ -1834,17 +1834,17 @@ const SitesManagementScreen = ({ route, navigation }) => {
           {/* Dynamic Entries */}
           {cashFlowForm.entries.map((entry, index) => (
             <View key={entry.id} style={{ marginBottom: 16, padding: 10, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8 }}>
-              <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10}}>
-                <Text style={{fontWeight: 'bold', color: '#475569'}}>Entry {index + 1}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <Text style={{ fontWeight: 'bold', color: '#475569' }}>Entry {index + 1}</Text>
                 {cashFlowForm.entries.length > 1 && (
                   <TouchableOpacity onPress={() => removeCashFlowEntry(entry.id)}>
-                    <Text style={{color: '#ef4444', fontWeight: '600'}}>Remove</Text>
+                    <Text style={{ color: '#ef4444', fontWeight: '600' }}>Remove</Text>
                   </TouchableOpacity>
                 )}
               </View>
-              
-              <View style={{flexDirection: 'row', gap: 10, marginBottom: 10}}>
-                <View style={{flex: 1}}>
+
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.formLabel}>Received From <Text style={styles.required}>*</Text></Text>
                   <TextInput
                     style={styles.formInput}
@@ -1854,7 +1854,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
                     placeholderTextColor="#94a3b8"
                   />
                 </View>
-                <View style={{flex: 1}}>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.formLabel}>Received Amount <Text style={styles.required}>*</Text></Text>
                   <TextInput
                     style={styles.formInput}
@@ -1885,8 +1885,8 @@ const SitesManagementScreen = ({ route, navigation }) => {
               <Text style={styles.outlineTealButtonText}>Add More</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.solidTealButton, submitLoading && { opacity: 0.7 }]} 
+            <TouchableOpacity
+              style={[styles.solidTealButton, submitLoading && { opacity: 0.7 }]}
               onPress={handleAddCashFlowSubmit}
               disabled={submitLoading}
             >
@@ -1916,8 +1916,8 @@ const SitesManagementScreen = ({ route, navigation }) => {
       const d2 = new Date(filterStr);
       if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
         return d1.getFullYear() === d2.getFullYear() &&
-               d1.getMonth() === d2.getMonth() &&
-               d1.getDate() === d2.getDate();
+          d1.getMonth() === d2.getMonth() &&
+          d1.getDate() === d2.getDate();
       }
       return String(dateVal).includes(filterStr);
     };
@@ -3086,7 +3086,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
             onSelect={(val) => setExpensesForm({ ...expensesForm, client: val, project: '' })}
             containerStyle={styles.formField}
           />
-          
+
           {/* PROJECT / SITE PICKER */}
           <DropdownSelector
             label="Project / Site"
@@ -3278,8 +3278,8 @@ const SitesManagementScreen = ({ route, navigation }) => {
           </View>
 
           <View style={[styles.formFooter, { justifyContent: 'flex-end' }]}>
-            <TouchableOpacity 
-              style={[styles.solidTealButton, submitLoading && { opacity: 0.7 }]} 
+            <TouchableOpacity
+              style={[styles.solidTealButton, submitLoading && { opacity: 0.7 }]}
               onPress={handleAddExpensesSubmit}
               disabled={submitLoading}
             >
@@ -3805,8 +3805,8 @@ const SitesManagementScreen = ({ route, navigation }) => {
           </View>
 
           <View style={[styles.formFooter, { justifyContent: 'flex-end' }]}>
-            <TouchableOpacity 
-              style={[styles.solidTealButton, submitLoading && { opacity: 0.7 }]} 
+            <TouchableOpacity
+              style={[styles.solidTealButton, submitLoading && { opacity: 0.7 }]}
               onPress={handleAddWorkStatusSubmit}
               disabled={submitLoading}
             >
@@ -3838,7 +3838,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
     return (
       <View style={styles.viewContainer}>
         {/* Filters */}
-        <View style={{flexDirection: 'row', gap: 10, marginBottom: 10, flexWrap: 'wrap'}}>
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
           <DropdownSelector
             label="Client"
             value={selectedClientFilter}
@@ -3866,7 +3866,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
             onSelect={(val) => setSelectedPaymentTypeFilter(val)}
             containerStyle={{ flex: 1, minWidth: 150 }}
           />
-          <View style={{flex: 1, minWidth: 150}}>
+          <View style={{ flex: 1, minWidth: 150 }}>
             <Text style={styles.filterLabel}>Date</Text>
             <View style={styles.dateInputWrapper}>
               <TextInput
@@ -3877,9 +3877,9 @@ const SitesManagementScreen = ({ route, navigation }) => {
               />
               <MaterialIcons name="event" size={20} color="#009688" style={styles.dateIcon} />
             </View>
-            <View style={{marginTop: 8, alignItems: 'flex-end'}}>
-              <View style={{backgroundColor: '#009688', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 4}}>
-                <Text style={{color: '#fff', fontWeight: 'bold'}}>Total Amount: Rs. 38550209.00</Text>
+            <View style={{ marginTop: 8, alignItems: 'flex-end' }}>
+              <View style={{ backgroundColor: '#009688', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 4 }}>
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Total Amount: Rs. 38550209.00</Text>
               </View>
             </View>
           </View>
@@ -3946,7 +3946,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
     return (
       <View style={styles.viewContainer}>
         <View style={styles.formCard}>
-          
+
           <DropdownSelector
             label="Client"
             required
@@ -3957,7 +3957,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
             onSelect={(val) => setPaymentForm({ ...paymentForm, client: val })}
             containerStyle={styles.formField}
           />
-          
+
           <DropdownSelector
             label="Project"
             required
@@ -4021,8 +4021,8 @@ const SitesManagementScreen = ({ route, navigation }) => {
           </View>
 
           <View style={[styles.formFooter, { justifyContent: 'flex-end' }]}>
-            <TouchableOpacity 
-              style={[styles.solidTealButton, submitLoading && { opacity: 0.7 }]} 
+            <TouchableOpacity
+              style={[styles.solidTealButton, submitLoading && { opacity: 0.7 }]}
               onPress={handleAddPaymentSubmit}
               disabled={submitLoading}
             >

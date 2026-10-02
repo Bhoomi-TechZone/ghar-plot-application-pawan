@@ -274,7 +274,7 @@ const AdminNavigator = ({ onLogout }) => {
         component={EnquiriesScreen}
         options={{
           headerShown: true,
-          title: 'All Leads',
+          title: 'All Clients',
           headerStyle: {
             backgroundColor: '#007AFF',
           },

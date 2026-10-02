@@ -432,6 +432,7 @@ const formatDateTime = (iso, reminderTime = null) => {
           alert.customRepeatMinutes ||
           alert.repeatInterval ||
           '',
+        placeReminder: alert.placeReminder !== false,
       });
       return;
     }
@@ -458,6 +459,7 @@ const formatDateTime = (iso, reminderTime = null) => {
       scheduledDateTime: alert.nextScheduledAt || alert.scheduledDateTime || `${alert.date}T${alert.time}`,
       customIntervalMinutes: customMins,
       repeatMetadata: alert.repeatMetadata, // Pass complete repeatMetadata object
+      placeReminder: alert.placeReminder !== false,
     });
   };
 
@@ -573,11 +575,16 @@ const formatDateTime = (iso, reminderTime = null) => {
               style={[
                 styles.badge,
                 { marginRight: 0 },
-                item.isActive ? styles.badgeActive : styles.badgeInactive,
+                item.placeReminder === false
+                  ? { backgroundColor: '#f3f4f6' }
+                  : (item.isActive ? styles.badgeActive : styles.badgeInactive),
               ]}
             >
-              <Text style={styles.badgeText}>
-                {item.isActive ? 'ACTIVE' : 'INACTIVE'}
+              <Text style={[
+                styles.badgeText,
+                item.placeReminder === false ? { color: '#6b7280' } : null,
+              ]}>
+                {item.placeReminder === false ? 'NOTE' : (item.isActive ? 'ACTIVE' : 'INACTIVE')}
               </Text>
             </View>
           </View>

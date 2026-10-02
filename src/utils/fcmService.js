@@ -192,8 +192,8 @@ export const setupForegroundNotificationHandler = () => {
       !data?.alertId &&
       !data?.enquiryId &&
       (title?.toLowerCase() === 'notification scheduled' ||
-       title?.toLowerCase().includes('scheduled successfully') ||
-       body?.toLowerCase().includes('scheduled successfully'));
+        title?.toLowerCase().includes('scheduled successfully') ||
+        body?.toLowerCase().includes('scheduled successfully'));
 
     if (isWelcomeOrGreeting || isMetaScheduledConfirm) {
       console.log('⏭️ Skipping meta notification (welcome/scheduled confirmation)');
@@ -567,8 +567,8 @@ export const backgroundMessageHandler = async (remoteMessage) => {
       !data?.alertId &&
       !data?.enquiryId &&
       (title?.toLowerCase() === 'notification scheduled' ||
-       title?.toLowerCase().includes('scheduled successfully') ||
-       body?.toLowerCase().includes('scheduled successfully'));
+        title?.toLowerCase().includes('scheduled successfully') ||
+        body?.toLowerCase().includes('scheduled successfully'));
 
     if (isMetaScheduledConfirmBG) {
       console.log('⏭️ Skipping meta background notification (scheduled confirmation)');
@@ -998,7 +998,7 @@ export const sendTokenToBackend = async (userId, token, options = {}) => {
           adminId = parsed?._id || parsed?.id;
           if (adminId) await AsyncStorage.setItem('adminId', String(adminId));
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     if (!adminId) {
       adminId = await AsyncStorage.getItem('admin_email');
@@ -1069,7 +1069,7 @@ export const sendTokenToBackend = async (userId, token, options = {}) => {
               const parsed = JSON.parse(empUserStr);
               employeeId = parsed?._id || parsed?.id;
             }
-          } catch (_) {}
+          } catch (_) { }
         }
       }
 
@@ -1147,7 +1147,7 @@ export const syncFCMTokenOnAutoLogin = async (forceRefresh = false) => {
           adminId = parsed?._id || parsed?.id;
           if (adminId) await AsyncStorage.setItem('adminId', String(adminId));
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     if (!adminId) {
       adminId = await AsyncStorage.getItem('admin_email');
@@ -1173,7 +1173,7 @@ export const syncFCMTokenOnAutoLogin = async (forceRefresh = false) => {
           employeeId = parsed?._id || parsed?.id;
           if (employeeId) await AsyncStorage.setItem('employeeId', String(employeeId));
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     if (employeeId && empToken) {

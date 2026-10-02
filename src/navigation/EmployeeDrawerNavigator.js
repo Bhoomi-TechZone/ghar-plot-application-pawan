@@ -102,24 +102,6 @@ const BOTTOM_TAB_ITEMS = [
 // Drawer Menu items - Only screens NOT in bottom tabs
 const DRAWER_MENU_ITEMS = [
   {
-    name: 'Site Expenses',
-    route: 'EmployeeExpenses',
-    icon: 'receipt-outline',
-    color: '#0f766e',
-  },
-  {
-    name: 'Project Daily Sheet',
-    route: 'EmployeeDailySheet',
-    icon: 'document-text-outline',
-    color: '#2563eb',
-  },
-  {
-    name: 'Site Cash Flow',
-    route: 'EmployeeCashFlow',
-    icon: 'wallet-outline',
-    color: '#059669',
-  },
-  {
     name: 'Alerts',
     route: 'EmployeeAlerts',
     icon: 'warning-outline',
@@ -197,6 +179,7 @@ const DRAWER_MENU_ITEMS = [
 const DrawerMenu = ({ visible, onClose, navigation, accessibleMenuItems, employee }) => {
   const slideAnim = useRef(new Animated.Value(-width * 0.8)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [isProjectManagementExpanded, setIsProjectManagementExpanded] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -230,9 +213,9 @@ const DrawerMenu = ({ visible, onClose, navigation, accessibleMenuItems, employe
     }
   }, [visible]);
 
-  const handleNavigation = (route) => {
+  const handleNavigation = (route, params = {}) => {
     onClose();
-    navigation.navigate(route);
+    navigation.navigate(route, params);
   };
 
   const handleLogout = async () => {
@@ -307,6 +290,48 @@ const DrawerMenu = ({ visible, onClose, navigation, accessibleMenuItems, employe
           <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={false}>
             <Text style={styles.menuSectionTitle}>MENU</Text>
             
+            {/* Project Management Expandable Accordion */}
+            <View style={styles.expandableContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.menuItem,
+                  isProjectManagementExpanded && styles.activeExpandableItem,
+                ]}
+                onPress={() => setIsProjectManagementExpanded(!isProjectManagementExpanded)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.menuIconContainer, { backgroundColor: '#0f766e20' }]}>
+                  <Icon name="business" size={22} color="#0f766e" />
+                </View>
+                <Text style={[styles.menuItemText, isProjectManagementExpanded && { color: '#0f766e', fontWeight: '700' }]}>
+                  Project Management
+                </Text>
+                <Icon
+                  name={isProjectManagementExpanded ? "chevron-down" : "chevron-forward"}
+                  size={20}
+                  color={isProjectManagementExpanded ? "#0f766e" : "#94a3b8"}
+                />
+              </TouchableOpacity>
+
+              {isProjectManagementExpanded && (
+                <View style={styles.subMenuList}>
+                  <TouchableOpacity
+                    style={styles.subMenuItem}
+                    onPress={() => handleNavigation('EmployeeExpenses', { initialTab: 'add_expense' })}
+                  >
+                    <View style={[styles.subIconContainer, { backgroundColor: '#0f766e18' }]}>
+                      <Icon name="add-circle" size={18} color="#0f766e" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.subMenuItemText}>Add Expense</Text>
+                      <Text style={styles.subMenuItemDesc}>Log site & field expenses</Text>
+                    </View>
+                    <Icon name="chevron-forward" size={16} color="#94a3b8" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
             {accessibleMenuItems.map((item, index) => (
               <TouchableOpacity
                 key={item.route}
@@ -794,6 +819,52 @@ const styles = StyleSheet.create({
   },
   logoutItem: {
     marginTop: 5,
+  },
+
+  // Expandable Accordion
+  expandableContainer: {
+    marginBottom: 4,
+  },
+  activeExpandableItem: {
+    backgroundColor: '#f0fdfa',
+    borderWidth: 1,
+    borderColor: '#ccfbf1',
+  },
+  subMenuList: {
+    paddingLeft: 16,
+    paddingRight: 4,
+    paddingVertical: 4,
+    marginBottom: 6,
+    borderLeftWidth: 2,
+    borderLeftColor: '#0f766e40',
+    marginLeft: 20,
+  },
+  subMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginVertical: 3,
+    backgroundColor: '#f8fafc',
+  },
+  subIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  subMenuItemText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  subMenuItemDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 1,
   },
 
   // Drawer Footer

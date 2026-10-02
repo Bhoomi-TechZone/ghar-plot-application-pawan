@@ -598,7 +598,8 @@ export async function sendFCMTokenToBackend(userId, fcmToken) {
  */
 export async function updateReminder(reminderId, data) {
     try {
-        const url = cleanUrl(BASE_URL, `/api/reminder/update/${reminderId}`);
+        const cleanId = String(reminderId).replace(/^(alert_|reminder_)/, '');
+        const url = cleanUrl(BASE_URL, `/api/reminder/update/${cleanId}`);
 
         // Get proper auth token (employee/admin)
         const token = await AsyncStorage.getItem('accessToken') ||

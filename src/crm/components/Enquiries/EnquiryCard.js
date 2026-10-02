@@ -223,6 +223,49 @@ const EnquiryCard = ({
         </View>
       )}
 
+      {/* Latest Comment / Note Display with Timestamp */}
+      {enquiry.comments && enquiry.comments.length > 0 ? (
+        <View style={styles.cardCommentBox}>
+          <View style={styles.cardCommentHeader}>
+            <Text style={styles.cardCommentTitle}>💬 Latest Comment ({enquiry.comments.length})</Text>
+            <Text style={styles.cardCommentTime}>
+              🕒 {new Date(enquiry.comments[enquiry.comments.length - 1].addedAt).toLocaleString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              })}
+            </Text>
+          </View>
+          <Text style={styles.cardCommentText} numberOfLines={2}>
+            {enquiry.comments[enquiry.comments.length - 1].comment}
+          </Text>
+        </View>
+      ) : enquiry.majorComments ? (
+        <View style={styles.cardCommentBox}>
+          <View style={styles.cardCommentHeader}>
+            <Text style={styles.cardCommentTitle}>📝 Note</Text>
+            {enquiry.createdAt && (
+              <Text style={styles.cardCommentTime}>
+                🕒 {new Date(enquiry.createdAt).toLocaleString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                })}
+              </Text>
+            )}
+          </View>
+          <Text style={styles.cardCommentText} numberOfLines={2}>
+            {enquiry.majorComments}
+          </Text>
+        </View>
+      ) : null}
+
       {/* Action Buttons */}
       <View style={styles.actionsSection}>
         {/* Custom Reminder Button */}
@@ -490,6 +533,38 @@ const styles = StyleSheet.create({
     color: '#4b5563',
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  cardCommentBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#0d9488',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  cardCommentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  cardCommentTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0f766e',
+  },
+  cardCommentTime: {
+    fontSize: 10,
+    color: '#059669',
+    fontWeight: '600',
+  },
+  cardCommentText: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 17,
   },
 });
 

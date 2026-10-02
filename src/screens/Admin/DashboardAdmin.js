@@ -185,7 +185,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
 
         {/* All Leads Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>All Leads</Text>
+          <Text style={styles.sectionTitle}>All Clients</Text>
           <View style={styles.enquiryContainer}>
             <View style={styles.enquiryItem}>
               <Text style={styles.enquiryValue}>{dashboardData.enquiries.total}</Text>

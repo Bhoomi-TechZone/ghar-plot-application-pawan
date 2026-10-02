@@ -186,6 +186,7 @@ const EmployeeAlertsScreen = ({ navigation }) => {
               customIntervalMinutes: customMins,
               customRepeatMinutes: customMins,
               repeatMetadata: item.repeatMetadata,
+              placeReminder: item.placeReminder !== false,
             });
           }}
         >
