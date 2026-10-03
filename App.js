@@ -497,8 +497,9 @@ const AppMain = () => {
 
                   // Filter by userId to ensure only the assignee gets the popup
                   if (notifEmpId && currentUserId && notifEmpId === currentUserId) {
-                    console.log('✅ Matches current user - triggering popup');
-                    triggerReminderPopup(data);
+                    console.log('✅ Matches current user (auto popup commented out per user request)');
+                    // 🛑 TEMPORARILY COMMENTED OUT: Do not auto-open popup in opened state
+                    // triggerReminderPopup(data);
                   } else {
                     console.log('⏭️ Skipping: Reminder for another user or ID mismatch');
                   }

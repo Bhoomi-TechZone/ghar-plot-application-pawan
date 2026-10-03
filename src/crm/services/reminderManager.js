@@ -265,9 +265,10 @@ class ReminderManager {
       await this.markAsTriggered(reminder.id);
 
       // Call callback to show popup
-      if (this.reminderCallback) {
-        this.reminderCallback(reminder);
-      }
+      // 🛑 TEMPORARILY COMMENTED OUT: Do not auto-open popup in opened state
+      // if (this.reminderCallback) {
+      //   this.reminderCallback(reminder);
+      // }
 
       console.log('✅ Reminder triggered successfully');
     } catch (error) {

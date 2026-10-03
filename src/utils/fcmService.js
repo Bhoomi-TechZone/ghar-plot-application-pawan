@@ -418,6 +418,9 @@ export const setupForegroundNotificationHandler = () => {
         }
 
         // 2. TRIGGER THE PROFESSIONAL DIALOG (Indigo/Red popup)
+        // 🛑 TEMPORARILY COMMENTED OUT: Do not auto-open popup while application is in opened state.
+        // Popup will only open when the notification card or tray banner is pressed by the user.
+        /*
         const cleanNote = data.note || data.reason || body || '';
         const popupPayload = {
           ...data,
@@ -462,6 +465,7 @@ export const setupForegroundNotificationHandler = () => {
         };
 
         tryTriggerPopup();
+        */
       }
       return;
     }
