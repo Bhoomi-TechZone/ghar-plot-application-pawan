@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,12 +15,15 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL, del } from '../../../services/api';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
+import AdminNotificationPopup from '../../../components/AdminNotificationPopup';
 
 const AdminNotificationsInbox = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [selectedPopupData, setSelectedPopupData] = useState(null);
 
   const getToken = async () => {
     return (
@@ -202,58 +205,124 @@ const AdminNotificationsInbox = ({ navigation }) => {
 
     // Extract metadata carefully from the database schema
     const meta = item.metadata || {};
+    const remData = item.reminderData || {};
+    const empName = meta.employeeName || item.employeeName || '';
 
-    navigation.navigate('AdminReminderDetailsScreen', {
-      employeeName: meta.employeeName || item.employeeName || 'Employee',
-      employeeEmail: meta.employeeEmail || item.employeeEmail || '',
-      reminderTitle: meta.reminderTitle || item.title || '',
-      clientName: meta.clientName || item.reminderData?.name || item.clientName || '',
-      phone: meta.phone || item.reminderData?.phone || item.phone || '',
-      location: meta.location || item.reminderData?.location || item.location || '',
-      note: item.reminderData?.note || meta.note || '',   // ✅ actual reminder comment
-      reminderTime: meta.reminderTime || item.reminderData?.reminderTime || item.createdAt,
+    const popupPayload = {
+      ...item,
+      employeeName: empName || 'Admin',
+      title: meta.reminderTitle || item.title || 'Reminder',
+      clientName: meta.clientName || remData.name || item.clientName || '',
+      phone: meta.phone || remData.phone || item.phone || '',
+      location: meta.location || remData.location || item.location || '',
+      note: remData.note || meta.note || item.message || '',
+      reason: remData.note || meta.note || item.message || '',
+      scheduledAt: meta.reminderTime || remData.reminderTime || meta.scheduledDate || item.createdAt,
+      time: meta.scheduledTime || '',
+      date: meta.scheduledDate || '',
+      createdAt: item.createdAt,
+      type: item.type || 'admin_reminder',
       reminderId: meta.reminderId || item.reminderId || item._id,
       enquiryId: meta.enquiryId || meta.leadId || item.enquiryId,
-    });
+      employeeEmail: meta.employeeEmail || item.employeeEmail || '',
+      repeatFrequency: meta.repeatFrequency || '',
+      repeatType: meta.repeatType || '',
+      repeatDaily: meta.repeatDaily === true || meta.repeatDaily === 'true',
+    };
+
+    setSelectedPopupData(popupPayload);
+    setPopupVisible(true);
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.notifCard, !item.read && styles.unreadCard]}
-      onPress={() => handlePressNotification(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.notifIconWrap}>
-        <Icon
-          name={item.read ? 'notifications-outline' : 'notifications'}
-          size={22}
-          color={item.read ? '#9ca3af' : '#3b82f6'}
-        />
-        {!item.read && <View style={styles.unreadDot} />}
-      </View>
-      <View style={styles.notifContent}>
-        <Text style={[styles.notifTitle, !item.read && styles.unreadTitle]} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={styles.notifMessage} numberOfLines={2}>
-          {item.message}
-        </Text>
-        {(item.metadata?.clientName || item.clientName) && (
-          <Text style={styles.notifMeta}>
-            <Icon name="person-outline" size={11} color="#6b7280" /> {item.metadata?.clientName || item.clientName}
-          </Text>
-        )}
-        <Text style={styles.notifTime}>{formatTime(item.createdAt)}</Text>
-      </View>
+  const handlePopupEdit = () => {
+    if (!selectedPopupData) return;
+    setPopupVisible(false);
+
+    const isEmployee = Boolean(
+      selectedPopupData.employeeName &&
+      selectedPopupData.employeeName.toLowerCase() !== 'admin' &&
+      selectedPopupData.employeeName.toLowerCase() !== 'employee' &&
+      selectedPopupData.employeeName.toLowerCase() !== 'system'
+    );
+
+    if (isEmployee || selectedPopupData.type === 'employee_reminder_to_admin' || selectedPopupData.enquiryId) {
+      navigation.navigate('AdminReminderDetailsScreen', {
+        employeeName: selectedPopupData.employeeName || 'Employee',
+        employeeEmail: selectedPopupData.employeeEmail || '',
+        reminderTitle: selectedPopupData.title || '',
+        clientName: selectedPopupData.clientName || '',
+        phone: selectedPopupData.phone || '',
+        location: selectedPopupData.location || '',
+        note: selectedPopupData.note || '',
+        reminderTime: selectedPopupData.scheduledAt || selectedPopupData.createdAt,
+        reminderId: selectedPopupData.reminderId || selectedPopupData._id,
+        enquiryId: selectedPopupData.enquiryId,
+        fromNotification: true,
+      });
+    } else {
+      navigation.navigate('EditAlert', {
+        alertId: String(selectedPopupData.reminderId || selectedPopupData._id || '').replace('alert_', ''),
+        originalTitle: selectedPopupData.title || 'Reminder',
+        originalReason: selectedPopupData.note || selectedPopupData.reason || '',
+        originalDate: selectedPopupData.date || selectedPopupData.scheduledAt || '',
+        originalTime: selectedPopupData.time || '',
+        repeatDaily: selectedPopupData.repeatDaily === true || selectedPopupData.repeatFrequency === 'daily',
+      });
+    }
+  };
+
+  const renderItem = ({ item }) => {
+    const meta = item.metadata || {};
+    const empName = meta.employeeName || item.employeeName;
+    const clientName = meta.clientName || item.clientName || item.reminderData?.name;
+
+    return (
       <TouchableOpacity
-        style={styles.deleteBtn}
-        onPress={() => deleteNotification(item._id)}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={[styles.notifCard, !item.read && styles.unreadCard]}
+        onPress={() => handlePressNotification(item)}
+        activeOpacity={0.7}
       >
-        <Icon name="trash-outline" size={20} color="#ef4444" />
+        <View style={styles.notifIconWrap}>
+          <Icon
+            name={item.read ? 'notifications-outline' : 'notifications'}
+            size={22}
+            color={item.read ? '#9ca3af' : '#3b82f6'}
+          />
+          {!item.read && <View style={styles.unreadDot} />}
+        </View>
+        <View style={styles.notifContent}>
+          <Text style={[styles.notifTitle, !item.read && styles.unreadTitle]} numberOfLines={2}>
+            {item.title}
+          </Text>
+          <Text style={styles.notifMessage} numberOfLines={2}>
+            {item.message}
+          </Text>
+
+          {empName ? (
+            <View style={styles.employeeTag}>
+              <Icon name="person" size={12} color="#4F46E5" />
+              <Text style={styles.employeeTagText}>Employee: {empName}</Text>
+            </View>
+          ) : null}
+
+          {clientName ? (
+            <Text style={styles.notifMeta}>
+              <Icon name="person-outline" size={11} color="#6b7280" /> {clientName}
+            </Text>
+          ) : null}
+
+          <Text style={styles.notifTime}>{formatTime(item.createdAt)}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.deleteBtn}
+          onPress={() => deleteNotification(item._id)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Icon name="trash-outline" size={20} color="#ef4444" />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -311,6 +380,30 @@ const AdminNotificationsInbox = ({ navigation }) => {
             />
           }
           contentContainerStyle={{ paddingBottom: 20 }}
+        />
+      )}
+
+      {selectedPopupData && (
+        <AdminNotificationPopup
+          visible={popupVisible}
+          onClose={() => {
+            setPopupVisible(false);
+            setSelectedPopupData(null);
+          }}
+          employeeName={selectedPopupData.employeeName}
+          title={selectedPopupData.title}
+          clientName={selectedPopupData.clientName}
+          reason={selectedPopupData.reason}
+          note={selectedPopupData.note}
+          scheduledAt={selectedPopupData.scheduledAt}
+          time={selectedPopupData.time}
+          date={selectedPopupData.date}
+          createdAt={selectedPopupData.createdAt}
+          type={selectedPopupData.type}
+          repeatFrequency={selectedPopupData.repeatFrequency}
+          repeatType={selectedPopupData.repeatType}
+          repeatDaily={selectedPopupData.repeatDaily}
+          onEdit={handlePopupEdit}
         />
       )}
     </SafeAreaView>
@@ -403,6 +496,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingLeft: 10,
+  },
+  employeeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginVertical: 3,
+    gap: 4,
+  },
+  employeeTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4F46E5',
   },
 });
 

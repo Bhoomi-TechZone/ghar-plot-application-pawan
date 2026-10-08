@@ -256,9 +256,9 @@ export const handleNotificationAction = (notificationData, navigation) => {
     console.log('🔔 Handling notification action - Full Data:', JSON.stringify(notificationData, null, 2));
     console.log('🔔 Type:', type, 'Action:', action, 'PropertyId:', propertyId);
 
-    // 1. Priority: Handle alerts and Admin-created reminders (which are technically alerts)
-    if (type === 'alert' || type === 'admin_reminder' || type === 'system_alert' || notificationData.alertId) {
-        console.log(`✅ MATCHED ALERT/ADMIN_REMINDER - Triggering popup dialog`);
+    // 1. Priority: Handle alerts, Admin-created reminders, and Employee reminders to Admin
+    if (type === 'alert' || type === 'admin_reminder' || type === 'system_alert' || type === 'employee_reminder_to_admin' || notificationData.alertId) {
+        console.log(`✅ MATCHED ALERT/ADMIN_REMINDER/EMPLOYEE_REMINDER - Triggering popup dialog`);
 
         const popupData = {
             ...notificationData,

@@ -34,6 +34,8 @@ const CreateAlertScreen = ({ navigation, route }) => {
 
   const [formData, setFormData] = useState({
     title: alertToEdit?.title || '',
+    clientName: alertToEdit?.clientName || '',
+    phone: alertToEdit?.phone || '',
     date: alertToEdit ? new Date(alertToEdit.date) : new Date(),
     time: alertToEdit ? (() => {
       const [hours, minutes] = (alertToEdit.time || '00:00').split(':');
@@ -187,6 +189,22 @@ const CreateAlertScreen = ({ navigation, route }) => {
       console.log('📦 Creating alert with category:', finalCategory, '| forceCategory:', forceCategoryFromNav, '| isAdmin:', isAdmin);
       const isPlaceReminder = formData.placeReminder !== false;
 
+      // ✅ Get logged-in employee info
+      let employeeInfo = null;
+      try {
+        const empStr = await AsyncStorage.getItem('employee_user') || 
+                       await AsyncStorage.getItem('userData') || 
+                       await AsyncStorage.getItem('adminData') || 
+                       await AsyncStorage.getItem('admin_user');
+        if (empStr) {
+          employeeInfo = JSON.parse(empStr);
+        }
+      } catch (_) {}
+
+      const empId = employeeInfo?._id || employeeInfo?.id || null;
+      const empPhone = formData.phone || employeeInfo?.phone || '';
+      const empClientName = formData.clientName || employeeInfo?.name || '';
+
       // Prepare alert data
       const alertData = {
         title: formData.title,
@@ -200,6 +218,9 @@ const CreateAlertScreen = ({ navigation, route }) => {
         isActive: true,
         placeReminder: isPlaceReminder,
         category: finalCategory, // ✅ 'alert' from Alerts screen, 'reminder' from My Reminders screen
+        assignedEmployeeId: empId,
+        clientName: empClientName,
+        phone: empPhone,
       };
 
       if (isEditMode) {
@@ -248,6 +269,7 @@ const CreateAlertScreen = ({ navigation, route }) => {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
+                alertId: alertId,
                 title: formData.title, // ✅ Added title field
                 reason: formData.reason,
                 date: dateStr,
@@ -260,6 +282,9 @@ const CreateAlertScreen = ({ navigation, route }) => {
                 type: finalNotificationType, // ✅ Explicit type
                 notificationType: finalNotificationType, // ✅ Backward compatibility
                 fcmToken: fcmToken,
+                assignedEmployeeId: empId,
+                clientName: empClientName,
+                phone: empPhone,
               }),
             });
 
@@ -544,6 +569,31 @@ const CreateAlertScreen = ({ navigation, route }) => {
               multiline={true}
               numberOfLines={4}
               textAlignVertical="top"
+              placeholderTextColor="#9ca3af"
+            />
+          </View>
+
+          {/* Client Name (Optional) */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Client Name (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter client name (or leave empty for self)"
+              value={formData.clientName}
+              onChangeText={(value) => handleInputChange('clientName', value)}
+              placeholderTextColor="#9ca3af"
+            />
+          </View>
+
+          {/* Phone Number (Optional) */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Phone Number (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter contact number"
+              keyboardType="phone-pad"
+              value={formData.phone}
+              onChangeText={(value) => handleInputChange('phone', value)}
               placeholderTextColor="#9ca3af"
             />
           </View>

@@ -37,6 +37,8 @@ import EmployeeReminders from "../crm/crmscreens/Employee/EmployeeReminders";
 import EmployeeFollowUps from "../crm/crmscreens/Employee/EmployeeFollowUps";
 import Alerts from "../crm/crmscreens/Employee/Alerts";
 import CreateAlertScreen from "../crm/crmscreens/Employee/CreateAlertScreen";
+import EditReminderScreen from "../screens/EditReminderScreen";
+import EditAlertScreen from "../screens/EditAlertScreen";
 import EmployeeProfile from "../crm/crmscreens/Employee/EmployeeProfile";
 import EmployeeExpensesScreen from "../crm/crmscreens/Employee/EmployeeExpensesScreen";
 
@@ -656,6 +658,8 @@ const EmployeeDrawerNavigator = () => {
       />
       <Stack.Screen name="EmployeeAlerts" component={Alerts} />
       <Stack.Screen name="CreateAlert" component={CreateAlertScreen} />
+      <Stack.Screen name="EditReminder" component={EditReminderScreen} />
+      <Stack.Screen name="EditAlert" component={EditAlertScreen} />
       <Stack.Screen name="EmployeeProfile" component={EmployeeProfile} />
       
       {/* Admin Screens accessible by permission */}

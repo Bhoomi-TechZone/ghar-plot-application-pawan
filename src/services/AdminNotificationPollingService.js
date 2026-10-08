@@ -15,7 +15,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { showEmployeeNotificationPopup } from './EmployeePopupManager';
 
-const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const CRM_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 const POLL_INTERVAL = 30000; // 30 seconds
 const KNOWN_IDS_KEY = 'admin_poll_known_ids';
 const FIRST_RUN_KEY = 'admin_poll_initialized';

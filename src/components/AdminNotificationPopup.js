@@ -270,15 +270,24 @@ const AdminNotificationPopup = ({
   const bgColor = '#EEF2FF';
   const iconName = 'notifications-active';
 
+  const isEmployee = Boolean(
+    employeeName &&
+    employeeName.toLowerCase() !== 'admin' &&
+    employeeName.toLowerCase() !== 'employee' &&
+    employeeName.toLowerCase() !== 'system'
+  );
+
   const isAlert =
     String(type).toLowerCase().includes('alert') ||
     String(title).toLowerCase().includes('alert');
 
-  const headerTitle = isAlert ? 'Admin Alert' : 'Admin Reminder';
+  const headerTitle = isEmployee
+    ? (isAlert ? `${employeeName}'s Alert` : 'Employee Reminder')
+    : (isAlert ? 'Admin Alert' : 'Admin Reminder');
 
-  const actionText = isAlert
-    ? 'admin created an alert'
-    : 'admin created a reminder';
+  const actionText = isEmployee
+    ? `${employeeName} created a ${isAlert ? 'alert' : 'reminder'}`
+    : (isAlert ? 'admin created an alert' : 'admin created a reminder');
 
   // ============================================================
   // FORMAT ISO DATE/TIME -> IST (12-hour AM/PM)
@@ -864,7 +873,7 @@ const AdminNotificationPopup = ({
                 ]}
               >
                 <MaterialIcons
-                  name="security"
+                  name={isEmployee ? "person" : "security"}
                   size={24}
                   color={primaryColor}
                 />
@@ -872,9 +881,7 @@ const AdminNotificationPopup = ({
 
               <View style={styles.employeeInfo}>
                 <Text style={styles.employeeName}>
-                  {employeeName === 'Employee'
-                    ? 'Admin'
-                    : employeeName}
+                  {isEmployee ? employeeName : (employeeName === 'Employee' ? 'Admin' : (employeeName || 'Admin'))}
                 </Text>
 
                 <Text style={styles.employeeAction}>
@@ -1064,14 +1071,14 @@ const AdminNotificationPopup = ({
               activeOpacity={0.8}
             >
               <MaterialIcons
-                name="edit"
+                name={isEmployee ? "visibility" : "edit"}
                 size={18}
                 color="#fff"
                 style={{ marginRight: 8 }}
               />
 
               <Text style={styles.buttonText}>
-                Edit
+                {isEmployee ? "View" : "Edit"}
               </Text>
             </TouchableOpacity>
 

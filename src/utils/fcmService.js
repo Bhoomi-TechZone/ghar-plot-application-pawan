@@ -378,10 +378,20 @@ export const setupForegroundNotificationHandler = () => {
           // and a banner even when the app is actively in use.
           const shouldShowTrayNotif = !isDuplicateTrayAlert;
 
+          let fgTitle = data.title || title;
+          const empName = data.employeeName || data.metadata?.employeeName;
+          if (empName && empName !== 'Admin' && empName !== 'Employee' && empName !== 'System') {
+            if (!fgTitle || fgTitle === 'Notification' || fgTitle === 'Reminder' || !fgTitle.includes(empName)) {
+              fgTitle = `🔔 ${empName} - Reminder`;
+            }
+          } else if (!fgTitle) {
+            fgTitle = isIndigo ? '🔔 Reminder Alert' : '⚠️ System Alert';
+          }
+
           if (shouldShowTrayNotif) {
             await notifee.displayNotification({
               id: unifiedId,
-              title: data.title || title || (isIndigo ? '🔔 Reminder Alert' : '⚠️ System Alert'),
+              title: fgTitle,
               body: richBody,
               android: {
                 channelId: chanId,
@@ -660,7 +670,7 @@ export const backgroundMessageHandler = async (remoteMessage) => {
         notifTitle = (title === 'Notification') ? `⏰ Reminder Due` : `⏰ ${title}`;
         notifBody = body || data.body || 'Your scheduled reminder is due';
       } else if (notificationType === 'admin_reminder' || notificationType === 'employee_reminder_to_admin' || notificationType === 'reminder' || data.reminderTitle) {
-        const employeeName = data.employeeName || '';
+        const employeeName = data.employeeName || data.metadata?.employeeName || '';
         const reminderTitle = data.reminderTitle || title || 'Reminder';
         const clientName = data.clientName || '';
 

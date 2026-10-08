@@ -1,1192 +1,901 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
+  FlatList,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  ActivityIndicator,
+  Platform,
   StatusBar,
-  FlatList,
   TextInput,
   RefreshControl,
-  Alert,
-  Modal,
-  ScrollView,
-  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as crmAlertApi from '../../services/crmAlertApi';
+import AlertNotificationService from '../../../services/AlertNotificationService';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
+import { formatDateToIST, formatTimeToIST } from '../../../utils/timezoneHelper';
+import AdminNotificationPopup from '../../../components/AdminNotificationPopup';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+const EmployeeReminders = ({ navigation, route, openDrawer }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0
+  );
+  const filterCategory = route?.params?.filterCategory || 'reminder'; // Default to 'reminder' for employee reminders
+  const screenTitle = 'My Reminders';
 
-const EmployeeReminders = ({ navigation, openDrawer }) => {
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [pinnedIds, setPinnedIds] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [popupData, setPopupData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All Status');
-  const [typeFilter, setTypeFilter] = useState('All Types');
-  const [reminders, setReminders] = useState([]);
-  const [filteredReminders, setFilteredReminders] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [selectedReminder, setSelectedReminder] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [statsData, setStatsData] = useState({
-    totalReminders: 0,
-    pending: 0,
-    dueNow: 0,
-    completed: 0,
-  });
 
-  const statusOptions = ['All Status', 'pending', 'completed', 'snoozed', 'dismissed'];
-
-  // Fetch reminders data from backend
-  const fetchReminders = async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true);
-
-      // Check for multiple token types
-      let token = await AsyncStorage.getItem('adminToken');
-      if (!token) token = await AsyncStorage.getItem('admin_token');
-      if (!token) token = await AsyncStorage.getItem('employeeToken');
-      if (!token) token = await AsyncStorage.getItem('employee_token');
-      if (!token) token = await AsyncStorage.getItem('employee_auth_token');
-      if (!token) token = await AsyncStorage.getItem('crm_auth_token');
-      if (!token) token = await AsyncStorage.getItem('token');
-
-      if (!token) {
-        console.error('? No authentication token found');
-        CrossPlatformAlert.alert('Authentication Error', 'Please login again.');
-        return;
-      }
-
-      console.log('?? Using token for reminders fetch');
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
-
-      console.log('?? Fetching employee/admin reminders...');
-
-      const isAdmin = !!(await AsyncStorage.getItem('adminToken') || await AsyncStorage.getItem('admin_token'));
-
-      try {
-        const params = {
-          page: 1,
-          limit: 50,
-        };
-
-        const listUrl = isAdmin ? `${API_BASE_URL}/api/reminder/list` : `${API_BASE_URL}/employee/reminders/list`;
-        const statsUrl = isAdmin ? `${API_BASE_URL}/api/reminder/stats` : `${API_BASE_URL}/employee/reminders/stats`;
-
-        console.log(`?? Fetching from: ${listUrl} (isAdmin: ${isAdmin})`);
-
-        const [remindersResponse, statsResponse] = await Promise.all([
-          axios.get(listUrl, {
-            headers,
-            params,
-            timeout: 15000
-          }),
-          axios.get(statsUrl, {
-            headers,
-            timeout: 15000
-          })
-        ]);
-
-        let finalRemindersList = [];
-        let finalStatsData = { ...statsData };
-
-        if (remindersResponse.data.success) {
-          finalRemindersList = remindersResponse.data.data?.reminders || remindersResponse.data.reminders || [];
-          console.log('? Loaded', finalRemindersList.length, 'reminders from API');
-        }
-
-        if (statsResponse.data.success) {
-          const stats = statsResponse.data.data || statsResponse.data.stats;
-          finalStatsData = {
-            totalReminders: stats?.total || 0,
-            pending: stats?.pending || 0,
-            dueNow: stats?.due || 0,
-            completed: stats?.completed || 0,
-          };
-        }
-
-        // ?? NEW: Load local reminders from AsyncStorage (synced with ReminderModal.js)
-        let localRemindersList = [];
-        try {
-          const localData = await AsyncStorage.getItem('localReminders');
-          if (localData) {
-            localRemindersList = JSON.parse(localData);
-            console.log('?? Loaded', localRemindersList.length, 'reminders from local storage');
-          }
-        } catch (localError) {
-          console.error('? Error loading local reminders:', localError);
-        }
-
-        // Merge API reminders with local reminders
-        const allRemindersMap = new Map();
-
-        // Add local ones first
-        localRemindersList.forEach(r => {
-          allRemindersMap.set(r.id || r._id, {
-            ...r,
-            source: 'local',
-            status: r.status || 'pending'
-          });
-        });
-
-        // Add API ones (overwrite local if ID matches)
-        finalRemindersList.forEach(r => {
-          allRemindersMap.set(r._id || r.id, {
-            ...r,
-            source: 'api'
-          });
-        });
-
-        const mergedList = Array.from(allRemindersMap.values());
-
-        // Sort by date (descending)
-        mergedList.sort((a, b) => {
-          const dateA = new Date(a.reminderDateTime || a.dateTime || a.scheduledDate);
-          const dateB = new Date(b.reminderDateTime || b.dateTime || b.scheduledDate);
-          return dateB - dateA;
-        });
-
-        setReminders(mergedList);
-        setStatsData(finalStatsData);
-
-      } catch (error) {
-        console.error('? Error fetching reminders list/stats:', error.message);
-        throw error;
-      }
-
-    } catch (error) {
-      console.error('? Reminders fetch error:', error);
-
-      let errorMessage = 'Failed to load reminders data. Please try again.';
-      if (error.message?.includes('Network request failed')) {
-        errorMessage = 'Network connection failed. Please check your internet connection.';
-      } else if (error.response?.status === 401) {
-        errorMessage = 'Authentication failed. Please login again.';
-      }
-
-      CrossPlatformAlert.alert('Error', errorMessage);
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  };
-
-  // Apply filters
-  useEffect(() => {
-    let filtered = reminders;
-
-    if (statusFilter !== 'All Status') {
-      filtered = filtered.filter(r => r.status === statusFilter);
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(r => {
-        const title = r.title?.toLowerCase() || '';
-        const description = r.description?.toLowerCase() || '';
-        const clientName = r.clientName?.toLowerCase() || '';
-        return title.includes(query) || description.includes(query) || clientName.includes(query);
-      });
-    }
-
-    setFilteredReminders(filtered);
-
-    // Calculate stats
-    if (reminders.length > 0) {
-      const now = new Date();
-      setStatsData({
-        totalReminders: reminders.length,
-        pending: reminders.filter(r => r.status === 'pending' || r.status === 'snoozed').length,
-        dueNow: reminders.filter(r => {
-          if (r.status !== 'pending') return false;
-          const reminderDate = new Date(r.reminderDateTime || r.dateTime);
-          return reminderDate <= now;
-        }).length,
-        completed: reminders.filter(r => r.status === 'completed').length,
-      });
-    }
-  }, [reminders, statusFilter, searchQuery]);
-
-  // Handle pull to refresh
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchReminders(false);
+    await fetchAlerts({}, true);
     setRefreshing(false);
   };
 
-  // Refresh when coming back to this screen
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      console.log('?? EmployeeReminders focused - refreshing...');
-      fetchReminders(false);
-    });
-    return unsubscribe;
-  }, [navigation]);
-
-  // Load data on component mount
-  useEffect(() => {
-    console.log('?? EmployeeReminders component mounted');
-    fetchReminders();
-  }, []);
-
-  // Handle reminder completion
-  const handleCompleteReminder = async (reminder) => {
-    CrossPlatformAlert.alert(
-      'Complete Reminder',
-      'Mark this reminder as completed?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete',
-          onPress: async () => {
-            try {
-              const adminToken = await AsyncStorage.getItem('adminToken') || await AsyncStorage.getItem('admin_token');
-              const employeeToken = await AsyncStorage.getItem('employeeToken') || await AsyncStorage.getItem('employee_auth_token') || await AsyncStorage.getItem('employee_token');
-              const token = adminToken || employeeToken;
-              const isAdmin = !!adminToken;
-
-              if (!token) {
-                CrossPlatformAlert.alert('Error', 'No authentication token found');
-                return;
-              }
-
-              // Use correct route based on role
-              const url = isAdmin
-                ? `${API_BASE_URL}/api/reminder/${reminder._id}/complete`
-                : `${API_BASE_URL}/employee/reminders/${reminder._id}/complete`;
-
-              console.log('?? Complete reminder URL:', url, '| isAdmin:', isAdmin);
-
-              const result = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({ status: 'completed' }),
-              });
-
-              if (!result.ok) {
-                const errorText = await result.text();
-                console.error('? Error response:', errorText);
-                try {
-                  const errorData = JSON.parse(errorText);
-                  CrossPlatformAlert.alert('Error', errorData.message || 'Failed to complete reminder');
-                } catch (e) {
-                  CrossPlatformAlert.alert('Error', errorText || 'Failed to complete reminder');
-                }
-              } else {
-                CrossPlatformAlert.alert('Success', 'Reminder marked as completed');
-                fetchReminders(false);
-              }
-            } catch (error) {
-              console.error('? Complete reminder error:', error);
-              CrossPlatformAlert.alert('Error', error.message || 'Failed to complete reminder');
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  // Handle reminder snooze
-  const handleSnoozeReminder = async (reminder) => {
-    CrossPlatformAlert.alert(
-      'Snooze Reminder',
-      'How long would you like to snooze?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: '15 min', onPress: () => snoozeReminder(reminder._id, 15) },
-        { text: '30 min', onPress: () => snoozeReminder(reminder._id, 30) },
-        { text: '1 hour', onPress: () => snoozeReminder(reminder._id, 60) },
-      ]
-    );
-  };
-
-  const snoozeReminder = async (reminderId, minutes) => {
-    try {
-      const adminToken = await AsyncStorage.getItem('adminToken') || await AsyncStorage.getItem('admin_token');
-      const employeeToken = await AsyncStorage.getItem('employeeToken') || await AsyncStorage.getItem('employee_auth_token') || await AsyncStorage.getItem('employee_token');
-      const token = adminToken || employeeToken;
-      const isAdmin = !!adminToken;
-
-      if (!token) {
-        CrossPlatformAlert.alert('Error', 'No authentication token found');
-        return;
-      }
-
-      const url = isAdmin
-        ? `${API_BASE_URL}/api/reminder/snooze/${reminderId}`
-        : `${API_BASE_URL}/employee/reminders/snooze/${reminderId}`;
-
-      console.log('?? Snooze URL:', url, '| isAdmin:', isAdmin);
-
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ snoozeMinutes: minutes }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
+  // Refresh list every time screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      const loadPins = async () => {
         try {
-          const errorData = JSON.parse(errorText);
-          CrossPlatformAlert.alert('Error', errorData.message || 'Failed to snooze reminder');
+          const stored = await AsyncStorage.getItem(`pinned_alerts_${filterCategory}`);
+          if (stored) {
+            setPinnedIds(JSON.parse(stored));
+          } else {
+            setPinnedIds([]);
+          }
         } catch (e) {
-          CrossPlatformAlert.alert('Error', errorText || 'Failed to snooze reminder');
+          console.error('Failed to load pinned alerts', e);
         }
+      };
+      loadPins();
+      fetchAlerts();
+    }, [filterCategory])
+  );
+
+  const fetchAlerts = async (params = {}, isRefresh = false) => {
+    try {
+      if (!isRefresh) setLoading(true);
+      console.log('Fetching employee reminders with params:', params);
+      const response = await crmAlertApi.getSystemAlerts(params);
+      console.log('Raw response:', response);
+      const data = response?.alerts || response?.data || [];
+      console.log('Fetched alerts/reminders:', data.length);
+      const allAlerts = Array.isArray(data) ? data : [];
+
+      let filtered;
+      if (filterCategory === 'reminder') {
+        // My Reminders: show items tagged as 'reminder'
+        filtered = allAlerts.filter(item => item.category === 'reminder');
       } else {
-        CrossPlatformAlert.alert('Success', `Reminder snoozed for ${minutes} minutes`);
-        fetchReminders(false);
+        filtered = allAlerts.filter(item => !item.category || item.category === 'alert');
       }
-    } catch (error) {
-      console.error('? Snooze reminder error:', error);
-      CrossPlatformAlert.alert('Error', error.message || 'Failed to snooze reminder');
+      console.log(`Filtered ${filtered.length} items for category: ${filterCategory}`);
+      setAlerts(filtered);
+    } catch (e) {
+      console.error('Error fetching employee reminders:', e);
+      CrossPlatformAlert.alert('Error', `Failed to fetch reminders: ${e.message}`);
+    } finally {
+      if (!isRefresh) setLoading(false);
     }
   };
 
-  // Handle reminder dismiss
-  const handleDismissReminder = async (reminder) => {
+  const formatTime = (iso) => {
+    if (!iso) return '';
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const formatDate = (iso) => {
+    if (!iso) return '';
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  // Calculate next scheduled datetime for display on card badge
+  const getNextScheduledDisplay = (item) => {
+    try {
+      if (!item) return null;
+
+      const rawFreq = String(item.repeatFrequency || '').toLowerCase();
+      const customMins = parseInt(
+        item.repeatMetadata?.customIntervalMinutes ||
+        item.customIntervalMinutes ||
+        item.customRepeatMinutes ||
+        item.repeatInterval ||
+        0
+      );
+
+      const isCustom = rawFreq === 'custom' || rawFreq === '1 min' || rawFreq === '1_min' || customMins > 0;
+      const effectiveMins = (rawFreq === '1 min' || rawFreq === '1_min') ? 1 : (customMins || 1);
+
+      // 1. If backend already computed scheduledDateTime or nextScheduledAt, use it
+      const targetIso = item.nextScheduledAt || item.scheduledDateTime;
+      if (targetIso) {
+        const sDate = new Date(targetIso);
+        if (!isNaN(sDate.getTime())) {
+          const nowMs = Date.now();
+          let nextMs = sDate.getTime();
+
+          if (isCustom && nextMs <= nowMs) {
+            const intervalMs = effectiveMins * 60 * 1000;
+            while (nextMs <= nowMs) {
+              nextMs += intervalMs;
+            }
+          }
+
+          const nextDate = new Date(nextMs);
+          const dateStr = nextDate.toLocaleDateString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            day: '2-digit', month: '2-digit', year: 'numeric',
+          });
+          const timeStr = nextDate.toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: 'numeric', minute: '2-digit', hour12: true,
+          }).toLowerCase();
+          return `${dateStr} • ${timeStr}`;
+        }
+      }
+
+      const dateStr = item.date;
+      const timeStr = item.time;
+      if (!dateStr || !timeStr) return null;
+
+      const datePart = String(dateStr).split('T')[0];
+      const dateMatch = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!dateMatch) return null;
+
+      let year = Number(dateMatch[1]);
+      let month = Number(dateMatch[2]);
+      let day = Number(dateMatch[3]);
+
+      const timeMatch = String(timeStr).match(/^(\d{1,2}):(\d{2})$/);
+      if (!timeMatch) return null;
+
+      const hours = Number(timeMatch[1]);
+      const minutes = Number(timeMatch[2]);
+
+      if (isCustom) {
+        const istOffsetMs = 5.5 * 60 * 60 * 1000;
+        const baseMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
+        const intervalMs = effectiveMins * 60 * 1000;
+        const nowMs = Date.now();
+        let nextMs = baseMs;
+        while (nextMs <= nowMs) {
+          nextMs += intervalMs;
+        }
+        const nextDate = new Date(nextMs);
+        const dateStrOut = nextDate.toLocaleDateString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit', month: '2-digit', year: 'numeric',
+        });
+        const timeStrOut = nextDate.toLocaleTimeString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          hour: 'numeric', minute: '2-digit', hour12: true,
+        }).toLowerCase();
+        return `${dateStrOut} • ${timeStrOut}`;
+      }
+
+      const isDaily = rawFreq === 'daily' || item.repeatDaily;
+      if (isDaily) {
+        const istParts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Kolkata',
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', hour12: false,
+        }).formatToParts(new Date());
+        const ist = {};
+        istParts.forEach(p => { if (p.type !== 'literal') ist[p.type] = Number(p.value); });
+
+        const candidateValue = year * 100000000 + month * 1000000 + day * 10000 + hours * 100 + minutes;
+        const nowValue = ist.year * 100000000 + ist.month * 1000000 + ist.day * 10000 + ist.hour * 100 + ist.minute;
+
+        if (candidateValue <= nowValue) {
+          const candidateUtc = new Date(Date.UTC(year, month - 1, day + 1, hours, minutes));
+          year = candidateUtc.getUTCFullYear();
+          month = candidateUtc.getUTCMonth() + 1;
+          day = candidateUtc.getUTCDate();
+        }
+
+        const dateStrOut = `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`;
+        const ampm = hours >= 12 ? 'pm' : 'am';
+        const displayHours = hours % 12 || 12;
+        const timeStrOut = `${displayHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
+        return `${dateStrOut} • ${timeStrOut}`;
+      }
+
+      return null;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const formatDateTime = (dateStr, timeStr) => {
+    if (!dateStr) return '';
+    try {
+      const datePart = String(dateStr).split('T')[0];
+      const [year, month, day] = datePart.split('-');
+      if (!year || !month || !day) return dateStr;
+      const formattedDate = `${day}-${month}-${year}`;
+      if (!timeStr) return formattedDate;
+
+      const [hours, minutes] = timeStr.split(':');
+      if (hours === undefined || minutes === undefined) return `${formattedDate} ${timeStr}`;
+      const hourNum = parseInt(hours, 10);
+      const ampm = hourNum >= 12 ? 'pm' : 'am';
+      const displayHours = hourNum % 12 || 12;
+      return `${formattedDate} • ${displayHours}:${minutes} ${ampm}`;
+    } catch (e) {
+      return `${dateStr} ${timeStr || ''}`.trim();
+    }
+  };
+
+  const handleFilter = () => {
+    const params = {};
+    if (startDate) params.startDate = startDate.toISOString().split('T')[0];
+    if (endDate) params.endDate = endDate.toISOString().split('T')[0];
+    fetchAlerts(params);
+  };
+
+  const clearFilter = () => {
+    setStartDate(null);
+    setEndDate(null);
+    setSearchQuery('');
+    fetchAlerts();
+  };
+
+  const handleDelete = (id) => {
     CrossPlatformAlert.alert(
-      'Dismiss Reminder',
-      'Are you sure you want to dismiss this reminder?',
+      'Delete Reminder',
+      'Are you sure you want to delete this reminder?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Dismiss',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
-              const adminToken = await AsyncStorage.getItem('adminToken') || await AsyncStorage.getItem('admin_token');
-              const employeeToken = await AsyncStorage.getItem('employeeToken') || await AsyncStorage.getItem('employee_auth_token') || await AsyncStorage.getItem('employee_token');
-              const token = adminToken || employeeToken;
-              const isAdmin = !!adminToken;
-
-              if (!token) {
-                CrossPlatformAlert.alert('Error', 'No authentication token found');
-                return;
+              setLoading(true);
+              await crmAlertApi.deleteAlert(id);
+              try {
+                await AlertNotificationService.cancelAlert(id);
+              } catch (notifErr) {
+                console.log('Error cancelling notification:', notifErr);
               }
-
-              // Use correct route based on role � admin uses /api/reminder, employee uses /employee/reminders
-              const url = isAdmin
-                ? `${API_BASE_URL}/api/reminder/dismiss/${reminder._id}`
-                : `${API_BASE_URL}/employee/reminders/dismiss/${reminder._id}`;
-
-              console.log('?? Dismiss URL:', url, '| isAdmin:', isAdmin);
-
-              const response = await fetch(url, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-              });
-
-              if (!response.ok) {
-                const errorText = await response.text();
-                try {
-                  const errorData = JSON.parse(errorText);
-                  CrossPlatformAlert.alert('Error', errorData.message || 'Failed to dismiss reminder');
-                } catch (e) {
-                  CrossPlatformAlert.alert('Error', errorText || 'Failed to dismiss reminder');
-                }
-              } else {
-                CrossPlatformAlert.alert('Success', 'Reminder dismissed');
-                fetchReminders(false);
-              }
+              fetchAlerts();
             } catch (error) {
-              console.error('? Dismiss reminder error:', error);
-              CrossPlatformAlert.alert('Error', error.message || 'Failed to dismiss reminder');
+              CrossPlatformAlert.alert('Error', 'Failed to delete reminder');
+            } finally {
+              setLoading(false);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
-
-  // Render action buttons
-  const renderActionButtons = (reminder) => (
-    <View style={styles.actionRow}>
-      <TouchableOpacity
-        style={[styles.actionBtn, styles.completeBtn]}
-        onPress={() => handleCompleteReminder(reminder)}
-      >
-        <Icon name="checkmark" size={16} color="#fff" />
-        <Text style={styles.actionBtnText}>Complete</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionBtn, styles.snoozeBtn]}
-        onPress={() => handleSnoozeReminder(reminder)}
-      >
-        <Icon name="time" size={16} color="#fff" />
-        <Text style={styles.actionBtnText}>Snooze</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionBtn, styles.dismissBtn]}
-        onPress={() => handleDismissReminder(reminder)}
-      >
-        <Icon name="close" size={16} color="#fff" />
-      </TouchableOpacity>
-    </View>
-  );
-
-  // Render reminder item
-  const renderReminderItem = ({ item: reminder }) => {
-    const dateTimeValue = reminder.reminderDateTime || reminder.dateTime;
-    const isOverdue = dateTimeValue && new Date(dateTimeValue) < new Date() && reminder.status === 'pending';
-
-    let formattedDate = 'No Date';
-    let formattedTime = '';
-    if (dateTimeValue) {
-      try {
-        const date = new Date(dateTimeValue);
-        if (!isNaN(date.getTime())) {
-          formattedDate = date.toLocaleDateString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          });
-          formattedTime = date.toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          });
-        }
-      } catch (error) {
-        console.error('Date formatting error:', error);
-      }
-    }
-
-    return (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => {
-          setSelectedReminder(reminder);
-          setShowDetailModal(true);
-        }}
-      >
-        <View style={[styles.reminderCard, isOverdue && styles.overdueCard]}>
-          {/* Status Badge */}
-          <View style={[
-            styles.statusBadge,
-            reminder.status === 'completed' && styles.completedBadge,
-            reminder.status === 'snoozed' && styles.snoozedBadge,
-            reminder.status === 'dismissed' && styles.dismissedBadge,
-            isOverdue && styles.overdueBadge
-          ]}>
-            <Text style={styles.statusText}>
-              {isOverdue ? 'OVERDUE' : reminder.status?.toUpperCase() || 'PENDING'}
-            </Text>
-          </View>
-
-          {/* Title */}
-          <Text style={styles.reminderTitle}>
-            {reminder.title || reminder.note || 'Follow-up Reminder'}
-          </Text>
-
-          {/* Date & Time */}
-          <View style={styles.dateRow}>
-            <Icon name="calendar-outline" size={16} color="#6366f1" />
-            <Text style={styles.reminderDate}> {formattedDate} at {formattedTime}</Text>
-          </View>
-
-          {/* Comment/Note */}
-          {(reminder.comment || reminder.note) && (
-            <View style={styles.commentBox}>
-              <Icon name="chatbox-outline" size={14} color="#6366f1" />
-              <Text style={styles.commentText}>{reminder.comment || reminder.note}</Text>
-            </View>
-          )}
-
-          {/* Client Info */}
-          {(reminder.clientName || reminder.clientInfo?.name) && (
-            <View style={styles.clientRow}>
-              <Icon name="person-outline" size={14} color="#6b7280" />
-              <Text style={styles.clientText}>
-                {reminder.clientName || reminder.clientInfo?.name}
-                {(reminder.phone || reminder.clientInfo?.phone) && ` � ${reminder.phone || reminder.clientInfo.phone}`}
-              </Text>
-            </View>
-          )}
-
-          {/* Actions (only for pending reminders) */}
-          {reminder.status === 'pending' && renderActionButtons(reminder)}
-        </View>
-      </TouchableOpacity>
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    CrossPlatformAlert.alert(
+      'Delete Selected',
+      `Are you sure you want to delete ${selectedIds.length} reminders?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await crmAlertApi.deleteMultipleAlerts(selectedIds);
+              for (const id of selectedIds) {
+                try { await AlertNotificationService.cancelAlert(id); } catch (_) { }
+              }
+              setIsSelectionMode(false);
+              setSelectedIds([]);
+              fetchAlerts();
+            } catch (error) {
+              CrossPlatformAlert.alert('Error', 'Failed to delete selected reminders');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
     );
   };
 
-  const renderStatsCard = (title, count, iconName, bgColor) => (
-    <View style={styles.statsCard}>
-      <View style={[styles.iconBox, { backgroundColor: bgColor }]}>
-        <Icon name={iconName} size={18} color="#fff" />
-      </View>
-      <Text style={styles.statsCount}>{count}</Text>
-      <Text style={styles.statsTitle}>{title}</Text>
-    </View>
-  );
+  const handleDeleteAll = () => {
+    CrossPlatformAlert.alert(
+      'Delete All',
+      'This will permanently delete ALL reminders in this category. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete ALL',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await crmAlertApi.deleteAllAlerts(filterCategory);
+              try { await AlertNotificationService.cancelAllAlerts(); } catch (_) { }
+              fetchAlerts();
+            } catch (error) {
+              CrossPlatformAlert.alert('Error', 'Failed to delete all reminders');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Icon name="notifications-off-outline" size={64} color="#9CA3AF" />
-      <Text style={styles.emptyTitle}>No Reminders</Text>
-      <Text style={styles.emptySubtitle}>
-        {statusFilter !== 'All Status'
-          ? `No ${statusFilter} reminders found`
-          : 'Your reminders will appear here'}
-      </Text>
-    </View>
-  );
+  const getItemCategory = (item) => item?.category || (filterCategory === 'reminder' ? 'reminder' : 'alert');
 
-  // Render Detail Modal
-  const renderDetailModal = () => {
-    if (!selectedReminder) return null;
+  const handleEdit = (alert) => {
+    const itemId = alert._id || alert.id || alert.alertId;
+    const itemCategory = getItemCategory(alert);
+    console.log('📝 Editing reminder:', itemId, itemCategory);
 
-    const dateTimeValue = selectedReminder.reminderDateTime || selectedReminder.dateTime;
-    let formattedDateTime = 'No Date';
-    if (dateTimeValue) {
-      try {
-        const date = new Date(dateTimeValue);
-        if (!isNaN(date.getTime())) {
-          formattedDateTime = date.toLocaleString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          });
-        }
-      } catch (error) {
-        formattedDateTime = 'Invalid Date';
-      }
+    navigation.navigate('EditReminder', {
+      reminderId: itemId,
+      clientName: alert.clientName || alert.title || 'Reminder',
+      originalMessage: alert.note || alert.reason || alert.message || '',
+      enquiryId: alert.enquiryId,
+      phone: alert.phone,
+      location: alert.location,
+      reminderTitle: alert.title,
+      isAdmin: false,
+      originalTime: alert.time,
+      scheduledDateTime: alert.nextScheduledAt || alert.scheduledDateTime || `${alert.date}T${alert.time}`,
+      isRepeating: !!(alert.isRepeating || alert.repeatDaily || (alert.repeatFrequency && alert.repeatFrequency !== 'none')),
+      repeatType: alert.repeatType || alert.repeatFrequency || (alert.repeatDaily ? 'daily' : 'none'),
+      customIntervalMinutes: alert.repeatMetadata?.customIntervalMinutes ||
+        alert.customIntervalMinutes ||
+        alert.customRepeatMinutes ||
+        alert.repeatInterval ||
+        '',
+      placeReminder: alert.placeReminder !== false,
+    });
+  };
+
+  const openNotificationPopup = (item) => {
+    setPopupData({
+      _id: item._id || item.id,
+      title: item.title || item.reason,
+      reason: item.reason,
+      date: item.date,
+      time: item.time,
+      nextScheduledAt: item.nextScheduledAt,
+      repeatFrequency: item.repeatFrequency,
+      repeatDaily: item.repeatDaily,
+      customIntervalMinutes: item.customIntervalMinutes || item.customRepeatMinutes || item.repeatMetadata?.customIntervalMinutes || '',
+      customRepeatMinutes: item.customRepeatMinutes || item.customIntervalMinutes || item.repeatMetadata?.customRepeatMinutes || item.repeatMetadata?.customIntervalMinutes || '',
+      type: 'admin_reminder',
+    });
+    setPopupVisible(true);
+  };
+
+  const handleTogglePin = async (id) => {
+    if (isSelectionMode) {
+      handleSelect(id);
+      return;
     }
 
-    return (
-      <Modal
-        visible={showDetailModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowDetailModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.detailModalContent}>
-            <View style={styles.detailModalHeader}>
-              <Text style={styles.detailModalTitle}>Reminder Details</Text>
-              <TouchableOpacity onPress={() => setShowDetailModal(false)}>
-                <Icon name="close" size={24} color="#6b7280" />
-              </TouchableOpacity>
-            </View>
+    let newPinned;
+    if (pinnedIds.includes(id)) {
+      newPinned = pinnedIds.filter(pid => pid !== id);
+    } else {
+      newPinned = [...pinnedIds, id];
+    }
+    setPinnedIds(newPinned);
+    try {
+      await AsyncStorage.setItem(`pinned_alerts_${filterCategory}`, JSON.stringify(newPinned));
+    } catch (e) { console.error('Error saving pins', e); }
+  };
 
-            <ScrollView style={styles.detailModalBody}>
-              {/* Status */}
-              <View style={[
-                styles.detailStatusBadge,
-                selectedReminder.status === 'completed' && styles.completedBadge,
-                selectedReminder.status === 'snoozed' && styles.snoozedBadge,
-              ]}>
-                <Text style={styles.detailStatusText}>
-                  {selectedReminder.status?.toUpperCase() || 'PENDING'}
+  const handleSelect = (id) => {
+    if (selectedIds.includes(id)) {
+      const remaining = selectedIds.filter(sid => sid !== id);
+      setSelectedIds(remaining);
+      if (remaining.length === 0) setIsSelectionMode(false);
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const startSelection = (id) => {
+    setIsSelectionMode(true);
+    setSelectedIds([id]);
+  };
+
+  /* ================= MOBILE CARD ================= */
+  const renderRow = ({ item }) => {
+    const created = item.createdAt || item.date;
+    const itemId = item._id || item.id;
+    const isPinned = pinnedIds.includes(itemId);
+    const isSelected = selectedIds.includes(itemId);
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onLongPress={() => startSelection(itemId)}
+        onPress={() => isSelectionMode ? handleSelect(itemId) : openNotificationPopup(item)}
+        style={[
+          styles.alertCard,
+          isPinned && styles.alertCardPinned,
+          isSelected && styles.alertCardSelected
+        ]}
+      >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {isSelectionMode && (
+              <Icon
+                name={isSelected ? "checkbox" : "square-outline"}
+                size={20}
+                color={isSelected ? "#2563eb" : "#94a3b8"}
+                style={{ marginRight: 10 }}
+              />
+            )}
+            {((item.repeatFrequency && item.repeatFrequency !== 'none') || item.repeatDaily || item.repeatMetadata?.customIntervalMinutes || item.customIntervalMinutes || item.repeatInterval || item.customRepeatMinutes) ? (
+              <View style={[styles.badge, { backgroundColor: '#fef3c7', marginBottom: 0 }]}>
+                <Text style={styles.badgeText}>
+                  NEXT: {getNextScheduledDisplay(item) || formatDateTime(item.date, item.time)}
                 </Text>
               </View>
-
-              {/* Title */}
-              <Text style={styles.detailTitle}>
-                {selectedReminder.title || selectedReminder.note || 'Follow-up Reminder'}
+            ) : (
+              item.time && (
+                <View style={[styles.badge, { backgroundColor: '#e0f2fe', marginBottom: 0 }]}>
+                  <Text style={styles.badgeText}>SCHEDULED: {item.time}</Text>
+                </View>
+              )
+            )}
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {isPinned && <Icon name="pin" size={16} color="#f59e0b" style={{ marginRight: 8 }} />}
+            <View
+              style={[
+                styles.badge,
+                { marginRight: 0 },
+                item.placeReminder === false
+                  ? { backgroundColor: '#f3f4f6' }
+                  : (item.isActive ? styles.badgeActive : styles.badgeInactive),
+              ]}
+            >
+              <Text style={[
+                styles.badgeText,
+                item.placeReminder === false ? { color: '#6b7280' } : null,
+              ]}>
+                {item.placeReminder === false ? 'NOTE' : (item.isActive ? 'ACTIVE' : 'INACTIVE')}
               </Text>
-
-              {/* Date & Time */}
-              <View style={styles.detailRow}>
-                <Icon name="calendar-outline" size={20} color="#6366f1" />
-                <View style={{ marginLeft: 12 }}>
-                  <Text style={styles.detailLabel}>Scheduled Date & Time</Text>
-                  <Text style={styles.detailValue}>{formattedDateTime}</Text>
-                </View>
-              </View>
-
-              {/* Note */}
-              {(selectedReminder.comment || selectedReminder.note) && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>Note</Text>
-                  <Text style={styles.detailSectionContent}>
-                    {selectedReminder.comment || selectedReminder.note}
-                  </Text>
-                </View>
-              )}
-
-              {/* Client Info */}
-              {(selectedReminder.clientName || selectedReminder.clientInfo?.name) && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>Client Information</Text>
-                  <Text style={styles.detailSectionContent}>
-                    ?? {selectedReminder.clientName || selectedReminder.clientInfo?.name}
-                  </Text>
-                  {(selectedReminder.phone || selectedReminder.clientInfo?.phone) && (
-                    <Text style={styles.detailSectionContent}>
-                      ?? {selectedReminder.phone || selectedReminder.clientInfo.phone}
-                    </Text>
-                  )}
-                </View>
-              )}
-            </ScrollView>
-
-            <View style={styles.detailModalFooter}>
-              <TouchableOpacity
-                style={styles.detailModalButton}
-                onPress={() => setShowDetailModal(false)}
-              >
-                <Text style={styles.detailModalButtonText}>Close</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </View>
-      </Modal>
+
+        <Text style={styles.cardTitle} numberOfLines={1}>
+          {item.title || item.reason}
+        </Text>
+
+        {item.title && (
+          <Text style={styles.cardReason} numberOfLines={2}>
+            {item.reason}
+          </Text>
+        )}
+
+        <View style={styles.badgeRow}>
+          <View
+            style={[
+              styles.badge,
+              (item.repeatFrequency && item.repeatFrequency !== 'none') || item.repeatDaily ? styles.badgeYes : styles.badgeNo,
+            ]}
+          >
+            <Text style={styles.badgeText}>
+              {(() => {
+                const prefix = 'REPEAT: ';
+                const mins = item.repeatMetadata?.customIntervalMinutes ||
+                  item.customIntervalMinutes ||
+                  item.repeatInterval ||
+                  item.customRepeatMinutes;
+
+                if (item.repeatFrequency && item.repeatFrequency !== 'none') {
+                  const freq = item.repeatFrequency.toLowerCase();
+                  if (freq === 'custom') {
+                    return mins ? `${prefix}${mins} MINS` : `${prefix}CUSTOM`;
+                  }
+                  return `${prefix}${freq.toUpperCase()}`;
+                }
+
+                if (item.repeatDaily) return `${prefix}DAILY`;
+                if (mins && (!item.repeatFrequency || item.repeatFrequency === 'none')) return `${prefix}${mins} MINS`;
+
+                return `${prefix}NO`;
+              })()}
+            </Text>
+          </View>
+        </View>
+
+        <View style={[styles.badgeRow, { marginBottom: 10 }]}>
+          <View style={[styles.badge, { backgroundColor: '#a7f3d0' }]}>
+            <Text style={styles.badgeText}>
+              PLACED ON: {formatDate(created)} {formatTime(created)}
+            </Text>
+          </View>
+        </View>
+
+        {!isSelectionMode && (
+          <View style={styles.cardActions}>
+            <TouchableOpacity
+              style={[styles.editBtn, { backgroundColor: isPinned ? '#f59e0b' : '#64748b' }]}
+              onPress={() => handleTogglePin(itemId)}
+            >
+              <Icon name={isPinned ? "pin-outline" : "pin"} size={16} color="#fff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() => handleEdit(item)}
+            >
+              <Text style={styles.actionText}>Edit</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={() => handleDelete(item._id || item.id)}
+            >
+              <Text style={styles.actionText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#EF4444" barStyle="light-content" />
-
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={openDrawer}>
-          <Icon name="menu" size={26} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>My Reminders</Text>
-          <Text style={styles.headerSubtitle}>Track your reminder updates</Text>
-        </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh}>
-          <Icon name="refresh" size={22} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        {renderStatsCard('Total', statsData.totalReminders, 'calendar', '#6366F1')}
-        {renderStatsCard('Pending', statsData.pending, 'time', '#EC4899')}
-        {renderStatsCard('Due Now', statsData.dueNow, 'alert', '#F59E0B')}
-        {renderStatsCard('Done', statsData.completed, 'checkmark', '#10B981')}
-      </View>
-
-      {/* Search & Filters */}
-      <View style={styles.filtersSection}>
-        <View style={styles.searchBar}>
-          <Icon name="search" size={18} color="#9CA3AF" />
-          <TextInput
-            style={styles.input}
-            placeholder="Search reminders..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#9CA3AF"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Icon name="close-circle" size={18} color="#9CA3AF" />
+      <View style={[styles.topRow, { paddingTop: statusBarTop + 14 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {openDrawer ? (
+            <TouchableOpacity onPress={openDrawer} style={{ marginRight: 12 }}>
+              <Icon name="menu" size={26} color="#000" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
+              <Icon name="arrow-back" size={24} color="#000" />
             </TouchableOpacity>
           )}
+          <View>
+            <Text style={styles.title}>{isSelectionMode ? `${selectedIds.length} Selected` : screenTitle}</Text>
+            {isSelectionMode && (
+              <TouchableOpacity onPress={() => { setIsSelectionMode(false); setSelectedIds([]); }}>
+                <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '700', marginTop: 2 }}>Cancel Selection</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        <View style={styles.filterRow}>
-          <TouchableOpacity
-            style={styles.dropdownBox}
-            onPress={() => setShowStatusModal(true)}
-          >
-            <Text style={styles.dropdownText}>{statusFilter}</Text>
-            <Icon name="chevron-down" size={18} color="#6B7280" />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {isSelectionMode ? (
+            <TouchableOpacity
+              style={[styles.deleteBtn, { paddingHorizontal: 12, paddingVertical: 8 }]}
+              onPress={handleDeleteSelected}
+            >
+              <Icon name="trash-outline" size={18} color="#fff" />
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.deleteBtn, { backgroundColor: '#64748b', marginRight: 10, paddingHorizontal: 12, paddingVertical: 8 }]}
+                onPress={handleDeleteAll}
+              >
+                <Text style={styles.createBtnText}>Delete All</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.createBtn}
+                onPress={() => navigation.navigate('CreateAlert', { forceCategory: filterCategory })}
+              >
+                <Text style={styles.createBtnText}>+ New</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
+
+      {/* Pop up */}
+      <AdminNotificationPopup
+        visible={popupVisible}
+        onClose={() => setPopupVisible(false)}
+        {...popupData}
+        onEdit={() => {
+          setPopupVisible(false);
+          if (!popupData) return;
+          handleEdit(popupData);
+        }}
+      />
+
+      {/* Filter Card */}
+      <View style={styles.filterCard}>
+        <View style={{ marginBottom: 12 }}>
+          <Text style={styles.label}>Search</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by title..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+        <View style={styles.inputRow}>
+          <View style={styles.inputCol}>
+            <Text style={styles.label}>Start Date</Text>
+            <TouchableOpacity
+              style={styles.dateInput}
+              onPress={() => setShowStartPicker(true)}
+            >
+              <Text>
+                {startDate ? formatDate(startDate) : 'dd-mm-yyyy'}
+              </Text>
+              <Icon name="calendar-outline" size={18} />
+            </TouchableOpacity>
+            {showStartPicker && (
+              <DateTimePicker
+                value={startDate || new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(e, d) => {
+                  setShowStartPicker(false);
+                  if (d) setStartDate(d);
+                }}
+              />
+            )}
+          </View>
+
+          <View style={styles.inputCol}>
+            <Text style={styles.label}>End Date</Text>
+            <TouchableOpacity
+              style={styles.dateInput}
+              onPress={() => setShowEndPicker(true)}
+            >
+              <Text>{endDate ? formatDate(endDate) : 'dd-mm-yyyy'}</Text>
+              <Icon name="calendar-outline" size={18} />
+            </TouchableOpacity>
+            {showEndPicker && (
+              <DateTimePicker
+                value={endDate || new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(e, d) => {
+                  setShowEndPicker(false);
+                  if (d) setEndDate(d);
+                }}
+              />
+            )}
+          </View>
+        </View>
+
+        <View style={styles.filterActions}>
+          <TouchableOpacity style={styles.filterBtn} onPress={handleFilter}>
+            <Text style={styles.filterText}>Filter</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.clearBtn} onPress={clearFilter}>
+            <Text style={styles.filterText}>Clear</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* List */}
-      <View style={styles.cardListArea}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading reminders...</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredReminders}
-            keyExtractor={(item) => item._id || item.id || String(Math.random())}
-            renderItem={renderReminderItem}
-            ListEmptyComponent={renderEmptyState}
-            contentContainerStyle={{ flexGrow: 1, padding: 16 }}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={['#EF4444']}
-                tintColor="#EF4444"
-              />
-            }
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-      </View>
-
-      {/* Status Filter Modal */}
-      <Modal visible={showStatusModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filter by Status</Text>
-              <TouchableOpacity onPress={() => setShowStatusModal(false)}>
-                <Icon name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            {statusOptions.map((status) => (
-              <TouchableOpacity
-                key={status}
-                style={[styles.modalOption, statusFilter === status && styles.selectedOption]}
-                onPress={() => {
-                  setStatusFilter(status);
-                  setShowStatusModal(false);
-                }}
-              >
-                <Text style={[styles.modalOptionText, statusFilter === status && styles.selectedOptionText]}>
-                  {status}
-                </Text>
-                {statusFilter === status && <Icon name="checkmark" size={20} color="#EF4444" />}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Detail Modal */}
-      {renderDetailModal()}
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 30 }} />
+      ) : (
+        <FlatList
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          data={[...alerts]
+            .filter(item => {
+              if (!searchQuery) return true;
+              const searchLower = searchQuery.toLowerCase();
+              const title = (item.title || '').toLowerCase();
+              const description = (item.reason || item.note || item.message || item.description || '').toLowerCase();
+              return title.includes(searchLower) || description.includes(searchLower);
+            })}
+          renderItem={renderRow}
+          keyExtractor={(i) => i._id || i.id}
+          contentContainerStyle={{ padding: 16 }}
+          ListEmptyComponent={
+            <Text style={{ textAlign: 'center', marginTop: 40, color: '#64748b' }}>
+              No reminders found
+            </Text>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
 
 export default EmployeeReminders;
 
+/* ================= STYLES ================= */
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC'
-  },
+  container: { flex: 1, backgroundColor: '#f6f7fb' },
 
-  header: {
-    backgroundColor: '#EF4444',
-    padding: 20,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 16 : 50,
-    paddingBottom: 24,
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  menuBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    color: '#fff',
-    fontWeight: '700',
-  },
-  headerSubtitle: {
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 4,
-    fontSize: 14,
-  },
-  refreshBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: -12,
     paddingHorizontal: 16,
+    paddingBottom: 12,
+    alignItems: 'center',
   },
-  statsCard: {
-    flex: 1,
+
+  title: { fontSize: 18, fontWeight: '700' },
+
+  createBtn: {
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+
+  createBtnText: { color: '#fff', fontWeight: '700' },
+
+  filterCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 14,
-    marginHorizontal: 4,
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    margin: 16,
+    padding: 12,
+    borderRadius: 8,
+    elevation: 2,
   },
-  iconBox: {
-    width: 36,
-    height: 36,
+
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 6,
+    padding: 8,
+    backgroundColor: '#f9fafb',
+    color: '#000',
+  },
+
+  inputRow: { flexDirection: 'row' },
+
+  inputCol: { flex: 1, marginRight: 8 },
+
+  label: { fontSize: 12, color: '#6b7280', marginBottom: 6 },
+
+  dateInput: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 10,
+  },
+
+  filterActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+
+  filterBtn: {
+    backgroundColor: '#0ea5e9',
+    padding: 10,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+
+  clearBtn: {
+    backgroundColor: '#ef4444',
+    padding: 10,
+    borderRadius: 6,
+  },
+
+  filterText: { color: '#fff', fontWeight: '700' },
+
+  /* CARD */
+  alertCard: {
+    backgroundColor: '#fff',
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 14,
+    marginBottom: 14,
+    elevation: 2,
+  },
+
+  cardDate: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563eb',
     marginBottom: 6,
   },
-  statsCount: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  statsTitle: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 2,
-  },
 
-  filtersSection: {
-    marginTop: 16,
-    paddingHorizontal: 16,
-  },
-  searchBar: {
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    height: 48,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-  },
-  input: {
-    marginLeft: 10,
-    flex: 1,
-    fontSize: 15,
-    color: '#1F2937',
-  },
-
-  filterRow: {
-    flexDirection: 'row',
-    marginTop: 12,
-  },
-  dropdownBox: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    elevation: 2,
-  },
-  dropdownText: {
-    color: '#1F2937',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-
-  cardListArea: {
-    flex: 1,
-    marginTop: 16,
-  },
-
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    marginTop: 16,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#4B5563',
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#6B7280',
-    fontSize: 16,
-  },
-
-  reminderCard: {
-    backgroundColor: '#fff',
-    marginBottom: 12,
-    borderRadius: 14,
-    padding: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    borderLeftWidth: 4,
-    borderLeftColor: '#6366f1',
-  },
-  overdueCard: {
-    borderLeftColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
-  },
-  reminderTitle: {
+  cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
-    paddingRight: 80,
+    marginBottom: 6,
+    color: '#111827',
   },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+
+  cardReason: {
+    fontSize: 14,
     marginBottom: 10,
-  },
-  reminderDate: {
-    fontSize: 13,
-    color: '#6366f1',
-    fontWeight: '600',
+    color: '#6b7280',
+    fontStyle: 'italic',
   },
 
-  statusBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
+
+  badge: {
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: '#6366f1',
-  },
-  completedBadge: {
-    backgroundColor: '#10B981',
-  },
-  snoozedBadge: {
-    backgroundColor: '#F59E0B',
-  },
-  dismissedBadge: {
-    backgroundColor: '#6B7280',
-  },
-  overdueBadge: {
-    backgroundColor: '#EF4444',
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 8,
   },
 
-  commentBox: {
+  badgeYes: { backgroundColor: '#dcfce7' },
+  badgeNo: { backgroundColor: '#fee2e2' },
+  badgeActive: { backgroundColor: '#bbf7d0' },
+  badgeInactive: { backgroundColor: '#e5e7eb' },
+
+  badgeText: { fontSize: 12, fontWeight: '700' },
+
+  alertCardPinned: {
+    borderColor: '#f59e0b',
+    borderWidth: 1.5,
+    backgroundColor: '#fffbeb',
+  },
+
+  alertCardSelected: {
+    borderColor: '#2563eb',
+    borderWidth: 1.5,
+    backgroundColor: '#eff6ff',
+  },
+
+  cardActions: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#F8FAFC',
+    justifyContent: 'space-between',
+  },
+
+  editBtn: {
+    backgroundColor: '#2563eb',
     padding: 10,
-    borderRadius: 8,
-    marginBottom: 10,
-    gap: 8,
-  },
-  commentText: {
-    fontSize: 13,
-    color: '#4B5563',
-    flex: 1,
-    lineHeight: 18,
+    borderRadius: 6,
+    marginRight: 10,
   },
 
-  clientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  clientText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-
-  actionRow: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 8,
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+  deleteBtn: {
+    backgroundColor: '#ef4444',
+    padding: 10,
+    borderRadius: 6,
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 6,
-  },
-  completeBtn: {
-    backgroundColor: '#10B981',
-    flex: 2,
-  },
-  snoozeBtn: {
-    backgroundColor: '#F59E0B',
-    flex: 2,
-  },
-  dismissBtn: {
-    backgroundColor: '#6B7280',
-    flex: 1,
-    maxWidth: 50,
-  },
-  actionBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
+    alignItems: 'center',
   },
 
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '70%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  modalOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  selectedOption: {
-    backgroundColor: '#FEF2F2',
-  },
-  modalOptionText: {
-    fontSize: 16,
-    color: '#374151',
-  },
-  selectedOptionText: {
-    color: '#EF4444',
-    fontWeight: '600',
-  },
-
-  detailModalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-  },
-  detailModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  detailModalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  detailModalBody: {
-    padding: 20,
-    maxHeight: 500,
-  },
-  detailStatusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginBottom: 16,
-    backgroundColor: '#6366f1',
-  },
-  detailStatusText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  detailTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 20,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  detailLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  detailValue: {
-    fontSize: 15,
-    color: '#1F2937',
-    fontWeight: '600',
-  },
-  detailSection: {
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-  },
-  detailSectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  detailSectionContent: {
-    fontSize: 14,
-    color: '#4B5563',
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  detailModalFooter: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  detailModalButton: {
-    backgroundColor: '#EF4444',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  detailModalButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  actionText: { color: '#fff', fontWeight: '700' },
 });

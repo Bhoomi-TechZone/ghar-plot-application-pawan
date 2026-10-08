@@ -19,7 +19,8 @@ import {
   Switch,
   ActivityIndicator,
   Dimensions,
-  StatusBar
+  StatusBar,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -44,6 +45,13 @@ const AdminReminderControlScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // Active Employee Reminders Tab States
+  const [activeEmployeeReminders, setActiveEmployeeReminders] = useState([]);
+  const [activeEmployeesList, setActiveEmployeesList] = useState([]);
+  const [selectedActiveEmpFilter, setSelectedActiveEmpFilter] = useState('all');
+  const [activeRemindersSearch, setActiveRemindersSearch] = useState('');
+  const [activeRemindersLoading, setActiveRemindersLoading] = useState(false);
+
   // Pagination & Filters
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({});
@@ -51,7 +59,7 @@ const AdminReminderControlScreen = () => {
   const [filterStatus, setFilterStatus] = useState('');
 
   // Constants
-  const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
+  const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
 
   // Authentication Helper
   const getAuthHeaders = async () => {
@@ -275,139 +283,206 @@ const AdminReminderControlScreen = () => {
     }
   };
 
-  const toggleEmployeePopup = async (employeeId, currentStatus) => {
+  const fetchActiveEmployeeReminders = async (empId = selectedActiveEmpFilter, search = activeRemindersSearch) => {
     try {
+      setActiveRemindersLoading(true);
       const headers = await getAuthHeaders();
       if (!headers) return;
 
-      const newStatus = !currentStatus;
+      const queryParams = new URLSearchParams();
+      if (empId && empId !== 'all') {
+        queryParams.append('employeeId', empId);
+      }
+      if (search) {
+        queryParams.append('search', search);
+      }
 
-      CrossPlatformAlert.alert(
-        'Confirm Action',
-        `${newStatus ? 'Enable' : 'Disable'} reminder popup for this employee?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Confirm',
-            onPress: async () => {
-              try {
-                console.log('?? Toggling popup for employee:', employeeId);
-                console.log('?? Setting adminReminderPopupEnabled:', newStatus);
+      const response = await fetch(
+        `${API_BASE_URL}/api/alerts/admin/employee-reminders?${queryParams.toString()}`,
+        { method: 'GET', headers }
+      );
 
-                // Update local UI immediately for better UX
-                setEmployees(prev => prev.map(emp =>
-                  emp._id === employeeId
-                    ? { ...emp, adminReminderPopupEnabled: newStatus }
-                    : emp
-                ));
+      const resData = await response.json();
+      console.log('📋 Active employee reminders response:', resData);
 
-                // Try dedicated endpoint first (preferred)
-                let updateSuccess = false;
-                try {
-                  const dedicatedResponse = await fetch(
-                    `${API_BASE_URL}/admin/employees/${employeeId}/reminder-popup`,
-                    {
-                      method: 'PUT',
-                      headers,
-                      body: JSON.stringify({
-                        adminReminderPopupEnabled: newStatus
-                      })
-                    }
-                  );
+      if (resData.success) {
+        setActiveEmployeeReminders(resData.data || []);
+        setActiveEmployeesList(resData.activeEmployees || []);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching active employee reminders:', error);
+    } finally {
+      setActiveRemindersLoading(false);
+    }
+  };
 
-                  if (dedicatedResponse.ok) {
-                    const data = await dedicatedResponse.json();
-                    if (data.success) {
-                      updateSuccess = true;
-                      console.log('? Updated via dedicated endpoint');
-                    }
-                  }
-                } catch (dedicatedError) {
-                  console.log('?? Dedicated endpoint not available, trying general update...');
-                }
-
-                // Fallback to general employee update endpoint
-                if (!updateSuccess) {
-                  try {
-                    // Fetch current employee data
-                    const getResponse = await fetch(
-                      `${API_BASE_URL}/admin/employees/${employeeId}`,
-                      { method: 'GET', headers }
-                    );
-
-                    const getCurrentData = await getResponse.json();
-                    if (getCurrentData.success) {
-                      const employeeData = getCurrentData.data || getCurrentData.employee;
-
-                      // Update with full employee data
-                      const updateResponse = await fetch(
-                        `${API_BASE_URL}/admin/employees/${employeeId}`,
-                        {
-                          method: 'PUT',
-                          headers,
-                          body: JSON.stringify({
-                            name: employeeData.name,
-                            email: employeeData.email,
-                            phone: employeeData.phone,
-                            department: employeeData.department,
-                            role: employeeData.role?._id || employeeData.role,
-                            adminReminderPopupEnabled: newStatus
-                          })
-                        }
-                      );
-
-                      const updateData = await updateResponse.json();
-                      if (updateData.success) {
-                        updateSuccess = true;
-                        console.log('? Updated via general endpoint');
-                      }
-                    }
-                  } catch (generalError) {
-                    console.warn('?? General update endpoint failed:', generalError);
-                  }
-                }
-
-                if (updateSuccess) {
-                  CrossPlatformAlert.alert(
-                    'Success',
-                    `Reminder popup ${newStatus ? 'enabled' : 'disabled'}!\n\nNote: ${newStatus ? 'Employee will now receive' : 'Employee will not receive'} reminder notifications.`
-                  );
-                } else {
-                  // Even if API fails, keep local state (offline mode)
-                  CrossPlatformAlert.alert(
-                    'Saved Locally',
-                    `Setting saved on device. Backend sync pending.\n\nThis feature may require backend API implementation. Contact developer if this message persists.`,
-                    [
-                      {
-                        text: 'OK',
-                        onPress: () => {
-                          // Store in AsyncStorage as backup
-                          AsyncStorage.setItem(
-                            `employee_popup_${employeeId}`,
-                            JSON.stringify({ adminReminderPopupEnabled: newStatus })
-                          );
-                        }
-                      }
-                    ]
-                  );
-                }
-              } catch (error) {
-                console.error('? Toggle error:', error);
-                // Revert local UI on complete failure
-                setEmployees(prev => prev.map(emp =>
-                  emp._id === employeeId
-                    ? { ...emp, adminReminderPopupEnabled: currentStatus }
-                    : emp
-                ));
-                CrossPlatformAlert.alert('Error', 'Failed to update setting. Please try again.');
+  const handleDeleteEmployeeReminder = (id) => {
+    CrossPlatformAlert.alert(
+      'Delete Reminder',
+      'Are you sure you want to delete this employee reminder?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const headers = await getAuthHeaders();
+              if (!headers) return;
+              const res = await fetch(`${API_BASE_URL}/api/alerts/${id}`, {
+                method: 'DELETE',
+                headers,
+              });
+              const data = await res.json();
+              if (data.success) {
+                CrossPlatformAlert.alert('Success', 'Reminder deleted successfully');
+                fetchActiveEmployeeReminders();
+              } else {
+                CrossPlatformAlert.alert('Error', data.message || 'Failed to delete reminder');
               }
+            } catch (err) {
+              CrossPlatformAlert.alert('Error', 'Failed to delete reminder');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const toggleEmployeePopup = async (employeeId, currentStatus) => {
+    const newStatus = !currentStatus;
+
+    // 1. Optimistic UI update immediately for smooth & instant toggle
+    setEmployees(prev => prev.map(emp =>
+      emp._id === employeeId
+        ? { ...emp, adminReminderPopupEnabled: newStatus }
+        : emp
+    ));
+
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        // Revert if no auth headers
+        setEmployees(prev => prev.map(emp =>
+          emp._id === employeeId
+            ? { ...emp, adminReminderPopupEnabled: currentStatus }
+            : emp
+        ));
+        return;
+      }
+
+      console.log('🔄 Toggling popup for employee:', employeeId, '->', newStatus);
+
+      // Try dedicated endpoint first (preferred)
+      let updateSuccess = false;
+      try {
+        const dedicatedResponse = await fetch(
+          `${API_BASE_URL}/admin/reminders/employee/${employeeId}/toggle-popup`,
+          {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({
+              enabled: newStatus,
+              adminReminderPopupEnabled: newStatus
+            })
+          }
+        );
+
+        if (dedicatedResponse.ok) {
+          const data = await dedicatedResponse.json();
+          if (data.success) {
+            updateSuccess = true;
+            console.log('✅ Updated via dedicated toggle-popup endpoint');
+          }
+        }
+      } catch (dedicatedError) {
+        console.log('⚠️ Dedicated toggle-popup endpoint failed, trying fallback...');
+      }
+
+      // Fallback 1: Try /admin/employees/:id/reminder-popup
+      if (!updateSuccess) {
+        try {
+          const empPopupResponse = await fetch(
+            `${API_BASE_URL}/admin/employees/${employeeId}/reminder-popup`,
+            {
+              method: 'PUT',
+              headers,
+              body: JSON.stringify({
+                enabled: newStatus,
+                adminReminderPopupEnabled: newStatus
+              })
+            }
+          );
+
+          if (empPopupResponse.ok) {
+            const data = await empPopupResponse.json();
+            if (data.success) {
+              updateSuccess = true;
+              console.log('✅ Updated via fallback reminder-popup endpoint');
             }
           }
-        ]
-      );
+        } catch (fbError) {
+          console.log('⚠️ Fallback reminder-popup endpoint failed, trying general update...');
+        }
+      }
+
+      // Fallback to general employee update endpoint
+      if (!updateSuccess) {
+        try {
+          const getResponse = await fetch(
+            `${API_BASE_URL}/admin/employees/${employeeId}`,
+            { method: 'GET', headers }
+          );
+
+          const getCurrentData = await getResponse.json();
+          if (getCurrentData.success) {
+            const employeeData = getCurrentData.data || getCurrentData.employee;
+
+            const updateResponse = await fetch(
+              `${API_BASE_URL}/admin/employees/${employeeId}`,
+              {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
+                  name: employeeData.name,
+                  email: employeeData.email,
+                  phone: employeeData.phone,
+                  department: employeeData.department,
+                  role: employeeData.role?._id || employeeData.role,
+                  adminReminderPopupEnabled: newStatus
+                })
+              }
+            );
+
+            const updateData = await updateResponse.json();
+            if (updateData.success) {
+              updateSuccess = true;
+              console.log('✅ Updated via general endpoint');
+            }
+          }
+        } catch (generalError) {
+          console.warn('⚠️ General update endpoint failed:', generalError);
+        }
+      }
+
+      if (updateSuccess) {
+        fetchActiveEmployeeReminders();
+      } else {
+        // Offline cache backup
+        AsyncStorage.setItem(
+          `employee_popup_${employeeId}`,
+          JSON.stringify({ adminReminderPopupEnabled: newStatus })
+        );
+      }
     } catch (error) {
-      console.error('? Toggle preparation error:', error);
-      CrossPlatformAlert.alert('Error', 'Failed to prepare toggle: ' + error.message);
+      console.error('❌ Toggle error:', error);
+      // Revert local UI on complete failure
+      setEmployees(prev => prev.map(emp =>
+        emp._id === employeeId
+          ? { ...emp, adminReminderPopupEnabled: currentStatus }
+          : emp
+      ));
+      CrossPlatformAlert.alert('Error', 'Failed to update setting. Please try again.');
     }
   };
 
@@ -459,7 +534,8 @@ const AdminReminderControlScreen = () => {
         await Promise.all([
           fetchStats(),
           fetchEmployees(),
-          fetchDueReminders()
+          fetchDueReminders(),
+          fetchActiveEmployeeReminders()
         ]);
 
         // Set up auto-refresh for due reminders every 60 seconds
@@ -493,11 +569,13 @@ const AdminReminderControlScreen = () => {
     setRefreshing(true);
     try {
       if (activeTab === 'overview') {
-        await Promise.all([fetchStats(), fetchDueReminders()]);
+        await Promise.all([fetchStats(), fetchDueReminders(), fetchActiveEmployeeReminders()]);
       } else if (activeTab === 'employees') {
         await fetchEmployees(currentPage, searchTerm);
       } else if (activeTab === 'due-reminders') {
         await fetchDueReminders();
+      } else if (activeTab === 'employee-reminders') {
+        await fetchActiveEmployeeReminders();
       }
     } catch (error) {
       console.error('? Refresh error:', error);
@@ -555,6 +633,51 @@ const AdminReminderControlScreen = () => {
               color: '#10b981'
             })}
           </View>
+
+          {/* Quick Access to Active Employee Reminders */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: '#1d4ed8',
+              marginHorizontal: 16,
+              marginTop: 10,
+              marginBottom: 14,
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              borderRadius: 12,
+              elevation: 3,
+              shadowColor: '#1d4ed8',
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.25,
+              shadowRadius: 5,
+            }}
+            onPress={() => {
+              setActiveTab('employee-reminders');
+              fetchActiveEmployeeReminders();
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+              <View style={{
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                borderRadius: 10,
+                padding: 8,
+              }}>
+                <Icon name="event-note" size={24} color="#ffffff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff' }}>
+                  Active Employee Reminders ({activeEmployeeReminders.length})
+                </Text>
+                <Text style={{ fontSize: 12, color: '#bfdbfe', marginTop: 2 }}>
+                  Tap to view, edit & delete employee reminders
+                </Text>
+              </View>
+            </View>
+            <Icon name="chevron-right" size={24} color="#ffffff" />
+          </TouchableOpacity>
 
           {/* Status Breakdown */}
           <View style={styles.statusBreakdown}>
@@ -626,14 +749,25 @@ const AdminReminderControlScreen = () => {
         </View>
 
         <TouchableOpacity
-          style={styles.viewButton}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#eff6ff',
+            paddingHorizontal: 10,
+            paddingVertical: 7,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: '#bfdbfe',
+            gap: 4
+          }}
           onPress={() => {
-            setSelectedEmployee(item);
-            fetchEmployeeReminders(item._id);
-            setModalVisible(true);
+            setSelectedActiveEmpFilter(item._id);
+            setActiveTab('employee-reminders');
+            fetchActiveEmployeeReminders(item._id);
           }}
         >
-          <Icon name="visibility" size={20} color="#3b82f6" />
+          <Icon name="notifications" size={16} color="#2563eb" />
+          <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563eb' }}>Reminders</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -762,6 +896,339 @@ const AdminReminderControlScreen = () => {
     </View>
   );
 
+  const renderActiveEmployeeRemindersTab = () => (
+    <View style={styles.tabContent}>
+      {/* Search Input */}
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ffffff',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+        marginHorizontal: 16,
+        marginTop: 12,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+      }}>
+        <Icon name="search" size={20} color="#94a3b8" style={{ marginRight: 8 }} />
+        <TextInput
+          style={{ flex: 1, fontSize: 14, color: '#1e293b' }}
+          placeholder="Search active employee reminders..."
+          placeholderTextColor="#94a3b8"
+          value={activeRemindersSearch}
+          onChangeText={(text) => {
+            setActiveRemindersSearch(text);
+            fetchActiveEmployeeReminders(selectedActiveEmpFilter, text);
+          }}
+        />
+        {activeRemindersSearch.length > 0 && (
+          <TouchableOpacity onPress={() => {
+            setActiveRemindersSearch('');
+            fetchActiveEmployeeReminders(selectedActiveEmpFilter, '');
+          }}>
+            <Icon name="close" size={18} color="#94a3b8" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Active Employees Pill Filter */}
+      {activeEmployeesList.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
+        >
+          <TouchableOpacity
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 7,
+              borderRadius: 20,
+              backgroundColor: selectedActiveEmpFilter === 'all' ? '#3b82f6' : '#ffffff',
+              borderWidth: 1,
+              borderColor: selectedActiveEmpFilter === 'all' ? '#3b82f6' : '#e2e8f0',
+            }}
+            onPress={() => {
+              setSelectedActiveEmpFilter('all');
+              fetchActiveEmployeeReminders('all', activeRemindersSearch);
+            }}
+          >
+            <Text style={{
+              fontSize: 12,
+              fontWeight: '700',
+              color: selectedActiveEmpFilter === 'all' ? '#ffffff' : '#64748b'
+            }}>
+              All Active ({activeEmployeeReminders.length})
+            </Text>
+          </TouchableOpacity>
+
+          {activeEmployeesList.map((emp) => {
+            const isSelected = selectedActiveEmpFilter === emp._id;
+            return (
+              <TouchableOpacity
+                key={emp._id}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 7,
+                  borderRadius: 20,
+                  backgroundColor: isSelected ? '#3b82f6' : '#ffffff',
+                  borderWidth: 1,
+                  borderColor: isSelected ? '#3b82f6' : '#e2e8f0',
+                }}
+                onPress={() => {
+                  setSelectedActiveEmpFilter(emp._id);
+                  fetchActiveEmployeeReminders(emp._id, activeRemindersSearch);
+                }}
+              >
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '600',
+                  color: isSelected ? '#ffffff' : '#64748b'
+                }}>
+                  👤 {emp.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {/* Reminders List */}
+      {activeRemindersLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={styles.loadingText}>Loading employee reminders...</Text>
+        </View>
+      ) : activeEmployeeReminders.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Icon name="event-busy" size={54} color="#cbd5e1" />
+          <Text style={styles.emptyText}>No Reminders Found</Text>
+          <Text style={styles.emptySubtext}>
+            {activeEmployeesList.length === 0
+              ? 'No employee has reminder tracking enabled. Enable an employee in the "Employees" tab.'
+              : 'Selected employee does not have any reminders.'}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={activeEmployeeReminders}
+          keyExtractor={(item) => item._id || item.id}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, gap: 12 }}
+          renderItem={({ item }) => {
+            const isPlaceNote = item.placeReminder === false;
+            const repeatFreq = item.repeatFrequency || (item.repeatDaily ? 'daily' : 'none');
+            const customMins = item.repeatMetadata?.customIntervalMinutes || item.customIntervalMinutes || '';
+
+            let repeatText = 'NO';
+            if (repeatFreq === 'daily') repeatText = 'DAILY';
+            else if (repeatFreq === 'custom' && customMins) repeatText = `${customMins} MINS`;
+            else if (repeatFreq !== 'none') repeatText = repeatFreq.toUpperCase();
+
+            return (
+              <View style={{
+                backgroundColor: '#ffffff',
+                borderRadius: 14,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 4,
+                elevation: 2,
+              }}>
+                {/* Employee Info Header */}
+                <View style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 10,
+                  paddingBottom: 8,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#f1f5f9',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{
+                      backgroundColor: '#eff6ff',
+                      borderRadius: 16,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4
+                    }}>
+                      <Icon name="person" size={14} color="#3b82f6" />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#1d4ed8' }}>
+                        {item.employeeName || item.employee?.name || item.clientName || 'Employee'}
+                      </Text>
+                      {item.employeeDepartment ? (
+                        <Text style={{ fontSize: 11, color: '#64748b' }}>
+                          ({item.employeeDepartment})
+                        </Text>
+                      ) : null}
+                    </View>
+
+                    {(item.phone || item.employee?.phone) ? (
+                      <View style={{
+                        backgroundColor: '#f0fdf4',
+                        borderRadius: 16,
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4
+                      }}>
+                        <Icon name="phone" size={12} color="#16a34a" />
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#16a34a' }}>
+                          {item.phone || item.employee?.phone}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Status Badge */}
+                  <View style={{
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 8,
+                    backgroundColor: isPlaceNote ? '#f1f5f9' : (item.isActive ? '#ecfdf5' : '#fef2f2'),
+                  }}>
+                    <Text style={{
+                      fontSize: 11,
+                      fontWeight: '700',
+                      color: isPlaceNote ? '#64748b' : (item.isActive ? '#059669' : '#dc2626'),
+                    }}>
+                      {isPlaceNote ? 'NOTE' : (item.isActive ? 'ACTIVE' : 'INACTIVE')}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Scheduled Time Badge */}
+                <View style={{
+                  alignSelf: 'flex-start',
+                  backgroundColor: '#f0f9ff',
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 6,
+                  marginBottom: 8,
+                }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#0369a1' }}>
+                    ⏰ SCHEDULED: {item.date ? String(item.date).split('T')[0] : ''} {item.time || ''}
+                  </Text>
+                </View>
+
+                {/* Title */}
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b', marginBottom: 4 }}>
+                  {item.title || item.reason}
+                </Text>
+
+                {/* Note / Reason */}
+                {item.title && item.reason ? (
+                  <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>
+                    {item.reason}
+                  </Text>
+                ) : null}
+
+                {/* Badges Row */}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                  <View style={{
+                    backgroundColor: repeatText !== 'NO' ? '#eff6ff' : '#f8fafc',
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: repeatText !== 'NO' ? '#bfdbfe' : '#e2e8f0',
+                  }}>
+                    <Text style={{
+                      fontSize: 11,
+                      fontWeight: '600',
+                      color: repeatText !== 'NO' ? '#1d4ed8' : '#94a3b8'
+                    }}>
+                      REPEAT: {repeatText}
+                    </Text>
+                  </View>
+
+                  {item.createdAt ? (
+                    <View style={{
+                      backgroundColor: '#f8fafc',
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 6,
+                      borderWidth: 1,
+                      borderColor: '#e2e8f0',
+                    }}>
+                      <Text style={{ fontSize: 11, color: '#64748b' }}>
+                        PLACED: {new Date(item.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* Actions Row */}
+                <View style={{
+                  flexDirection: 'row',
+                  justifyContent: 'flex-end',
+                  gap: 10,
+                  borderTopWidth: 1,
+                  borderTopColor: '#f1f5f9',
+                  paddingTop: 10,
+                }}>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: '#2563eb',
+                      paddingHorizontal: 14,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      gap: 4,
+                    }}
+                    onPress={() => {
+                      navigation.navigate('EditReminder', {
+                        reminderId: item._id,
+                        clientName: item.clientName || item.title || 'Reminder',
+                        originalMessage: item.reason || item.note || '',
+                        reminderTitle: item.title,
+                        isAdmin: true,
+                        originalTime: item.time,
+                        scheduledDateTime: item.scheduledDateTime || `${item.date ? String(item.date).split('T')[0] : ''}T${item.time}`,
+                        isRepeating: !!(item.repeatDaily || (item.repeatFrequency && item.repeatFrequency !== 'none')),
+                        repeatType: item.repeatFrequency || (item.repeatDaily ? 'daily' : 'none'),
+                        customIntervalMinutes: item.repeatMetadata?.customIntervalMinutes || item.customIntervalMinutes || '',
+                        placeReminder: item.placeReminder !== false,
+                      });
+                    }}
+                  >
+                    <Icon name="edit" size={14} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Edit</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: '#ef4444',
+                      paddingHorizontal: 14,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      gap: 4,
+                    }}
+                    onPress={() => handleDeleteEmployeeReminder(item._id)}
+                  >
+                    <Icon name="delete" size={14} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          }}
+        />
+      )}
+    </View>
+  );
+
   const renderEmployeeReminderModal = () => (
     <Modal
       visible={modalVisible}
@@ -828,7 +1295,7 @@ const AdminReminderControlScreen = () => {
                 <Text style={styles.modalReminderComment}>{item.comment}</Text>
                 <Text style={styles.modalReminderDateTime}>
                   {date} at {time}
-                  {item.clientName && ` � ${item.clientName}`}
+                  {item.clientName && `  ${item.clientName}`}
                 </Text>
                 {item.status === 'completed' && item.completionResponse && (
                   <Text style={styles.completionResponse}>
@@ -866,12 +1333,12 @@ const AdminReminderControlScreen = () => {
           >
             <Icon name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>?? Admin Reminder Management</Text>
+          <Text style={styles.headerTitle}>Admin Reminders Control</Text>
         </View>
         <View style={styles.headerRight}>
           {getTotalDueCount() > 0 && (
             <View style={styles.dueAlertBadge}>
-              <Text style={styles.dueAlertText}>?? {getTotalDueCount()} Due Now</Text>
+              <Text style={styles.dueAlertText}>⏰ {getTotalDueCount()} Due Now</Text>
             </View>
           )}
           <TouchableOpacity
@@ -884,38 +1351,57 @@ const AdminReminderControlScreen = () => {
       </View>
 
       {/* Tab Navigation */}
-      <View style={styles.tabNavigation}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
-          onPress={() => setActiveTab('overview')}
+      <View style={{ backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ flexDirection: 'row' }}
         >
-          <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
-            ?? Overview
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'overview' && styles.activeTab, { paddingHorizontal: 16 }]}
+            onPress={() => setActiveTab('overview')}
+          >
+            <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
+              📊 Overview
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'employees' && styles.activeTab]}
-          onPress={() => setActiveTab('employees')}
-        >
-          <Text style={[styles.tabText, activeTab === 'employees' && styles.activeTabText]}>
-            ?? Employees ({employees.length})
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'employees' && styles.activeTab, { paddingHorizontal: 16 }]}
+            onPress={() => setActiveTab('employees')}
+          >
+            <Text style={[styles.tabText, activeTab === 'employees' && styles.activeTabText]}>
+              👥 Employees ({employees.length})
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'due-reminders' && styles.activeTab]}
-          onPress={() => setActiveTab('due-reminders')}
-        >
-          <Text style={[styles.tabText, activeTab === 'due-reminders' && styles.activeTabText]}>
-            ? Due Reminders ({getTotalDueCount()})
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'employee-reminders' && styles.activeTab, { paddingHorizontal: 16 }]}
+            onPress={() => {
+              setActiveTab('employee-reminders');
+              fetchActiveEmployeeReminders();
+            }}
+          >
+            <Text style={[styles.tabText, activeTab === 'employee-reminders' && styles.activeTabText]}>
+              📋 Active Reminders ({activeEmployeeReminders.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'due-reminders' && styles.activeTab, { paddingHorizontal: 16 }]}
+            onPress={() => setActiveTab('due-reminders')}
+          >
+            <Text style={[styles.tabText, activeTab === 'due-reminders' && styles.activeTabText]}>
+              ⏰ Due ({getTotalDueCount()})
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       {/* Tab Content */}
       {activeTab === 'overview' && renderOverviewTab()}
       {activeTab === 'employees' && renderEmployeesTab()}
+      {activeTab === 'employee-reminders' && renderActiveEmployeeRemindersTab()}
       {activeTab === 'due-reminders' && renderDueRemindersTab()}
 
       {/* Employee Reminders Modal */}

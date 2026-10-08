@@ -118,6 +118,7 @@ class NotificationHandler {
         
         const isAdminOrAlert = tappedType === 'admin_reminder' || tappedType === 'alert' ||
                                tappedType === 'system_alert' || tappedType === 'employee_alert_to_admin' ||
+                               tappedType === 'employee_reminder_to_admin' ||
                                !!tappedData.alertId ||
                                isLocalFallback; // ← iOS local fallback always shows popup
 
@@ -426,8 +427,8 @@ class NotificationHandler {
         return;
       }
 
-      // 2. Priority: Handle Alerts and Admin-created reminders (which are technically alerts)
-      if (notifType === 'admin_reminder' || notifType === 'alert' || notifType === 'system_alert' || notifType === 'employee_alert_to_admin' || notificationData.alertId) {
+      // 2. Priority: Handle Alerts, Admin-created reminders, and Employee reminders to Admin (trigger popup dialog)
+      if (notifType === 'admin_reminder' || notifType === 'alert' || notifType === 'system_alert' || notifType === 'employee_alert_to_admin' || notifType === 'employee_reminder_to_admin' || notificationData.alertId) {
         console.log(`🚀 ${notifType} notification - Triggering popup dialog`);
 
         const alertId = notificationData.alertId || notificationData.reminderId || notification?.id;

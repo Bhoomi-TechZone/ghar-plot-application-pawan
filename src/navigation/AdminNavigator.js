@@ -165,17 +165,7 @@ const AdminNavigator = ({ onLogout }) => {
       <Stack.Screen
         name="ReminderControl"
         component={AdminReminderControlScreen}
-        options={{
-          headerShown: true,
-          title: 'Reminder Control',
-          headerStyle: {
-            backgroundColor: '#007AFF',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ReminderMonitor"
@@ -235,17 +225,7 @@ const AdminNavigator = ({ onLogout }) => {
       />
       <Stack.Screen name="AdminRemindersControl"
         component={AdminReminderControlScreen}
-        options={{
-          headerShown: true,
-          title: 'Admin Reminders Control',
-          headerStyle: {
-            backgroundColor: '#007AFF',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="AdminMyReminders"
