@@ -54,75 +54,153 @@ const EditReminderScreen = ({ route, navigation }) => {
   );
   const [title, setTitle] = useState(clientName || '');
   const [message, setMessage] = useState(originalMessage || '');
-  // 🔥 KEY FIX: Initialize scheduledDate correctly to avoid timezone double-conversion.
-  // originalTime is already stored as IST by the backend (e.g. '13:27').
-  // scheduledDateTime / nextScheduledAt is a UTC ISO — use it only for the DATE part.
+  // 🔥 KEY FIX: Initialize scheduledDate to the NEXT scheduled date & time.
+  // For Daily, Weekly, Monthly, Yearly, and Custom (minute/hourly) repeating reminders:
+  // always display the NEXT scheduled date & time (matching My Reminders card),
+  // NEVER the initial creation time (e.g. if created at 3:20 for 4:20 daily, show 4:20).
   const [scheduledDate, setScheduledDate] = useState(() => {
-    const originalTime = route.params?.originalTime; // IST time string e.g. '13:27'
+    const rawFreq = String(
+      origRepeatFreq ||
+      repeatType ||
+      route.params?.repeatFrequency ||
+      route.params?.repeatType ||
+      (repeatDaily === true || repeatDaily === 'true' ? 'daily' : '') ||
+      ''
+    ).toLowerCase();
 
-    // Parse time from IST string
-    const parseTimeFromString = (timeStr) => {
-      if (!timeStr) return null;
-      const parts = String(timeStr).split(':');
-      if (parts.length < 2) return null;
-      const hours = parseInt(parts[0], 10);
-      const minutes = parseInt(parts[1], 10);
-      return (isNaN(hours) || isNaN(minutes)) ? null : { hours, minutes };
-    };
+    const customMins = parseInt(
+      origCustomMins ||
+      origRepeatMetadata?.customIntervalMinutes ||
+      route.params?.customIntervalMinutes ||
+      route.params?.customRepeatMinutes ||
+      route.params?.repeatInterval ||
+      0,
+      10
+    );
 
-    // Extract local date parts from ISO string or Date object
-    const parseDateFromISO = (isoStr) => {
-      if (!isoStr) return null;
+    const isCustom = rawFreq === 'custom' ||
+      rawFreq === 'hourly' ||
+      rawFreq === '1 min' ||
+      rawFreq === '1_min' ||
+      customMins > 0;
 
-      try {
-        // Extract calendar date directly from ISO string.
-        // Do NOT convert UTC -> local timezone here.
-        const match = String(isoStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const isDaily = rawFreq === 'daily' || repeatDaily === true || repeatDaily === 'true';
+    const isWeekly = rawFreq === 'weekly';
+    const isMonthly = rawFreq === 'monthly';
+    const isYearly = rawFreq === 'yearly';
 
-        if (match) {
-          return {
-            year: Number(match[1]),
-            month: Number(match[2]) - 1,
-            day: Number(match[3]),
-          };
+    const effectiveMins = (rawFreq === '1 min' || rawFreq === '1_min')
+      ? 1
+      : (rawFreq === 'hourly' && (!customMins || customMins === 0) ? 60 : (customMins || 1));
+
+    // Priority 1: Use nextScheduledAt / scheduledDateTime from route params (computed by backend)
+    const targetIso = route.params?.nextScheduledAt || scheduledDateTime;
+    const nowMs = Date.now();
+
+    if (targetIso) {
+      let sDate = null;
+      // If "YYYY-MM-DD HH:mm" or "YYYY-MM-DDTHH:mm" without timezone offset/Z, parse explicitly as IST
+      if (typeof targetIso === 'string' && !targetIso.includes('Z') && !targetIso.includes('+')) {
+        try {
+          const cleanStr = targetIso.replace('T', ' ');
+          const [datePart, timePart] = cleanStr.split(' ');
+          const [year, month, day] = datePart.split('-').map(Number);
+          const [hours, minutes] = timePart.split(':').map(Number);
+          const istOffsetMs = 5.5 * 60 * 60 * 1000;
+          const baseMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
+          sDate = new Date(baseMs);
+        } catch (_) { }
+      }
+      if (!sDate || isNaN(sDate.getTime())) {
+        sDate = new Date(targetIso);
+      }
+
+      if (!isNaN(sDate.getTime())) {
+        let nextMs = sDate.getTime();
+
+        // Advance repeating reminders to the true next scheduled occurrence if past
+        if (isCustom && nextMs <= nowMs) {
+          const intervalMs = effectiveMins * 60 * 1000;
+          while (nextMs <= nowMs) {
+            nextMs += intervalMs;
+          }
+        } else if (isDaily && nextMs <= nowMs) {
+          while (nextMs <= nowMs) {
+            nextMs += 24 * 60 * 60 * 1000;
+          }
+        } else if (isWeekly && nextMs <= nowMs) {
+          while (nextMs <= nowMs) {
+            nextMs += 7 * 24 * 60 * 60 * 1000;
+          }
+        } else if (isMonthly && nextMs <= nowMs) {
+          let mDate = new Date(nextMs);
+          while (mDate.getTime() <= nowMs) {
+            mDate.setMonth(mDate.getMonth() + 1);
+          }
+          nextMs = mDate.getTime();
+        } else if (isYearly && nextMs <= nowMs) {
+          let yDate = new Date(nextMs);
+          while (yDate.getTime() <= nowMs) {
+            yDate.setFullYear(yDate.getFullYear() + 1);
+          }
+          nextMs = yDate.getTime();
         }
 
-        return null;
-      } catch (_) {
-        return null;
-      }
-    };
-
-    // If we have originalTime (IST string), use it for time + scheduledDateTime for date
-    const timeParts = parseTimeFromString(originalTime);
-    if (timeParts && scheduledDateTime) {
-      const dateParts = parseDateFromISO(scheduledDateTime);
-      if (dateParts) {
-        const result = new Date(dateParts.year, dateParts.month, dateParts.day, timeParts.hours, timeParts.minutes, 0, 0);
-        console.log('📅 EditReminder: Initialized from originalTime + scheduledDateTime date:', result.toLocaleString());
+        const result = new Date(nextMs);
+        console.log('📅 EditReminder: Initialized next scheduled date & time from targetIso:', result.toLocaleString());
         return result;
       }
     }
 
-    if (scheduledDateTime) {
-      // Fix 5 hours offset bug: parse "YYYY-MM-DD HH:mm" explicitly as local time
-      if (typeof scheduledDateTime === 'string' && !scheduledDateTime.includes('T') && scheduledDateTime.includes(' ')) {
-        try {
-          const [datePart, timePart] = scheduledDateTime.split(' ');
-          const [year, month, day] = datePart.split('-').map(Number);
-          const [hours, minutes] = timePart.split(':').map(Number);
-          const date = new Date(year, month - 1, day, hours, minutes || 0);
-          if (!isNaN(date.getTime())) return date;
-        } catch (e) { }
-      }
+    // Priority 2: Fallback - calculate from scheduled time & date
+    // Use scheduled time (e.g. "16:20"), NOT creation time (e.g. "15:20")
+    const timeStr = route.params?.time || route.params?.originalTime;
+    const dateStr = route.params?.date || route.params?.originalDate || scheduledDateTime;
 
-      // If scheduledDateTime is an ISO string, it's UTC. Let's parse it to local device timezone
-      const date = new Date(scheduledDateTime);
-      if (!isNaN(date.getTime())) {
-        console.log('📅 EditReminder: Fallback - using scheduledDateTime directly:', date.toLocaleString());
-        return date;
-      }
+    if (timeStr && dateStr) {
+      try {
+        const datePart = String(dateStr).split('T')[0];
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = String(timeStr).split(':').map(Number);
+        if (year && month && day && !isNaN(hours) && !isNaN(minutes)) {
+          const istOffsetMs = 5.5 * 60 * 60 * 1000;
+          const baseMs = Date.UTC(year, month - 1, day, hours, minutes, 0) - istOffsetMs;
+          let nextMs = baseMs;
+
+          if (isCustom && nextMs <= nowMs) {
+            const intervalMs = effectiveMins * 60 * 1000;
+            while (nextMs <= nowMs) {
+              nextMs += intervalMs;
+            }
+          } else if (isDaily && nextMs <= nowMs) {
+            while (nextMs <= nowMs) {
+              nextMs += 24 * 60 * 60 * 1000;
+            }
+          } else if (isWeekly && nextMs <= nowMs) {
+            while (nextMs <= nowMs) {
+              nextMs += 7 * 24 * 60 * 60 * 1000;
+            }
+          } else if (isMonthly && nextMs <= nowMs) {
+            let mDate = new Date(nextMs);
+            while (mDate.getTime() <= nowMs) {
+              mDate.setMonth(mDate.getMonth() + 1);
+            }
+            nextMs = mDate.getTime();
+          } else if (isYearly && nextMs <= nowMs) {
+            let yDate = new Date(nextMs);
+            while (yDate.getTime() <= nowMs) {
+              yDate.setFullYear(yDate.getFullYear() + 1);
+            }
+            nextMs = yDate.getTime();
+          }
+
+          const result = new Date(nextMs);
+          console.log('📅 EditReminder: Initialized next scheduled date & time from baseMs calculation:', result.toLocaleString());
+          return result;
+        }
+      } catch (_) { }
     }
+
     console.log('⚠️ EditReminder: No valid scheduled date in params, using current date');
     return new Date();
   });
@@ -290,9 +368,15 @@ const EditReminderScreen = ({ route, navigation }) => {
     return `${formatDate(date)} at ${formatTime(date)}`;
   };
 
+  const [customUnit, setCustomUnit] = useState('days');
+
   const getRepeatLabel = () => {
     if (repeatFrequency === 'custom') {
       const mins = Number(customIntervalMinutes);
+      if (mins % 1440 === 0 && mins >= 1440) {
+        const days = mins / 1440;
+        return days === 1 ? 'Every 1 day (Daily)' : `Every ${days} days`;
+      }
       if (mins >= 60) {
         const hours = Math.floor(mins / 60);
         const remainingMins = mins % 60;
@@ -330,13 +414,13 @@ const EditReminderScreen = ({ route, navigation }) => {
     { label: '2 Hours', value: 120 },
     { label: '3 Hours', value: 180 },
     { label: '4 Hours', value: 240 },
-    { label: '5 Hours', value: 300 },
     { label: '6 Hours', value: 360 },
-    { label: '7 Hours', value: 420 },
-    { label: '8 Hours', value: 480 },
-    { label: '9 Hours', value: 540 },
-    { label: '10 Hours', value: 600 },
-    { label: '11 Hours', value: 660 },
+    { label: '12 Hours', value: 720 },
+    { label: '1 Day (Daily)', value: 1440 },
+    { label: '2 Days', value: 2880 },
+    { label: '3 Days', value: 4320 },
+    { label: '5 Days', value: 7200 },
+    { label: '7 Days (Weekly)', value: 10080 },
   ];
 
   const handleCustomIntervalSelect = (minutes) => {
@@ -351,8 +435,9 @@ const EditReminderScreen = ({ route, navigation }) => {
   };
 
   const confirmManualMinutes = () => {
-    const mins = parseInt(manualMinutes, 10) || 60;
-    handleCustomIntervalSelect(mins > 0 ? mins : 60);
+    const val = parseInt(manualMinutes, 10) || 1;
+    const computedMins = customUnit === 'days' ? val * 1440 : val;
+    handleCustomIntervalSelect(computedMins > 0 ? computedMins : 60);
   };
 
   const handleTogglePlaceReminder = async (newVal) => {
@@ -397,7 +482,38 @@ const EditReminderScreen = ({ route, navigation }) => {
 
     if (placeReminder) {
       const now = new Date();
-      if (scheduledDate <= now) {
+      const isRepeating = repeatFrequency && repeatFrequency !== 'none';
+      if (isRepeating && scheduledDate <= now) {
+        const nowMs = now.getTime();
+        let nextMs = scheduledDate.getTime();
+        if (repeatFrequency === 'custom') {
+          const intervalMs = (Number(customIntervalMinutes) || 1) * 60 * 1000;
+          while (nextMs <= nowMs) {
+            nextMs += intervalMs;
+          }
+        } else if (repeatFrequency === 'daily') {
+          while (nextMs <= nowMs) {
+            nextMs += 24 * 60 * 60 * 1000;
+          }
+        } else if (repeatFrequency === 'weekly') {
+          while (nextMs <= nowMs) {
+            nextMs += 7 * 24 * 60 * 60 * 1000;
+          }
+        } else if (repeatFrequency === 'monthly') {
+          let mDate = new Date(nextMs);
+          while (mDate.getTime() <= nowMs) {
+            mDate.setMonth(mDate.getMonth() + 1);
+          }
+          nextMs = mDate.getTime();
+        } else if (repeatFrequency === 'yearly') {
+          let yDate = new Date(nextMs);
+          while (yDate.getTime() <= nowMs) {
+            yDate.setFullYear(yDate.getFullYear() + 1);
+          }
+          nextMs = yDate.getTime();
+        }
+        scheduledDate.setTime(nextMs);
+      } else if (!isRepeating && scheduledDate <= now) {
         CrossPlatformAlert.alert('Invalid Date', 'Please select a future date and time');
         return;
       }
@@ -928,17 +1044,43 @@ const EditReminderScreen = ({ route, navigation }) => {
 
                     {showCustomManualInput && (
                       <View style={styles.manualInputContainer}>
-                        <Text style={styles.manualInputLabel}>Enter minutes:</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Text style={styles.manualInputLabel}>Enter interval:</Text>
+                          <View style={{ flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 8, padding: 2, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                            <TouchableOpacity
+                              style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                borderRadius: 6,
+                                backgroundColor: customUnit === 'days' ? '#4F46E5' : 'transparent',
+                              }}
+                              onPress={() => setCustomUnit('days')}
+                            >
+                              <Text style={{ fontSize: 12, fontWeight: '700', color: customUnit === 'days' ? '#fff' : '#64748b' }}>Days</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                borderRadius: 6,
+                                backgroundColor: customUnit === 'mins' ? '#4F46E5' : 'transparent',
+                              }}
+                              onPress={() => setCustomUnit('mins')}
+                            >
+                              <Text style={{ fontSize: 12, fontWeight: '700', color: customUnit === 'mins' ? '#fff' : '#64748b' }}>Mins</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
                         <View style={styles.manualInputRow}>
                           <TextInput
                             style={styles.manualInput}
                             keyboardType="numeric"
                             value={manualMinutes}
                             onChangeText={handleManualMinutesChange}
-                            placeholder="e.g. 45"
+                            placeholder={customUnit === 'days' ? "e.g. 2" : "e.g. 45"}
                             placeholderTextColor="#9ca3af"
                           />
-                          <Text style={styles.manualInputUnit}>min</Text>
+                          <Text style={styles.manualInputUnit}>{customUnit === 'days' ? 'day(s)' : 'min'}</Text>
                           <TouchableOpacity
                             style={styles.manualConfirmButton}
                             onPress={confirmManualMinutes}

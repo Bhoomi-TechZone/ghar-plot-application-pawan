@@ -377,10 +377,17 @@ const EmployeeReminders = ({ navigation, route, openDrawer }) => {
       location: alert.location,
       reminderTitle: alert.title,
       isAdmin: false,
+      time: alert.time,
       originalTime: alert.time,
+      date: alert.date,
+      originalDate: alert.date,
+      nextScheduledAt: alert.nextScheduledAt,
       scheduledDateTime: alert.nextScheduledAt || alert.scheduledDateTime || `${alert.date}T${alert.time}`,
       isRepeating: !!(alert.isRepeating || alert.repeatDaily || (alert.repeatFrequency && alert.repeatFrequency !== 'none')),
       repeatType: alert.repeatType || alert.repeatFrequency || (alert.repeatDaily ? 'daily' : 'none'),
+      repeatFrequency: alert.repeatFrequency,
+      repeatDaily: alert.repeatDaily,
+      repeatMetadata: alert.repeatMetadata,
       customIntervalMinutes: alert.repeatMetadata?.customIntervalMinutes ||
         alert.customIntervalMinutes ||
         alert.customRepeatMinutes ||

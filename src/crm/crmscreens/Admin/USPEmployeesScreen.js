@@ -203,8 +203,9 @@ const USPEmployeesScreen = ({ navigation }) => {
   const [showCustomIntervalInput, setShowCustomIntervalInput] = useState(false);
   const [showCustomManualInput, setShowCustomManualInput] = useState(false);
   const [manualMinutes, setManualMinutes] = useState('');
+  const [customUnit, setCustomUnit] = useState('days');
 
-  // Preset custom interval options — same as CreateAlertScreen
+  // Preset custom interval options — minutes, hours and days
   const customIntervalOptions = [
     { label: '10 Minutes', value: 10 },
     { label: '30 Minutes', value: 30 },
@@ -212,18 +213,22 @@ const USPEmployeesScreen = ({ navigation }) => {
     { label: '2 Hours', value: 120 },
     { label: '3 Hours', value: 180 },
     { label: '4 Hours', value: 240 },
-    { label: '5 Hours', value: 300 },
     { label: '6 Hours', value: 360 },
-    { label: '7 Hours', value: 420 },
-    { label: '8 Hours', value: 480 },
-    { label: '9 Hours', value: 540 },
-    { label: '10 Hours', value: 600 },
-    { label: '11 Hours', value: 660 },
+    { label: '12 Hours', value: 720 },
+    { label: '1 Day (Daily)', value: 1440 },
+    { label: '2 Days', value: 2880 },
+    { label: '3 Days', value: 4320 },
+    { label: '5 Days', value: 7200 },
+    { label: '7 Days (Weekly)', value: 10080 },
   ];
 
   const getReminderRepeatLabel = () => {
     if (reminderRepeatFrequency === 'custom') {
-      const mins = customIntervalMinutes;
+      const mins = Number(customIntervalMinutes);
+      if (mins % 1440 === 0 && mins >= 1440) {
+        const days = mins / 1440;
+        return days === 1 ? 'Every 1 day (Daily)' : `Every ${days} days`;
+      }
       if (mins >= 60) {
         const hrs = Math.floor(mins / 60);
         const rem = mins % 60;
@@ -2122,22 +2127,49 @@ const USPEmployeesScreen = ({ navigation }) => {
 
                     {showCustomManualInput && (
                       <View style={styles.uspManualInputContainer}>
-                        <Text style={styles.uspManualInputLabel}>Enter minutes:</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Text style={styles.uspManualInputLabel}>Enter interval:</Text>
+                          <View style={{ flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 8, padding: 2, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                            <TouchableOpacity
+                              style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                borderRadius: 6,
+                                backgroundColor: customUnit === 'days' ? '#10b981' : 'transparent',
+                              }}
+                              onPress={() => setCustomUnit('days')}
+                            >
+                              <Text style={{ fontSize: 12, fontWeight: '700', color: customUnit === 'days' ? '#fff' : '#64748b' }}>Days</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                borderRadius: 6,
+                                backgroundColor: customUnit === 'mins' ? '#10b981' : 'transparent',
+                              }}
+                              onPress={() => setCustomUnit('mins')}
+                            >
+                              <Text style={{ fontSize: 12, fontWeight: '700', color: customUnit === 'mins' ? '#fff' : '#64748b' }}>Mins</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
                         <View style={styles.uspManualInputRow}>
                           <TextInput
                             style={styles.uspManualInput}
                             keyboardType="numeric"
                             value={manualMinutes}
                             onChangeText={(v) => setManualMinutes(v.replace(/[^0-9]/g, ''))}
-                            placeholder="e.g. 45"
+                            placeholder={customUnit === 'days' ? "e.g. 2" : "e.g. 45"}
                             placeholderTextColor="#9ca3af"
                           />
-                          <Text style={styles.uspManualInputUnit}>min</Text>
+                          <Text style={styles.uspManualInputUnit}>{customUnit === 'days' ? 'day(s)' : 'min'}</Text>
                           <TouchableOpacity
                             style={styles.uspManualConfirmButton}
                             onPress={() => {
-                              const mins = parseInt(manualMinutes) || 60;
-                              handleCustomIntervalSelect(mins > 0 ? mins : 60);
+                              const val = parseInt(manualMinutes, 10) || 1;
+                              const computedMins = customUnit === 'days' ? val * 1440 : val;
+                              handleCustomIntervalSelect(computedMins > 0 ? computedMins : 60);
                             }}
                           >
                             <Text style={styles.uspManualConfirmText}>OK</Text>

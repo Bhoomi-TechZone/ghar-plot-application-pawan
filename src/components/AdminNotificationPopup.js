@@ -255,6 +255,11 @@ const AdminNotificationPopup = ({
   type = 'admin_reminder',
   onEdit,
 
+  // Additional detail props
+  categoryName = '',
+  phone = '',
+  expertise = '',
+
   // Repeat configuration props
   nextScheduledDisplay = '',
   repeatFrequency = '',
@@ -276,6 +281,35 @@ const AdminNotificationPopup = ({
     employeeName.toLowerCase() !== 'employee' &&
     employeeName.toLowerCase() !== 'system'
   );
+
+  // Extract and resolve real client name (never display placeholder 'Gharplot Client')
+  const resolvedClientName = (() => {
+    if (clientName && clientName !== 'Gharplot Client') return clientName;
+    if (title && title.includes('•')) {
+      const parts = title.split('•');
+      const candidate = parts[parts.length - 1].trim();
+      if (candidate && candidate !== 'Gharplot Client') return candidate;
+    }
+    const rawText = String(note || reason || '');
+    const m = rawText.match(/👤\s*Client:\s*([^|\n]+)/i) || rawText.match(/Client:\s*([^|\n]+)/i);
+    if (m && m[1]) {
+      const val = m[1].trim();
+      if (val && val !== 'Gharplot Client') return val;
+    }
+    return '';
+  })();
+
+  // Extract and resolve real category name
+  const resolvedCategoryName = (() => {
+    if (categoryName && categoryName !== 'alert' && categoryName !== 'reminder') return categoryName;
+    const rawText = String(note || reason || '');
+    const m = rawText.match(/🏷️\s*Category:\s*([^|\n]+)/i) || rawText.match(/Category:\s*([^|\n]+)/i);
+    if (m && m[1]) {
+      const val = m[1].trim();
+      if (val && val !== 'alert' && val !== 'reminder') return val;
+    }
+    return '';
+  })();
 
   const isAlert =
     String(type).toLowerCase().includes('alert') ||
@@ -918,7 +952,7 @@ const AdminNotificationPopup = ({
               </View>
 
               {/* Client Name */}
-              {clientName ? (
+              {resolvedClientName ? (
                 <View style={styles.detailRow}>
                   <MaterialIcons
                     name="person-outline"
@@ -928,11 +962,74 @@ const AdminNotificationPopup = ({
 
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>
-                      Client
+                      Client / User
                     </Text>
 
                     <Text style={styles.detailValue}>
-                      {clientName}
+                      {resolvedClientName}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Category */}
+              {resolvedCategoryName ? (
+                <View style={styles.detailRow}>
+                  <MaterialIcons
+                    name="category"
+                    size={20}
+                    color={primaryColor}
+                  />
+
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>
+                      Category
+                    </Text>
+
+                    <Text style={styles.detailValue}>
+                      {resolvedCategoryName}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Contact / Phone */}
+              {phone ? (
+                <View style={styles.detailRow}>
+                  <MaterialIcons
+                    name="phone"
+                    size={20}
+                    color={primaryColor}
+                  />
+
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>
+                      Contact
+                    </Text>
+
+                    <Text style={styles.detailValue}>
+                      {phone}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Expertise */}
+              {expertise ? (
+                <View style={styles.detailRow}>
+                  <MaterialIcons
+                    name="workspace-premium"
+                    size={20}
+                    color={primaryColor}
+                  />
+
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>
+                      Expertise
+                    </Text>
+
+                    <Text style={styles.detailValue}>
+                      {expertise}
                     </Text>
                   </View>
                 </View>
@@ -967,9 +1064,25 @@ const AdminNotificationPopup = ({
                         const raw = String(note || reason || '').trim();
                         const cleaned = raw
                           .split('\n')
+                          .map(line => {
+                            let l = line.trim();
+                            // If the line only contains Client and/or Category information, strip it out completely
+                            if (/^((👤\s*)?Client:[^|\n]*|(\🏷️\s*)?Category:[^|\n]*|\s*\|\s*)+$/i.test(l)) {
+                              return '';
+                            }
+                            // If mixed in line with other text, strip out client and category parts
+                            l = l.replace(/👤\s*Client:[^|\n]+(\|)?/gi, '');
+                            l = l.replace(/🏷️\s*Category:[^|\n]+(\|)?/gi, '');
+                            l = l.replace(/Client:[^|\n]+(\|)?/gi, '');
+                            l = l.replace(/Category:[^|\n]+(\|)?/gi, '');
+                            return l.trim().replace(/^\|\s*|\s*\|$/g, '');
+                          })
                           .filter(line => {
                             const l = line.trim();
-                            return !l.startsWith('⏰ Scheduled:') && !l.startsWith('🔁 Next:') && !l.startsWith('⏳ In ');
+                            return l.length > 0 &&
+                              !l.startsWith('⏰ Scheduled:') &&
+                              !l.startsWith('🔁 Next:') &&
+                              !l.startsWith('⏳ In ');
                           })
                           .join('\n')
                           .trim();

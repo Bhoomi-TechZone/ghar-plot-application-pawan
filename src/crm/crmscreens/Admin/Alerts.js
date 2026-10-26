@@ -423,10 +423,17 @@ const formatDateTime = (iso, reminderTime = null) => {
         isAdmin: true,
         // KEY FIX: pass originalTime (IST string from backend) so EditReminderScreen
         // uses it directly for the time picker â€” avoids UTCâ†’IST double-conversion.
+        time: alert.time,
         originalTime: alert.time,
+        date: alert.date,
+        originalDate: alert.date,
+        nextScheduledAt: alert.nextScheduledAt,
         scheduledDateTime: alert.nextScheduledAt || alert.scheduledDateTime || `${alert.date}T${alert.time}`,
         isRepeating: !!(alert.isRepeating || alert.repeatDaily || (alert.repeatFrequency && alert.repeatFrequency !== 'none')),
         repeatType: alert.repeatType || alert.repeatFrequency || (alert.repeatDaily ? 'daily' : 'none'),
+        repeatFrequency: alert.repeatFrequency,
+        repeatDaily: alert.repeatDaily,
+        repeatMetadata: alert.repeatMetadata,
         customIntervalMinutes: alert.repeatMetadata?.customIntervalMinutes ||
           alert.customIntervalMinutes ||
           alert.customRepeatMinutes ||
@@ -448,9 +455,10 @@ const formatDateTime = (iso, reminderTime = null) => {
       alertId: itemId,
       originalTitle: alert.title,
       originalReason: alert.reason,
+      date: alert.date,
       originalDate: alert.date,
-      // KEY FIX: Pass item.time (already IST, e.g. '13:27') so EditAlert uses it
-      // directly for the time picker without UTCâ†’IST double-conversion.
+      nextScheduledAt: alert.nextScheduledAt,
+      time: alert.time,
       originalTime: alert.time,
       repeatFrequency: alert.repeatFrequency || (alert.repeatDaily ? 'daily' : 'none'),
       repeatDaily: alert.repeatFrequency === 'daily', // 🔥 Strictly true ONLY for daily

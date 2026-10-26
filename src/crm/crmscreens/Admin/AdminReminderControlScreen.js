@@ -59,7 +59,7 @@ const AdminReminderControlScreen = () => {
   const [filterStatus, setFilterStatus] = useState('');
 
   // Constants
-  const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+  const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
   // Authentication Helper
   const getAuthHeaders = async () => {
@@ -1192,10 +1192,17 @@ const AdminReminderControlScreen = () => {
                         originalMessage: item.reason || item.note || '',
                         reminderTitle: item.title,
                         isAdmin: true,
+                        time: item.time,
                         originalTime: item.time,
-                        scheduledDateTime: item.scheduledDateTime || `${item.date ? String(item.date).split('T')[0] : ''}T${item.time}`,
+                        date: item.date,
+                        originalDate: item.date,
+                        nextScheduledAt: item.nextScheduledAt,
+                        scheduledDateTime: item.nextScheduledAt || item.scheduledDateTime || `${item.date ? String(item.date).split('T')[0] : ''}T${item.time}`,
                         isRepeating: !!(item.repeatDaily || (item.repeatFrequency && item.repeatFrequency !== 'none')),
                         repeatType: item.repeatFrequency || (item.repeatDaily ? 'daily' : 'none'),
+                        repeatFrequency: item.repeatFrequency,
+                        repeatDaily: item.repeatDaily,
+                        repeatMetadata: item.repeatMetadata,
                         customIntervalMinutes: item.repeatMetadata?.customIntervalMinutes || item.customIntervalMinutes || '',
                         placeReminder: item.placeReminder !== false,
                       });

@@ -14,7 +14,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com';
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const EmployeeAlertsScreen = ({ navigation }) => {
   const [alerts, setAlerts] = useState([]);
@@ -180,6 +180,7 @@ const EmployeeAlertsScreen = ({ navigation }) => {
               originalReason: item.reason,
               originalDate: item.date,
               originalTime: item.time,
+              nextScheduledAt: item.nextScheduledAt,
               repeatFrequency: item.repeatFrequency || (item.repeatDaily ? 'daily' : (customMins ? 'custom' : 'none')),
               repeatDaily: item.repeatDaily,
               scheduledDateTime: item.nextScheduledAt || item.scheduledDateTime || `${item.date}T${item.time}`,

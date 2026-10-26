@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
 import { Platform } from 'react-native';
 
-const API_BASE_URL = 'https://ghar-plot-backend1.onrender.com'; // Your backend URL
+const API_BASE_URL = 'https://gharplotbackend.gntechnology.de'; // Your backend URL
 
 class FCMReminderService {
   /**

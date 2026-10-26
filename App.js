@@ -142,10 +142,36 @@ const AppMain = () => {
     lastTriggeredIdRef.current = occurrenceKey;
     lastTriggeredTimeRef.current = now;
 
+    // Extract and resolve real client name & category
+    const rawClient = reminder.clientName || reminder.name || reminder.userName || '';
+    let resolvedClient = (rawClient && rawClient !== 'Gharplot Client') ? rawClient : '';
+    if (!resolvedClient) {
+      const titleStr = String(reminder.title || reminder.reminderTitle || '');
+      if (titleStr.includes('•')) {
+        const parts = titleStr.split('•');
+        const candidate = parts[parts.length - 1].trim();
+        if (candidate) resolvedClient = candidate;
+      }
+    }
+    if (!resolvedClient) {
+      const bodyStr = String(reminder.body || reminder.note || reminder.message || '');
+      const match = bodyStr.match(/👤\s*Client:\s*([^|\n]+)/i) || bodyStr.match(/Client:\s*([^|\n]+)/i);
+      if (match && match[1]) resolvedClient = match[1].trim();
+    }
+
+    let resolvedCategory = reminder.categoryName || reminder.category || '';
+    if (!resolvedCategory || resolvedCategory === 'alert' || resolvedCategory === 'reminder') {
+      const bodyStr = String(reminder.body || reminder.note || reminder.message || '');
+      const catMatch = bodyStr.match(/🏷️\s*Category:\s*([^|\n]+)/i) || bodyStr.match(/Category:\s*([^|\n]+)/i);
+      if (catMatch && catMatch[1]) resolvedCategory = catMatch[1].trim();
+    }
+
     // Prepare normalized data for display
     const normalizedReminder = {
       ...reminder,
-      name: reminder.name || reminder.clientName || 'Gharplot Client',
+      name: resolvedClient,
+      clientName: resolvedClient,
+      categoryName: resolvedCategory,
       title: reminder.title || reminder.reminderTitle || (isActuallyAlert ? 'Alert' : 'Reminder'),
       note: reminder.note || reminder.body || reminder.message || 'Scheduled notification',
     };
@@ -1040,7 +1066,10 @@ const AppMain = () => {
         visible={adminPopupVisible}
         employeeName={adminPopupData?.employeeName || 'Admin'}
         title={adminPopupData?.title || 'Admin Reminder'}
-        clientName={adminPopupData?.clientName || ''}
+        clientName={adminPopupData?.clientName || adminPopupData?.name || ''}
+        categoryName={adminPopupData?.categoryName || adminPopupData?.category || ''}
+        phone={adminPopupData?.phone || adminPopupData?.contactNumber || adminPopupData?.phoneNumber || ''}
+        expertise={adminPopupData?.expertise || ''}
         reason={adminPopupData?.reason || ''}
         note={adminPopupData?.note || ''}
         scheduledAt={adminPopupData?.scheduledAt || adminPopupData?.scheduledDateTime || adminPopupData?.reminderDateTime || ''}
