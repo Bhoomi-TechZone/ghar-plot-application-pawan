@@ -1,10 +1,10 @@
 buildscript {
     ext {
-        buildToolsVersion = "35.0.0"
+        buildToolsVersion = "36.0.0"
         agp = "8.5.0"
         minSdkVersion = 24  // Match app module and hermestooling requirement
-        compileSdkVersion = 35
-        targetSdkVersion = 35
+        compileSdkVersion = 36
+        targetSdkVersion = 36
         ndkVersion = "27.0.12077973"
         kotlinVersion = "2.1.20"
     }
