@@ -593,8 +593,50 @@ const EditReminderScreen = ({ route, navigation }) => {
           };
           response = await updateReminder(cleanId, reminderData);
         } catch (remErr) {
-          console.error('❌ updateReminder also failed:', remErr.message);
-          throw updateError || remErr;
+          console.log('⚠️ updateReminder failed, trying USP employee fallback:', remErr.message);
+          updateError = remErr;
+        }
+      }
+
+      // If still not updated, fallback to USP employee update endpoint
+      if (!response || response.success === false) {
+        try {
+          const crmToken = await AsyncStorage.getItem('adminToken') ||
+                           await AsyncStorage.getItem('crm_auth_token') ||
+                           await AsyncStorage.getItem('accessToken') ||
+                           await AsyncStorage.getItem('employee_auth_token') ||
+                           await AsyncStorage.getItem('userToken');
+
+          const uspPayload = {
+            reminderTitle: reminderPayload.title,
+            newDescription: reminderPayload.reason,
+            description: reminderPayload.reason,
+            scheduledDateTime: scheduledDate.toISOString(),
+            scheduleType: repeatFrequency === 'none' ? 'one_time' : 'recurring',
+            repeatType: repeatFrequency,
+            customDurationMinutes: isCustom ? (Number(customIntervalMinutes) || 0) : 0,
+            isActive: placeReminder,
+            isReminderActive: placeReminder,
+          };
+
+          const uspRes = await fetch(`${BASE_URL}/api/usp-employees/${cleanId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(crmToken ? { 'Authorization': `Bearer ${crmToken}` } : {})
+            },
+            body: JSON.stringify(uspPayload)
+          });
+
+          if (uspRes.ok) {
+            response = await uspRes.json();
+            console.log('✅ Updated via USP employee endpoint:', response);
+          } else {
+            throw updateError || new Error(`Failed to update (${uspRes.status})`);
+          }
+        } catch (uspErr) {
+          console.error('❌ USP employee update also failed:', uspErr.message);
+          throw updateError || uspErr;
         }
       }
 

@@ -85,6 +85,7 @@ yarn-error.log
 .vscode/
 
 # Temporary files
+*.bak
 *.log
 *.tmp
 *.temp

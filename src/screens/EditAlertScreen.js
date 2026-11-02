@@ -309,8 +309,48 @@ const EditAlertScreen = ({ route, navigation }) => {
     const fetchAlertData = async () => {
       try {
         const cleanId = String(alertId).replace(/^(alert_|reminder_)/, '');
-        const res = await getAlertById(cleanId);
-        const data = res?.alert || res?.data;
+        let res = null;
+        try {
+          res = await getAlertById(cleanId);
+        } catch (_) {}
+
+        let data = res?.alert || res?.data;
+
+        // If not found from alerts API, try USP employees endpoint
+        if (!data) {
+          try {
+            const crmToken = await AsyncStorage.getItem('adminToken') ||
+                             await AsyncStorage.getItem('crm_auth_token') ||
+                             await AsyncStorage.getItem('accessToken') ||
+                             await AsyncStorage.getItem('userToken');
+            const uspRes = await fetch(`${BASE_URL}/api/usp-employees/${cleanId}`, {
+              headers: crmToken ? { 'Authorization': `Bearer ${crmToken}` } : {}
+            });
+            if (uspRes.ok) {
+              const uspJson = await uspRes.json();
+              const uspData = uspJson?.data;
+              if (uspData) {
+                const clientName = uspData.employeeType === 'manual'
+                  ? (uspData.manualName || 'Team USP')
+                  : (uspData.employee?.name || 'Team Member');
+                const notesList = Array.isArray(uspData.descriptionHistory) && uspData.descriptionHistory.length > 0
+                  ? uspData.descriptionHistory[uspData.descriptionHistory.length - 1].text
+                  : (uspData.description || '');
+
+                data = {
+                  title: uspData.reminderTitle || `Team USP - ${clientName}`,
+                  reason: notesList,
+                  scheduledDateTime: uspData.scheduledDateTime,
+                  repeatFrequency: uspData.repeatType || 'none',
+                  repeatDaily: uspData.repeatType === 'daily',
+                  customRepeatMinutes: uspData.customDurationMinutes || 0,
+                  placeReminder: uspData.isReminderActive !== false,
+                };
+              }
+            }
+          } catch (_) {}
+        }
+
         if (data) {
           if (data.placeReminder !== undefined) {
             setPlaceReminder(data.placeReminder !== false);
@@ -660,8 +700,52 @@ const EditAlertScreen = ({ route, navigation }) => {
           };
           result = await updateReminder(cleanId, reminderData);
         } catch (remErr) {
-          console.error('❌ updateReminder also failed:', remErr.message);
-          throw updateError || remErr;
+          console.log('⚠️ updateReminder failed, trying USP employee update:', remErr.message);
+          updateError = remErr;
+        }
+      }
+
+      // If still not updated, fallback to USP employee update endpoint
+      if (!result || result.success === false) {
+        try {
+          const crmToken = await AsyncStorage.getItem('adminToken') ||
+                           await AsyncStorage.getItem('crm_auth_token') ||
+                           await AsyncStorage.getItem('accessToken') ||
+                           await AsyncStorage.getItem('employee_auth_token') ||
+                           await AsyncStorage.getItem('userToken');
+
+          const uspPayload = {
+            reminderTitle: updateData.title,
+            newDescription: updateData.reason,
+            description: updateData.reason,
+            scheduledDate: updateData.date,
+            scheduledTime: updateData.time,
+            scheduledDateTime: scheduledDate.toISOString(),
+            scheduleType: repeatFrequency === 'none' ? 'one_time' : 'recurring',
+            repeatType: repeatFrequency,
+            customDurationMinutes: isCustom ? (Number(customIntervalMinutes) || 0) : 0,
+            isActive: placeReminder,
+            isReminderActive: placeReminder,
+          };
+
+          const uspRes = await fetch(`${BASE_URL}/api/usp-employees/${cleanId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(crmToken ? { 'Authorization': `Bearer ${crmToken}` } : {})
+            },
+            body: JSON.stringify(uspPayload)
+          });
+
+          if (uspRes.ok) {
+            result = await uspRes.json();
+            console.log('✅ Updated via USP employee endpoint:', result);
+          } else {
+            throw updateError || new Error(`Failed to update (${uspRes.status})`);
+          }
+        } catch (uspErr) {
+          console.error('❌ USP employee update also failed:', uspErr.message);
+          throw updateError || uspErr;
         }
       }
 
@@ -861,9 +945,29 @@ const EditAlertScreen = ({ route, navigation }) => {
           onPress: async () => {
             setLoading(true);
             try {
-              const result = await deleteAlert(alertId);
-              
-              if (result.success || result.message?.includes('success')) {
+              let result = null;
+              try {
+                result = await deleteAlert(alertId);
+              } catch (delErr) {
+                console.log('⚠️ deleteAlert failed, trying USP delete:', delErr.message);
+              }
+
+              if (!result || !result.success) {
+                const cleanId = String(alertId).replace(/^(alert_|reminder_)/, '');
+                const crmToken = await AsyncStorage.getItem('adminToken') ||
+                                 await AsyncStorage.getItem('crm_auth_token') ||
+                                 await AsyncStorage.getItem('accessToken') ||
+                                 await AsyncStorage.getItem('userToken');
+                const uspRes = await fetch(`${BASE_URL}/api/usp-employees/${cleanId}`, {
+                  method: 'DELETE',
+                  headers: crmToken ? { 'Authorization': `Bearer ${crmToken}` } : {}
+                });
+                if (uspRes.ok) {
+                  result = await uspRes.json();
+                }
+              }
+
+              if (result && (result.success || result.message?.includes('success'))) {
                 CrossPlatformAlert.alert(
                   'Success',
                   'Alert deleted successfully',
@@ -876,7 +980,7 @@ const EditAlertScreen = ({ route, navigation }) => {
                   }]
                 );
               } else {
-                throw new Error(result.message || 'Failed to delete alert');
+                throw new Error(result?.message || 'Failed to delete alert');
               }
             } catch (error) {
               console.error('❌ Delete error:', error);

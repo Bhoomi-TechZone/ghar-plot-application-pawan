@@ -268,7 +268,7 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
 
       const [prevBal, allFlows] = await Promise.all([
         adminSitesApi.getPreviousClosingBalance(associateId, formattedDate),
-        adminSitesApi.getCashFlows(),
+        adminSitesApi.getCashFlows({ businessAssociate: associateId, startDate: formattedDate, endDate: formattedDate }),
       ]);
 
       setCashFlowForm(prev => ({

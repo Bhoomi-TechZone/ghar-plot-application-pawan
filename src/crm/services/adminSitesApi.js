@@ -441,7 +441,7 @@ export const createBatchExpenses = async (expenses) => {
 export const getEmployees = async () => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${BASE_URL}/admin/employees`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/employees?limit=200`, {
       method: 'GET',
       headers,
     });

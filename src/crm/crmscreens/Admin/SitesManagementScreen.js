@@ -428,7 +428,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
   // --- Granular Data Refresh Helpers (Fast, No Full-Screen Loader) ---
   const refreshCashFlowsOnly = async () => {
     try {
-      const data = await adminSitesApi.getCashFlows();
+      const data = await adminSitesApi.getCashFlows({ limit: 500 });
       if (Array.isArray(data)) {
         const mapped = data.map(cf => ({
           id: cf._id,
@@ -517,31 +517,25 @@ const SitesManagementScreen = ({ route, navigation }) => {
     console.log('🔄 [SitesManagement] Fetching all data, isPull:', isPull, 'forceMaster:', forceMaster);
     if (!isPull) setApiLoading(true);
 
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 7000));
-
-    try {
-      const results = await Promise.race([
-        Promise.allSettled([
-          sitesMasterCache.getMasterData(forceMaster || isPull),
-          adminSitesApi.getCashFlows(),
-          adminSitesApi.getExpenses(),
-        ]),
-        timeoutPromise,
-      ]);
-
-      if (results !== 'TIMEOUT' && Array.isArray(results)) {
-        const [masterRes, cashFlowsRes, expensesRes] = results;
-
-        if (masterRes.status === 'fulfilled' && masterRes.value) {
-          const { clients, employees, categories, projects } = masterRes.value;
+    // 1. Load Master Data (Projects, Employees, Clients, Categories) immediately - fast (~300ms)
+    const masterPromise = sitesMasterCache.getMasterData(forceMaster || isPull)
+      .then(masterData => {
+        if (masterData) {
+          const { clients, employees, categories, projects } = masterData;
           if (Array.isArray(clients)) setApiClients(clients);
           if (Array.isArray(employees)) setApiEmployees(employees);
           if (Array.isArray(projects)) setApiProjects(projects);
           if (Array.isArray(categories) && categories.length > 0) setCategoriesList(categories);
+          console.log(`✅ [SitesManagement] Master data set: ${projects?.length || 0} projects, ${employees?.length || 0} employees, ${clients?.length || 0} clients`);
         }
+      })
+      .catch(err => console.warn('Master data load failed:', err));
 
-        if (cashFlowsRes.status === 'fulfilled' && Array.isArray(cashFlowsRes.value)) {
-          const mappedCashFlows = cashFlowsRes.value.map(cf => ({
+    // 2. Load CashFlows with limit & safe timeout
+    const cashFlowPromise = adminSitesApi.getCashFlows({ limit: 500 })
+      .then(data => {
+        if (Array.isArray(data)) {
+          const mappedCashFlows = data.map(cf => ({
             id: cf._id,
             date: formatISODateDisplay(cf.date),
             rawDate: cf.date,
@@ -562,10 +556,16 @@ const SitesManagementScreen = ({ route, navigation }) => {
             rawOpeningBalance: cf.openingBalance || 0,
           }));
           setApiCashFlows(mappedCashFlows);
+          console.log(`✅ [SitesManagement] Cash flows set: ${mappedCashFlows.length}`);
         }
+      })
+      .catch(err => console.warn('Cash flow load failed:', err));
 
-        if (expensesRes.status === 'fulfilled' && Array.isArray(expensesRes.value)) {
-          const mappedExpenses = expensesRes.value.map(e => ({
+    // 3. Load Expenses
+    const expensesPromise = adminSitesApi.getExpenses()
+      .then(data => {
+        if (Array.isArray(data)) {
+          const mappedExpenses = data.map(e => ({
             id: e._id,
             date: formatISODateDisplay(e.date),
             rawDate: e.date,
@@ -587,10 +587,19 @@ const SitesManagementScreen = ({ route, navigation }) => {
             remarks: e.remarks || '',
           }));
           setApiExpenses(mappedExpenses);
+          console.log(`✅ [SitesManagement] Expenses set: ${mappedExpenses.length}`);
         }
-      }
+      })
+      .catch(err => console.warn('Expenses load failed:', err));
+
+    try {
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 25000));
+      await Promise.race([
+        Promise.allSettled([masterPromise, cashFlowPromise, expensesPromise]),
+        timeoutPromise,
+      ]);
     } catch (error) {
-      console.error('Error fetching API data:', error);
+      console.error('Error in fetchAllData:', error);
     } finally {
       console.log('✅ [SitesManagement] Data fetch completed. setApiLoading(false)');
       setApiLoading(false);
@@ -1963,7 +1972,11 @@ const SitesManagementScreen = ({ route, navigation }) => {
             value={cashFlowAssociateFilter}
             placeholder="All Associates"
             title="Filter by Business Associate"
-            options={[{ label: 'All Associates', value: '' }, ...apiEmployees.map(e => ({ label: e.name, value: e.name }))]}
+            options={(() => {
+              const names = new Set(apiEmployees.map(e => e.name).filter(Boolean));
+              apiCashFlows.forEach(c => { if (c.associate) names.add(c.associate); });
+              return [{ label: 'All Associates', value: '' }, ...Array.from(names).sort().map(name => ({ label: name, value: name }))];
+            })()}
             onSelect={(val) => {
               setCashFlowAssociateFilter(val);
               setCashFlowPage(1);
