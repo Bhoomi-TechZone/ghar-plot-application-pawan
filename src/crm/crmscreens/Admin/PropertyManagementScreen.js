@@ -417,6 +417,11 @@ const PropertyManagementScreen = ({ navigation }) => {
         )}
 
         <View style={styles.cardBody}>
+          {item.customPropertyId ? (
+            <View style={{ backgroundColor: '#eff6ff', alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginBottom: 4, borderWidth: 1, borderColor: '#bfdbfe' }}>
+              <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '700' }}>{item.customPropertyId}</Text>
+            </View>
+          ) : null}
           <Text style={styles.cardTitle} numberOfLines={2}>
             {getPropertyName()}
           </Text>

@@ -835,7 +835,14 @@ const EmployeeManagementScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.employeeInfo}>
-          <Text style={styles.employeeName} numberOfLines={1}>{item.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text style={styles.employeeName} numberOfLines={1}>{item.name}</Text>
+            {item.employeeCode ? (
+              <View style={{ backgroundColor: '#f3e8ff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#d8b4fe' }}>
+                <Text style={{ color: '#7e22ce', fontSize: 11, fontWeight: '700' }}>{item.employeeCode}</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.employeeEmail} numberOfLines={1}>{item.email}</Text>
           <Text style={styles.employeePhone} numberOfLines={1}>{item.phone}</Text>
         </View>

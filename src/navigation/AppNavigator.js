@@ -38,6 +38,7 @@ import BookingConfirmedScreen from '../screens/BookingConfirmedScreen';
 import MyBookingsScreen from '../screens/MyBookingsScreen';
 import CategoryServicesScreen from '../screens/CategoryServicesScreen';
 import PropertyInquiryFormScreen from '../screens/PropertyInquiryFormScreen';
+import ClientInquiriesScreen from '../screens/ClientInquiriesScreen';
 
 // --- OTHER SCREENS PRESENT ---
 import SavedScreen from '../screens/SavedScreen';
@@ -147,6 +148,7 @@ const AppNavigator = React.forwardRef((props, ref) => {
           <Stack.Screen name='ChatListScreen' component={ChatListScreen} />
           <Stack.Screen name='ChatDetailScreen' component={ChatDetailScreen} />
           <Stack.Screen name='PropertyInquiryFormScreen' component={PropertyInquiryFormScreen} />
+          <Stack.Screen name="ClientInquiriesScreen" component={ClientInquiriesScreen} />
 
           {/* Profile Section */}
           <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />

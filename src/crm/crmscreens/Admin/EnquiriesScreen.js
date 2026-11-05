@@ -458,13 +458,15 @@ const EnquiriesScreen = ({ navigation, route }) => {
         const clientName = enquiry.clientName || '';
         const email = enquiry.email || '';
         const contactNumber = enquiry.contactNumber || '';
-        const propertyId = typeof enquiry.propertyId === 'object' ? enquiry.propertyId?._id : enquiry.propertyId;
+        const propertyId = typeof enquiry.propertyId === 'object' ? enquiry.propertyId?.customPropertyId || enquiry.propertyId?._id : enquiry.propertyId;
+        const clientCode = enquiry.buyerId?.clientCode || enquiry.clientCode || enquiry.ClientCode || '';
         const propertyLocation = enquiry.propertyLocation || '';
 
         return clientName.toLowerCase().includes(searchLower) ||
           email.toLowerCase().includes(searchLower) ||
           contactNumber.includes(searchText) ||
-          (propertyId && propertyId.toString().includes(searchText)) ||
+          (propertyId && propertyId.toString().toLowerCase().includes(searchLower)) ||
+          (clientCode && clientCode.toLowerCase().includes(searchLower)) ||
           propertyLocation.toLowerCase().includes(searchLower);
       });
     }
@@ -1136,6 +1138,7 @@ const EnquiriesScreen = ({ navigation, route }) => {
                 <>
                   <View style={styles.modalSection}>
                     <Text style={styles.modalSectionTitle}>Client Information</Text>
+                    <Text style={styles.modalText}>Client ID: {selectedEnquiry.buyerId?.clientCode || selectedEnquiry.clientCode || selectedEnquiry.ClientCode || 'N/A'}</Text>
                     <Text style={styles.modalText}>Name: {selectedEnquiry.clientName}</Text>
                     <Text style={styles.modalText}>Email: {selectedEnquiry.email || 'N/A'}</Text>
                     <Text style={styles.modalText}>Phone: {selectedEnquiry.contactNumber}</Text>
@@ -1146,7 +1149,7 @@ const EnquiriesScreen = ({ navigation, route }) => {
 
                   <View style={styles.modalSection}>
                     <Text style={styles.modalSectionTitle}>Property Information</Text>
-                    <Text style={styles.modalText}>Property ID: {typeof selectedEnquiry.propertyId === 'object' ? selectedEnquiry.propertyId?._id || 'N/A' : selectedEnquiry.propertyId || 'N/A'}</Text>
+                    <Text style={styles.modalText}>Property ID: {typeof selectedEnquiry.propertyId === 'object' ? selectedEnquiry.propertyId?.customPropertyId || selectedEnquiry.propertyId?._id || 'N/A' : selectedEnquiry.propertyId || 'N/A'}</Text>
                     <Text style={styles.modalText}>Type: {selectedEnquiry.propertyType || selectedEnquiry.productType || 'N/A'}</Text>
                     <Text style={styles.modalText}>Location: {selectedEnquiry.propertyLocation || selectedEnquiry.location}</Text>
                     {selectedEnquiry.address && (

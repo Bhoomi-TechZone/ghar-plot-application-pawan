@@ -139,7 +139,7 @@ const AssignEnquiryModal = ({ visible, onClose, selectedEnquiries, onSuccess }) 
                   onPress={() => setSelectedEmployee(employee._id)}
                 >
                   <View style={styles.employeeInfo}>
-                    <Text style={styles.employeeName}>{employee.fullName || employee.name || 'Unknown Employee'}</Text>
+                    <Text style={styles.employeeName}>{employee.fullName || employee.name || 'Unknown Employee'} {employee.employeeCode ? `[${employee.employeeCode}]` : ''}</Text>
                     <Text style={styles.employeeRole}>{employee.role?.name || employee.department || 'Employee'}</Text>
                   </View>
                   {selectedEmployee === employee._id && (

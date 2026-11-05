@@ -368,6 +368,30 @@ export const getUserActivity = async () => {
   }
 };
 
+
+/**
+ * Toggle user/client inquiry receiving permission (Admin control)
+ */
+export const toggleUserInquiries = async (userId, canReceiveInquiries) => {
+  try {
+    console.log('🔄 toggleUserInquiries for userId:', userId, 'canReceiveInquiries:', canReceiveInquiries);
+    const url = `${CRM_BASE_URL}/api/users/toggle-inquiries/${userId}`;
+    const headers = await getCRMAuthHeaders();
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(canReceiveInquiries !== undefined ? { canReceiveInquiries } : {}),
+    });
+
+    const data = await handleCRMResponse(response);
+    console.log('✅ toggleUserInquiries Response:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ toggleUserInquiries Error:', error);
+    throw error;
+  }
+};
+
 export default {
   getAllUsers,
   getAllUsersAlternative,
@@ -386,4 +410,5 @@ export default {
   disableAutoAssignment,
   getAutoAssignmentStatus,
   getUserActivity,
+  toggleUserInquiries,
 };

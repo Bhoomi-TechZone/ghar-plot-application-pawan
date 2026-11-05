@@ -1390,7 +1390,7 @@ const Homescreen = ({ navigation }) => {
                     </TouchableOpacity>
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search by services or category"
+                        placeholder="Search property (e.g. Delhi, Kalka ji)..."
                         placeholderTextColor={theme.COLORS.greyMedium}
                         value={searchQuery}
                         onChangeText={setSearchQuery}

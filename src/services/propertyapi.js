@@ -466,3 +466,50 @@ export const fetchNearbyProperties = async (lat, lng, distance) => {
         throw error;
     }
 };
+
+/**
+ * Dynamic Property Search by location, budget and type (Flat vs Independent)
+ */
+export const searchPropertiesAPI = async ({ location, minPrice, maxPrice, propertyType, residentialType, limit }) => {
+    try {
+        const queryParams = new URLSearchParams();
+        if (location) queryParams.append('location', location);
+        if (minPrice !== undefined && minPrice !== '') queryParams.append('minPrice', minPrice);
+        if (maxPrice !== undefined && maxPrice !== '') queryParams.append('maxPrice', maxPrice);
+        if (propertyType) queryParams.append('propertyType', propertyType);
+        if (residentialType) queryParams.append('residentialType', residentialType);
+        if (limit) queryParams.append('limit', limit);
+
+        const url = `${BASE_URL}/api/properties/search?${queryParams.toString()}`;
+        console.log('[propertyapi] searchPropertiesAPI url:', url);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.properties || [];
+    } catch (error) {
+        console.error('searchPropertiesAPI error:', error);
+        return [];
+    }
+};
+
+/**
+ * Fetch inquiries received by the logged-in client on their properties
+ * cURL: GET /api/inquiry/my-received
+ * @returns {Promise<object>} { success, canReceiveInquiries, count, data, message }
+ */
+export const getClientReceivedInquiriesAPI = async () => {
+    try {
+        const response = await get('/api/inquiry/my-received');
+        return response;
+    } catch (error) {
+        console.error('Error in getClientReceivedInquiriesAPI:', error);
+        throw error;
+    }
+};

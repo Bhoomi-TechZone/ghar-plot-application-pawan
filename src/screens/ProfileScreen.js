@@ -276,8 +276,8 @@ const ProfileScreen = ({ navigation }) => {
         }, [loadProfileData])
     );
     
-    const StatCard = ({ count, label, iconName, iconType, color }) => (
-        <View style={styles.statCard}>
+    const StatCard = ({ count, label, iconName, iconType, color, onPress }) => (
+        <TouchableOpacity style={styles.statCard} onPress={onPress} disabled={!onPress} activeOpacity={0.7}>
             <View style={[styles.statIconContainer, { backgroundColor: color + '15' }]}>
                 {iconType === 'Feather' ? (
                     <FeatherIcon name={iconName} size={22} color={color} />
@@ -287,7 +287,7 @@ const ProfileScreen = ({ navigation }) => {
             </View>
             <Text style={styles.statCount}>{count}</Text>
             <Text style={styles.statLabel}>{label}</Text>
-        </View>
+        </TouchableOpacity>
     );
 
     const ProfileListItem = ({ label, iconName, onPress, badge }) => (
@@ -494,6 +494,13 @@ const ProfileScreen = ({ navigation }) => {
                             iconName="heart-outline" 
                             onPress={() => navigation.navigate('Saved')}
                             badge={shortlistedCount > 0 ? shortlistedCount.toString() : null}
+                        />
+                        <View style={styles.divider} />
+                        <ProfileListItem 
+                            label="Received Enquiries" 
+                            iconName="chatbubble-ellipses-outline" 
+                            onPress={() => navigation.navigate('ClientInquiriesScreen')}
+                            badge={enquiriesCount > 0 ? enquiriesCount.toString() : null}
                         />
                         <View style={styles.divider} />
                         <ProfileListItem 

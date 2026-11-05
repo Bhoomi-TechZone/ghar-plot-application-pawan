@@ -130,9 +130,13 @@ const AllPropertiesScreen = ({ navigation, route }) => {
         let filtered = [...properties];
 
         if (filters.propertyType) {
-            filtered = filtered.filter(item =>
-                item.propertyType?.toLowerCase().includes(filters.propertyType.toLowerCase())
-            );
+            const pt = filters.propertyType.toLowerCase();
+            filtered = filtered.filter(item => {
+                const pType = (item.propertyType || '').toLowerCase();
+                const rType = (item.residentialType || '').toLowerCase();
+                const cType = (item.commercialType || '').toLowerCase();
+                return pType.includes(pt) || rType.includes(pt) || cType.includes(pt);
+            });
         }
 
         if (filters.purpose) {
@@ -142,9 +146,12 @@ const AllPropertiesScreen = ({ navigation, route }) => {
         }
 
         if (filters.location) {
-            filtered = filtered.filter(item =>
-                item.propertyLocation?.toLowerCase().includes(filters.location.toLowerCase())
-            );
+            const loc = filters.location.toLowerCase();
+            filtered = filtered.filter(item => {
+                const pLoc = (item.propertyLocation || '').toLowerCase();
+                const desc = (item.description || '').toLowerCase();
+                return pLoc.includes(loc) || desc.includes(loc);
+            });
         }
 
         if (filters.minPrice) {
@@ -431,6 +438,11 @@ const AllPropertiesScreen = ({ navigation, route }) => {
                         )}
                     </View>
 
+                    {item.customPropertyId ? (
+                        <View style={{ backgroundColor: '#eff6ff', alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginBottom: 4, borderWidth: 1, borderColor: '#bfdbfe' }}>
+                            <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '700' }}>{item.customPropertyId}</Text>
+                        </View>
+                    ) : null}
                     <Text style={styles.propertyTitle} numberOfLines={1}>
                         {item.description || item.propertyType || 'Property'}
                     </Text>

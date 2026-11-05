@@ -25,6 +25,7 @@ import { getFCMToken } from '../utils/fcmService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AlertNotificationService from '../services/AlertNotificationService';
 import CrossPlatformAlert from '../utils/crossPlatformAlert';
+import { extractLatestComment } from '../utils/commentHelper';
 
 const EditAlertScreen = ({ route, navigation }) => {
   const { 
@@ -48,7 +49,7 @@ const EditAlertScreen = ({ route, navigation }) => {
       : true
   );
   const [title, setTitle] = useState(originalTitle || '');
-  const [reason, setReason] = useState(originalReason || '');
+  const [reason, setReason] = useState(() => extractLatestComment(originalReason || ''));
   // 🔥 KEY FIX: Initialize scheduledDate to the NEXT scheduled date & time.
   // For Daily, Weekly, Monthly, Yearly, and Custom (minute/hourly) repeating alerts:
   // always display the NEXT scheduled date & time,
@@ -356,7 +357,7 @@ const EditAlertScreen = ({ route, navigation }) => {
             setPlaceReminder(data.placeReminder !== false);
           }
           if (!title && data.title) setTitle(data.title);
-          if (!reason && data.reason) setReason(data.reason);
+          if (data.reason) { setReason(extractLatestComment(data.reason)); } else if (!reason && data.description) { setReason(extractLatestComment(data.description)); }
 
           let meta = data.repeatMetadata;
           if (typeof meta === 'string') {
@@ -385,7 +386,7 @@ const EditAlertScreen = ({ route, navigation }) => {
           // Update initial baseline values
           initialValuesRef.current = {
             title: data.title || title || '',
-            reason: data.reason || reason || '',
+            reason: extractLatestComment(data.reason || reason || ''),
             repeatFrequency: freq || repeatFrequency,
             customIntervalMinutes: mins ? String(mins) : (customIntervalMinutes ? String(customIntervalMinutes) : ''),
           };

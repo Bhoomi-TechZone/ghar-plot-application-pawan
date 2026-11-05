@@ -92,9 +92,11 @@ const EnquiryCard = ({
   };
 
   // Safe value extraction to prevent object rendering
-  const safePropertyId = typeof enquiry.propertyId === 'object' 
-    ? enquiry.propertyId?._id || 'N/A' 
+  const safePropertyId = typeof enquiry.propertyId === 'object'
+    ? enquiry.propertyId?.customPropertyId || enquiry.propertyId?._id || 'N/A'
     : enquiry.propertyId || 'N/A';
+
+  const clientCode = enquiry.buyerId?.clientCode || enquiry.clientCode || enquiry.ClientCode;
     
   const safeAreaDetails = typeof enquiry.areaDetails === 'object' 
     ? 'N/A' 
@@ -138,8 +140,15 @@ const EnquiryCard = ({
 
       {/* Client Information */}
       <View style={styles.clientSection}>
-        <Text style={styles.clientName}>{enquiry.clientName}</Text>
-        <Text style={styles.propertyId}>ID: {safePropertyId}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <Text style={styles.clientName}>{enquiry.clientName}</Text>
+          {clientCode ? (
+            <View style={{ backgroundColor: '#eff6ff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#bfdbfe' }}>
+              <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '700' }}>{clientCode}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={styles.propertyId}>Property ID: {safePropertyId}</Text>
       </View>
 
       {/* Contact Details */}

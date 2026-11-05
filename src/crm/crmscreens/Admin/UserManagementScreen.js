@@ -27,6 +27,7 @@ import {
   searchUsers,
   bulkDeleteUsers,
   assignUsersToEmployee,
+  toggleUserInquiries,
 } from '../../services/crmUserManagementApi';
 import { getAllEmployees } from '../../services/crmEmployeeManagementApi';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
@@ -481,6 +482,46 @@ const UserManagementScreen = ({ navigation }) => {
     fetchUsers();
   };
 
+
+  // Toggle user inquiry permission (Admin control)
+  const handleToggleUserInquiries = async (user) => {
+    const userId = user.id || user._id;
+    const currentStatus = user.canReceiveInquiries !== false;
+    const newStatus = !currentStatus;
+
+    CrossPlatformAlert.alert(
+      newStatus ? 'Enable Inquiries?' : 'Disable Inquiries?',
+      newStatus
+        ? `Inquiries for properties posted by ${user.name || user.fullName || 'this client'} will be sent to both client and admin.`
+        : `Inquiries for properties posted by ${user.name || user.fullName || 'this client'} will NOT be sent to the client. Admin will handle them directly.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: newStatus ? 'Enable' : 'Disable',
+          onPress: async () => {
+            try {
+              const res = await toggleUserInquiries(userId, newStatus);
+              if (res && res.success) {
+                const updater = (prev) =>
+                  prev.map((u) => ((u.id || u._id) === userId ? { ...u, canReceiveInquiries: newStatus } : u));
+                setUsers(updater);
+                setAllUsers(updater);
+                setSearchResults(updater);
+                CrossPlatformAlert.alert(
+                  'Updated',
+                  newStatus ? 'Inquiries enabled for client' : 'Inquiries disabled for client (Admin only)'
+                );
+              }
+            } catch (err) {
+              console.error('Error toggling inquiries:', err);
+              CrossPlatformAlert.alert('Error', err?.message || 'Failed to update inquiry permission');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Render user card
   const renderUser = ({ item }) => {
     const isSelected = selectedUsers.has(item.id);
@@ -516,11 +557,18 @@ const UserManagementScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="account" size={22} color="#fff" />
             </View>
             <View style={styles.userDetails}>
-              <Text style={styles.userName}>
-                {item.name || item.fullName || item.full_name ||
-                  `${item.firstName || item.first_name || ''} ${item.lastName || item.last_name || ''}`.trim() ||
-                  item.username || 'Unknown User'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Text style={styles.userName}>
+                  {item.name || item.fullName || item.full_name ||
+                    `${item.firstName || item.first_name || ''} ${item.lastName || item.last_name || ''}`.trim() ||
+                    item.username || 'Unknown User'}
+                </Text>
+                {item.clientCode ? (
+                  <View style={{ backgroundColor: '#eff6ff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#bfdbfe' }}>
+                    <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '700' }}>{item.clientCode}</Text>
+                  </View>
+                ) : null}
+              </View>
               <Text style={styles.userEmail}>
                 {item.email || item.emailAddress || 'No email provided'}
               </Text>
@@ -609,6 +657,44 @@ const UserManagementScreen = ({ navigation }) => {
               </View>
             </View>
           )}
+
+          {/* Inquiry Permission Control (Admin) */}
+          <View style={styles.inquiryControlContainer}>
+            <View style={styles.inquiryInfoSection}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <MaterialCommunityIcons
+                  name={item.canReceiveInquiries !== false ? "message-badge" : "message-lock"}
+                  size={16}
+                  color={item.canReceiveInquiries !== false ? "#10B981" : "#EF4444"}
+                />
+                <Text style={styles.inquiryTitle}>
+                  Inquiries: {item.canReceiveInquiries !== false ? 'Enabled' : 'Disabled (Admin Only)'}
+                </Text>
+              </View>
+              <Text style={styles.inquirySubtitle}>
+                {item.canReceiveInquiries !== false
+                  ? 'Client receives inquiries on their properties'
+                  : 'Client cannot view inquiries; handled by Admin'}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.inquiryToggleBtn,
+                item.canReceiveInquiries !== false ? styles.inquiryDisableBtn : styles.inquiryEnableBtn
+              ]}
+              onPress={() => handleToggleUserInquiries(item)}
+            >
+              <MaterialCommunityIcons
+                name={item.canReceiveInquiries !== false ? "bell-off" : "bell-check"}
+                size={14}
+                color="#fff"
+              />
+              <Text style={styles.inquiryToggleBtnText}>
+                {item.canReceiveInquiries !== false ? 'DISABLE' : 'ENABLE'}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {!isSelectionMode && (
             <View style={styles.userActions}>
@@ -1282,6 +1368,50 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  inquiryControlContainer: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  inquiryInfoSection: {
+    flex: 1,
+  },
+  inquiryTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  inquirySubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  inquiryToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  inquiryEnableBtn: {
+    backgroundColor: '#10B981',
+  },
+  inquiryDisableBtn: {
+    backgroundColor: '#EF4444',
+  },
+  inquiryToggleBtnText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   userActions: {
     flexDirection: 'row',
