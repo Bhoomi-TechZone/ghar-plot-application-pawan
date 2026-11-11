@@ -5,7 +5,6 @@
 import { CRM_BASE_URL, getCRMAuthHeaders, handleCRMResponse } from './crmAPI';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFCMToken } from '../../utils/fcmService';
-import { showEmployeeNotificationPopup } from '../../services/EmployeePopupManager';
 
 /**
  * Send scheduled FCM notification for reminder
@@ -753,21 +752,6 @@ const sendReminderToAdmin = async (reminderData) => {
       if (response.ok || data.success) {
         console.log('✅ Admin reminder notification sent successfully via /admin/notifications endpoint');
         adminResult = { success: true, data };
-
-        // 🔥 DIRECT POPUP: Backend /admin/notifications only STORES notification, does NOT send FCM push.
-        // So we trigger the popup directly on this device to show it immediately.
-        try {
-          console.log('🔔 Triggering local popup directly (backend does not send FCM)...');
-          showEmployeeNotificationPopup({
-            type: 'reminder',
-            employeeName: employeeName,
-            title: reminderData.title || 'Reminder',
-            clientName: reminderData.clientName || 'Client',
-          });
-          console.log('✅ Local popup triggered successfully');
-        } catch (popupErr) {
-          console.warn('⚠️ Could not show local popup:', popupErr);
-        }
       } else {
         console.warn('⚠️ Backend returned error for admin notification:', data.message);
         adminResult = { success: false, error: data.message || 'Failed to send admin notification' };
@@ -974,28 +958,6 @@ export const sendAlertToAdmin = async (alertData) => {
       if (response.ok || data.success) {
         console.log('✅ Admin alert notification sent successfully');
         adminResult = { success: true, data };
-
-        // 🔥 DIRECT POPUP: Backend /admin/notifications only STORES notification, does NOT send FCM push.
-        // So we trigger the popup directly on this device to show it immediately.
-        try {
-          console.log('🔔 Triggering local popup directly (backend does not send FCM)...');
-          
-          // Determine if it should be Indigo (reminder) or Red (alert)
-          const isReminder = 
-            notificationType.toLowerCase().includes('reminder') || 
-            (alertData.title && (alertData.title.toLowerCase().includes('reminder') || alertData.title.includes('रिमाइंडर'))) ||
-            (alertData.reason && (alertData.reason.toLowerCase().includes('reminder') || alertData.reason.includes('रिमाइंडर')));
-
-          showEmployeeNotificationPopup({
-            type: isReminder ? 'reminder' : 'alert',
-            employeeName: employeeName,
-            title: alertData.title || (isReminder ? 'Reminder' : 'Alert'),
-            reason: alertData.reason || (isReminder ? 'New Reminder' : 'New Alert'),
-          });
-          console.log(`✅ Local ${isReminder ? 'reminder' : 'alert'} popup triggered successfully`);
-        } catch (popupErr) {
-          console.warn('⚠️ Could not show local alert popup:', popupErr);
-        }
       } else {
         console.warn('⚠️ Backend returned error for admin alert notification:', data.message);
         adminResult = { success: false, error: data.message || 'Failed to send admin notification' };

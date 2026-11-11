@@ -18,6 +18,8 @@ import {
   Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 import { 
   getMyFollowUps, 
@@ -27,6 +29,8 @@ import {
 } from '../../services/employeeApiService';
 
 const EmployeeFollowUps = ({ navigation, openDrawer }) => {
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = getHeaderTopPadding(insets, 12);
   // ============================================
   // STATE MANAGEMENT
   // ============================================
@@ -756,18 +760,6 @@ const EmployeeFollowUps = ({ navigation, openDrawer }) => {
     </Modal>
   );
 
-  // ============================================
-  // LOADING STATE
-  // ============================================
-  if (isLoading && !isRefreshing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#EF4444" />
-        <Text style={styles.loadingText}>Loading Follow-ups...</Text>
-      </View>
-    );
-  }
-
   const filteredData = getFilteredFollowUps();
 
   // ============================================
@@ -779,7 +771,7 @@ const EmployeeFollowUps = ({ navigation, openDrawer }) => {
       
       {/* Premium Header */}
       <View style={styles.header}>
-        <View style={styles.headerGradient}>
+        <View style={[styles.headerGradient, { paddingTop: headerTopPadding }]}>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={openDrawer}
@@ -871,7 +863,13 @@ const EmployeeFollowUps = ({ navigation, openDrawer }) => {
       </View>
 
       {/* Follow-ups List */}
-      <FlatList
+      {isLoading && !isRefreshing ? (
+        <View style={styles.cardsLoadingContainer}>
+          <ActivityIndicator size="large" color="#EF4444" />
+          <Text style={styles.loadingText}>Loading Follow-ups...</Text>
+        </View>
+      ) : (
+        <FlatList
         data={filteredData}
         renderItem={renderFollowUpCard}
         keyExtractor={(item) => item._id || item.id || Math.random().toString()}
@@ -887,6 +885,7 @@ const EmployeeFollowUps = ({ navigation, openDrawer }) => {
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
       />
+      )}
 
       {/* Result Modal */}
       {renderResultModal()}
@@ -907,6 +906,12 @@ const styles = StyleSheet.create({
   },
   
   // Loading
+  cardsLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

@@ -13,10 +13,14 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 
 const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const EmployeeAlertsScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = getHeaderTopPadding(insets, 12);
   const [alerts, setAlerts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -221,7 +225,7 @@ const EmployeeAlertsScreen = ({ navigation }) => {
     <View style={styles.container}>
       <ScrollView style={styles.scrollContainer}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: headerTopPadding }]}>
           <Text style={styles.headerTitle}>My Alerts</Text>
 
           <TouchableOpacity style={styles.createButton} onPress={createAlert}>

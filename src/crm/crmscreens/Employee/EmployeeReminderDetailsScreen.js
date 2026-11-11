@@ -23,6 +23,8 @@ import {
   Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updateReminder } from '../../../services/api';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
@@ -31,6 +33,8 @@ const { width } = Dimensions.get('window');
 const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = getHeaderTopPadding(insets, 12);
   const {
     reminderId,
     clientName: paramClientName,
@@ -317,7 +321,7 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor="#3730A3" />
 
       {/* HEADER */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTopPadding }]}>
         <View style={styles.headerTop}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Icon name="arrow-left" size={22} color="#fff" />

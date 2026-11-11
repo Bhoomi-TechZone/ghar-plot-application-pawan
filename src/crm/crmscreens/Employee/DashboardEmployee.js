@@ -20,11 +20,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { startAdminNotificationPolling, stopAdminNotificationPolling } from '../../../services/AdminNotificationPollingService';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 
 const { width } = Dimensions.get("window");
 
 const DashboardEmployee = ({ navigation, openDrawer }) => {
   const insets = useSafeAreaInsets();
+  const headerTopPadding = getHeaderTopPadding(insets, 12);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [employeeName, setEmployeeName] = useState('Employee');
@@ -232,7 +234,7 @@ const DashboardEmployee = ({ navigation, openDrawer }) => {
         />
         <LinearGradient
           colors={["#3b82f6", "#1e40af"]}
-          style={styles.headerWrapper}
+          style={[styles.headerWrapper, { paddingTop: headerTopPadding }]}
         >
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={openDrawer} style={styles.menuButton}>
@@ -265,7 +267,7 @@ const DashboardEmployee = ({ navigation, openDrawer }) => {
       {/* HEADER */}
       <LinearGradient
         colors={["#3b82f6", "#1e40af"]}
-        style={styles.headerWrapper}
+        style={[styles.headerWrapper, { paddingTop: headerTopPadding }]}
       >
         <View style={styles.headerRow}>
           {/* Menu Button */}

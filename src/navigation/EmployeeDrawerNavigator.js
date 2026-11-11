@@ -25,6 +25,8 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Icon from "react-native-vector-icons/Ionicons";
 import LinearGradient from "react-native-linear-gradient";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getHeaderTopPadding } from '../utils/safeAreaHelper';
 
 // Permission Components
 import { usePermissions, MODULES, ACTIONS } from '../context/PermissionContext';
@@ -179,6 +181,8 @@ const DRAWER_MENU_ITEMS = [
 
 // Drawer Menu Component
 const DrawerMenu = ({ visible, onClose, navigation, accessibleMenuItems, employee }) => {
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = getHeaderTopPadding(insets, 12);
   const slideAnim = useRef(new Animated.Value(-width * 0.8)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [isProjectManagementExpanded, setIsProjectManagementExpanded] = useState(false);
@@ -271,7 +275,7 @@ const DrawerMenu = ({ visible, onClose, navigation, accessibleMenuItems, employe
           {/* Header */}
           <LinearGradient
             colors={["#3b82f6", "#1e40af"]}
-            style={styles.drawerHeader}
+            style={[styles.drawerHeader, { paddingTop: headerTopPadding }]}
           >
             <View style={styles.profileSection}>
               <View style={styles.avatarContainer}>

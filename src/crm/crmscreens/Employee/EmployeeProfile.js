@@ -11,10 +11,14 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import LinearGradient from "react-native-linear-gradient";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const EmployeeProfile = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = getHeaderTopPadding(insets, 12);
   const [employeeData, setEmployeeData] = useState({
     name: '',
     email: '',
@@ -115,7 +119,7 @@ const EmployeeProfile = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#3b82f6" />
-        <LinearGradient colors={["#3b82f6", "#1e40af"]} style={styles.headerWrapper}>
+        <LinearGradient colors={["#3b82f6", "#1e40af"]} style={[styles.headerWrapper, { paddingTop: headerTopPadding }]}>
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <Icon name="arrow-back" size={26} color="#fff" />
@@ -136,7 +140,7 @@ const EmployeeProfile = ({ navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor="#3b82f6" />
 
       {/* Header */}
-      <LinearGradient colors={["#3b82f6", "#1e40af"]} style={styles.headerWrapper}>
+      <LinearGradient colors={["#3b82f6", "#1e40af"]} style={[styles.headerWrapper, { paddingTop: headerTopPadding }]}>
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Icon name="arrow-back" size={26} color="#fff" />

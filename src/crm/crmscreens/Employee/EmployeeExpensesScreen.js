@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Picker } from '@react-native-picker/picker';
@@ -31,7 +32,7 @@ const getClientDisplayName = (client) => {
 
 const EmployeeExpensesScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const statusBarTop = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
+  const statusBarTop = getHeaderTopPadding(insets, 12);
 
   // Active sub-tab / mode: 'add_expense', 'daily_sheet', or 'cash_flow'
   const initialMode = route?.params?.initialTab || 'add_expense';
@@ -852,7 +853,7 @@ const EmployeeExpensesScreen = ({ navigation, route }) => {
       <StatusBar barStyle="light-content" backgroundColor="#0f766e" translucent={true} />
 
       {/* Header */}
-      <View style={[styles.headerWrapper, { paddingTop: statusBarTop + 10 }]}>
+      <View style={[styles.headerWrapper, { paddingTop: statusBarTop }]}>
         <View style={styles.headerRow}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}

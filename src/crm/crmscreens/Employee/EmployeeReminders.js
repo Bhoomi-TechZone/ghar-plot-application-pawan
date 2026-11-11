@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import * as crmAlertApi from '../../services/crmAlertApi';
 import AlertNotificationService from '../../../services/AlertNotificationService';
 import { useFocusEffect } from '@react-navigation/native';
@@ -25,10 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const EmployeeReminders = ({ navigation, route, openDrawer }) => {
   const insets = useSafeAreaInsets();
-  const statusBarTop = Math.max(
-    insets.top,
-    Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0
-  );
+  const statusBarTop = getHeaderTopPadding(insets, 12);
   const filterCategory = route?.params?.filterCategory || 'reminder'; // Default to 'reminder' for employee reminders
   const screenTitle = 'My Reminders';
 
@@ -591,7 +589,7 @@ const EmployeeReminders = ({ navigation, route, openDrawer }) => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={[styles.topRow, { paddingTop: statusBarTop + 14 }]}>
+      <View style={[styles.topRow, { paddingTop: statusBarTop }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {openDrawer ? (
             <TouchableOpacity onPress={openDrawer} style={{ marginRight: 12 }}>

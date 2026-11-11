@@ -17,6 +17,8 @@ import {
   Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 import { 
   addFollowUpComment,
@@ -25,6 +27,8 @@ import {
 } from '../../services/employeeApiService';
 
 const FollowUpDetails = ({ route, navigation }) => {
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = getHeaderTopPadding(insets, 12);
   const { followUp: initialFollowUp, followUpId } = route.params;
   
   // ============================================
@@ -350,7 +354,7 @@ const FollowUpDetails = ({ route, navigation }) => {
 
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerContent}>
+        <View style={[styles.headerContent, { paddingTop: headerTopPadding }]}>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation.goBack()}

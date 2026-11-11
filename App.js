@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, SafeAreaView, StyleSheet, AppState, Platform, ActivityIndicator } from 'react-native';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import { Alert, Linking } from 'react-native';
 import ReminderPopup from './src/crm/components/Reminders/ReminderPopup';
@@ -1014,7 +1015,7 @@ const AppMain = () => {
   };
 
   return (
-    <>
+    <SafeAreaProvider style={{ flex: 1 }}>
       {appError ? (
         <SafeAreaView style={styles.errorContainer}>
           <Text style={styles.errorTitle}>App Loading Error</Text>
@@ -1100,7 +1101,7 @@ const AppMain = () => {
         onUpdate={handleUpdate}
         onLater={handleLater}
       />
-    </>
+    </SafeAreaProvider>
   );
 };
 

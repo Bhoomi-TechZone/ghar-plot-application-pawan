@@ -16,11 +16,14 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import ReminderModal from '../../components/Enquiries/modals/ReminderModal';
 import FollowUpModal from '../../components/Enquiries/modals/FollowUpModal';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const LeadDetails = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = getHeaderTopPadding(insets, 10);
   const insets = useSafeAreaInsets();
   const { lead } = route.params || {};
   const [reminderModalVisible, setReminderModalVisible] = useState(false);
@@ -133,7 +136,7 @@ const LeadDetails = ({ navigation, route }) => {
       <StatusBar barStyle="light-content" backgroundColor="#3730A3" />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTopPadding }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>

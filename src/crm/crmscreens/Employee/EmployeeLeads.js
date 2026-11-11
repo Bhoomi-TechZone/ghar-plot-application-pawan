@@ -20,6 +20,8 @@ import {
   Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ReminderModal from '../../components/Enquiries/modals/ReminderModal';
 import FollowUpModal from '../../components/Enquiries/modals/FollowUpModal';
@@ -31,6 +33,8 @@ import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 const API_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
 const EmployeeLeads = ({ navigation, openDrawer }) => {
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = getHeaderTopPadding(insets, 10);
   // ============================================
   // PERMISSION CHECK
   // ============================================
@@ -908,7 +912,7 @@ const EmployeeLeads = ({ navigation, openDrawer }) => {
       <StatusBar barStyle="light-content" backgroundColor="#3730A3" />
 
       {/* Premium Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTopPadding }]}>
         <View style={styles.headerGradient}>
           <TouchableOpacity
             style={styles.backButton}
