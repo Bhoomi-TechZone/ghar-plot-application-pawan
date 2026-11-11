@@ -12,7 +12,7 @@ import reminderManager from './src/crm/services/reminderManager';
 import NavigationService, { navigationRef } from './src/services/NavigationService';
 import useAppVersionCheck from './src/hooks/useAppVersionCheck';
 import UpdateModal from './src/components/UpdateModal';
-import { extractLatestComment } from './src/utils/commentHelper';
+import { extractLatestComment, cleanNotificationSuffix } from './src/utils/commentHelper';
 
 // ── Web: Remove default browser outline/border from TextInput ─────────────────
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -197,7 +197,7 @@ const AppMain = () => {
           navigationRef.current.navigate('EditAlert', {
             alertId: cleanId,
             originalTitle: normalizedReminder.alertTitle || normalizedReminder.title || normalizedReminder.reminderTitle || 'Reminder',
-            originalReason: extractLatestComment(normalizedReminder.alertReason || normalizedReminder.reason || normalizedReminder.message || normalizedReminder.note || ''),
+            originalReason: cleanNotificationSuffix(normalizedReminder.alertReason || normalizedReminder.reason || normalizedReminder.message || normalizedReminder.note || ''),
             originalDate: normalizedReminder.scheduledDate || normalizedReminder.date || normalizedReminder.reminderTime || '',
             originalTime: normalizedReminder.scheduledTime || normalizedReminder.time || '',
             scheduledDateTime: normalizedReminder.nextScheduledAt || normalizedReminder.scheduledDateTime || normalizedReminder.scheduledAt || '',

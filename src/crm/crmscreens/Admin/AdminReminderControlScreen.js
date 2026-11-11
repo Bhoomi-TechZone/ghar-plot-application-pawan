@@ -4,7 +4,7 @@
  * Features: Overview Dashboard, Employee Management, Due Reminders Monitor, Popup Control
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -25,12 +25,42 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const { width, height } = Dimensions.get('window');
 
 const AdminReminderControlScreen = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = getHeaderTopPadding(insets, 12);
+  const tabsScrollViewRef = useRef(null);
+  const tabLayouts = useRef({});
+  const [totalActiveCount, setTotalActiveCount] = useState(0);
+
+  const scrollToTab = useCallback((tabKey) => {
+    const layout = tabLayouts.current[tabKey];
+    if (layout && tabsScrollViewRef.current) {
+      const screenWidth = Dimensions.get('window').width;
+      const targetX = Math.max(0, layout.x - (screenWidth - layout.width) / 2);
+      tabsScrollViewRef.current.scrollTo({ x: targetX, animated: true });
+    }
+  }, []);
+
+  const onTabLayout = (tabKey, event) => {
+    tabLayouts.current[tabKey] = event.nativeEvent.layout;
+    if (activeTab === tabKey) {
+      scrollToTab(tabKey);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToTab(activeTab);
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [activeTab, scrollToTab]);
 
   // Main Data States
   const [stats, setStats] = useState(null);
@@ -306,7 +336,11 @@ const AdminReminderControlScreen = () => {
       console.log('📋 Active employee reminders response:', resData);
 
       if (resData.success) {
-        setActiveEmployeeReminders(resData.data || []);
+        const list = resData.data || [];
+        setActiveEmployeeReminders(list);
+        if ((!empId || empId === 'all') && !search) {
+          setTotalActiveCount(list.length);
+        }
         setActiveEmployeesList(resData.activeEmployees || []);
       }
     } catch (error) {
@@ -656,6 +690,7 @@ const AdminReminderControlScreen = () => {
             }}
             onPress={() => {
               setActiveTab('employee-reminders');
+              scrollToTab('employee-reminders');
               fetchActiveEmployeeReminders();
             }}
           >
@@ -696,7 +731,7 @@ const AdminReminderControlScreen = () => {
           {/* Top Employees */}
           {stats.topEmployees && stats.topEmployees.length > 0 && (
             <View style={styles.topEmployees}>
-              <Text style={styles.sectionTitle}>?? Top Employees by Reminders</Text>
+              <Text style={styles.sectionTitle}>🏆 Top Employees by Reminders</Text>
               {stats.topEmployees.map((emp, index) => (
                 <View key={emp.employeeId} style={styles.topEmployeeItem}>
                   <View style={styles.topEmployeeRank}>
@@ -707,7 +742,7 @@ const AdminReminderControlScreen = () => {
                     <Text style={styles.topEmployeeEmail}>{emp.email}</Text>
                   </View>
                   <View style={styles.topEmployeeCount}>
-                    <Text style={styles.reminderCount}>?? {emp.reminderCount}</Text>
+                    <Text style={styles.reminderCount}>🔔 {emp.reminderCount}</Text>
                   </View>
                 </View>
               ))}
@@ -763,6 +798,7 @@ const AdminReminderControlScreen = () => {
           onPress={() => {
             setSelectedActiveEmpFilter(item._id);
             setActiveTab('employee-reminders');
+            scrollToTab('employee-reminders');
             fetchActiveEmployeeReminders(item._id);
           }}
         >
@@ -889,7 +925,7 @@ const AdminReminderControlScreen = () => {
           <View style={styles.emptyState}>
             <Icon name="check-circle" size={48} color="#10b981" />
             <Text style={styles.emptyText}>No Due Reminders</Text>
-            <Text style={styles.emptySubtext}>All reminders are up to date! ??</Text>
+            <Text style={styles.emptySubtext}>All reminders are up to date! 🎉</Text>
           </View>
         }
       />
@@ -899,22 +935,10 @@ const AdminReminderControlScreen = () => {
   const renderActiveEmployeeRemindersTab = () => (
     <View style={styles.tabContent}>
       {/* Search Input */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: Platform.OS === 'ios' ? 12 : 8,
-        marginHorizontal: 16,
-        marginTop: 12,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-      }}>
+      <View style={styles.activeRemindersSearchContainer}>
         <Icon name="search" size={20} color="#94a3b8" style={{ marginRight: 8 }} />
         <TextInput
-          style={{ flex: 1, fontSize: 14, color: '#1e293b' }}
+          style={styles.activeRemindersSearchInput}
           placeholder="Search active employee reminders..."
           placeholderTextColor="#94a3b8"
           value={activeRemindersSearch}
@@ -935,63 +959,66 @@ const AdminReminderControlScreen = () => {
 
       {/* Active Employees Pill Filter */}
       {activeEmployeesList.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
-        >
-          <TouchableOpacity
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 7,
-              borderRadius: 20,
-              backgroundColor: selectedActiveEmpFilter === 'all' ? '#3b82f6' : '#ffffff',
-              borderWidth: 1,
-              borderColor: selectedActiveEmpFilter === 'all' ? '#3b82f6' : '#e2e8f0',
-            }}
-            onPress={() => {
-              setSelectedActiveEmpFilter('all');
-              fetchActiveEmployeeReminders('all', activeRemindersSearch);
-            }}
+        <View style={styles.employeeFilterContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={styles.employeeFilterContent}
           >
-            <Text style={{
-              fontSize: 12,
-              fontWeight: '700',
-              color: selectedActiveEmpFilter === 'all' ? '#ffffff' : '#64748b'
-            }}>
-              All Active ({activeEmployeeReminders.length})
-            </Text>
-          </TouchableOpacity>
-
-          {activeEmployeesList.map((emp) => {
-            const isSelected = selectedActiveEmpFilter === emp._id;
-            return (
-              <TouchableOpacity
-                key={emp._id}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 7,
-                  borderRadius: 20,
-                  backgroundColor: isSelected ? '#3b82f6' : '#ffffff',
-                  borderWidth: 1,
-                  borderColor: isSelected ? '#3b82f6' : '#e2e8f0',
-                }}
-                onPress={() => {
-                  setSelectedActiveEmpFilter(emp._id);
-                  fetchActiveEmployeeReminders(emp._id, activeRemindersSearch);
-                }}
+            <TouchableOpacity
+              style={[
+                styles.employeePill,
+                selectedActiveEmpFilter === 'all' && styles.employeePillActive,
+              ]}
+              onPress={() => {
+                setSelectedActiveEmpFilter('all');
+                fetchActiveEmployeeReminders('all', activeRemindersSearch);
+              }}
+            >
+              <Text
+                style={[
+                  styles.employeePillText,
+                  selectedActiveEmpFilter === 'all' && styles.employeePillTextActive,
+                ]}
               >
-                <Text style={{
-                  fontSize: 12,
-                  fontWeight: '600',
-                  color: isSelected ? '#ffffff' : '#64748b'
-                }}>
-                  👤 {emp.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+                All Active ({totalActiveCount || activeEmployeeReminders.length})
+              </Text>
+            </TouchableOpacity>
+
+            {activeEmployeesList.map((emp) => {
+              const isSelected = selectedActiveEmpFilter === emp._id;
+              return (
+                <TouchableOpacity
+                  key={emp._id}
+                  style={[
+                    styles.employeePill,
+                    isSelected && styles.employeePillActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedActiveEmpFilter(emp._id);
+                    fetchActiveEmployeeReminders(emp._id, activeRemindersSearch);
+                  }}
+                >
+                  <Icon
+                    name="person"
+                    size={14}
+                    color={isSelected ? '#ffffff' : '#3b82f6'}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={[
+                      styles.employeePillText,
+                      isSelected && styles.employeePillTextActive,
+                    ]}
+                  >
+                    {emp.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
       )}
 
       {/* Reminders List */}
@@ -1001,7 +1028,7 @@ const AdminReminderControlScreen = () => {
           <Text style={styles.loadingText}>Loading employee reminders...</Text>
         </View>
       ) : activeEmployeeReminders.length === 0 ? (
-        <View style={styles.emptyState}>
+        <View style={[styles.emptyState, { flex: 1 }]}>
           <Icon name="event-busy" size={54} color="#cbd5e1" />
           <Text style={styles.emptyText}>No Reminders Found</Text>
           <Text style={styles.emptySubtext}>
@@ -1332,7 +1359,7 @@ const AdminReminderControlScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTopPadding }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity
             style={styles.backButton}
@@ -1340,7 +1367,7 @@ const AdminReminderControlScreen = () => {
           >
             <Icon name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Admin Reminders Control</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>Admin Reminders Control</Text>
         </View>
         <View style={styles.headerRight}>
           {getTotalDueCount() > 0 && (
@@ -1358,15 +1385,20 @@ const AdminReminderControlScreen = () => {
       </View>
 
       {/* Tab Navigation */}
-      <View style={{ backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+      <View style={styles.tabBarContainer}>
         <ScrollView
+          ref={tabsScrollViewRef}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ flexDirection: 'row' }}
+          contentContainerStyle={styles.tabBarScrollContent}
         >
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'overview' && styles.activeTab, { paddingHorizontal: 16 }]}
-            onPress={() => setActiveTab('overview')}
+            onLayout={(e) => onTabLayout('overview', e)}
+            style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
+            onPress={() => {
+              setActiveTab('overview');
+              scrollToTab('overview');
+            }}
           >
             <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
               📊 Overview
@@ -1374,8 +1406,12 @@ const AdminReminderControlScreen = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'employees' && styles.activeTab, { paddingHorizontal: 16 }]}
-            onPress={() => setActiveTab('employees')}
+            onLayout={(e) => onTabLayout('employees', e)}
+            style={[styles.tab, activeTab === 'employees' && styles.activeTab]}
+            onPress={() => {
+              setActiveTab('employees');
+              scrollToTab('employees');
+            }}
           >
             <Text style={[styles.tabText, activeTab === 'employees' && styles.activeTabText]}>
               👥 Employees ({employees.length})
@@ -1383,9 +1419,11 @@ const AdminReminderControlScreen = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'employee-reminders' && styles.activeTab, { paddingHorizontal: 16 }]}
+            onLayout={(e) => onTabLayout('employee-reminders', e)}
+            style={[styles.tab, activeTab === 'employee-reminders' && styles.activeTab]}
             onPress={() => {
               setActiveTab('employee-reminders');
+              scrollToTab('employee-reminders');
               fetchActiveEmployeeReminders();
             }}
           >
@@ -1395,8 +1433,12 @@ const AdminReminderControlScreen = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'due-reminders' && styles.activeTab, { paddingHorizontal: 16 }]}
-            onPress={() => setActiveTab('due-reminders')}
+            onLayout={(e) => onTabLayout('due-reminders', e)}
+            style={[styles.tab, activeTab === 'due-reminders' && styles.activeTab]}
+            onPress={() => {
+              setActiveTab('due-reminders');
+              scrollToTab('due-reminders');
+            }}
           >
             <Text style={[styles.tabText, activeTab === 'due-reminders' && styles.activeTabText]}>
               ⏰ Due ({getTotalDueCount()})
@@ -1447,9 +1489,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#111827',
+    flexShrink: 1,
   },
   headerRight: {
     flexDirection: 'row',
@@ -1470,30 +1513,95 @@ const styles = StyleSheet.create({
   cacheButton: {
     padding: 8,
   },
-  tabNavigation: {
-    flexDirection: 'row',
+  tabBarContainer: {
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
+  tabBarScrollContent: {
+    flexDirection: 'row',
     paddingHorizontal: 8,
+  },
+  tab: {
+    paddingVertical: 13,
+    paddingHorizontal: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#3b82f6',
+    borderBottomColor: '#2563eb',
   },
   tabText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#64748b',
     fontWeight: '500',
   },
   activeTabText: {
-    color: '#3b82f6',
+    color: '#2563eb',
+    fontWeight: '700',
+  },
+  activeRemindersSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  activeRemindersSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1e293b',
+    paddingVertical: 0,
+  },
+  employeeFilterContainer: {
+    height: 44,
+    marginBottom: 8,
+    justifyContent: 'center',
+  },
+  employeeFilterContent: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  employeePill: {
+    height: 34,
+    paddingHorizontal: 14,
+    borderRadius: 17,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  employeePillActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+    shadowOpacity: 0.2,
+    elevation: 3,
+  },
+  employeePillText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#64748b',
+  },
+  employeePillTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
   },
   tabContent: {
     flex: 1,

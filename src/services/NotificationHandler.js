@@ -7,7 +7,7 @@ import notifee from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavigationService from './NavigationService';
 import { Platform } from 'react-native';
-import { extractLatestComment } from '../utils/commentHelper';
+import { extractLatestComment, cleanNotificationSuffix } from '../utils/commentHelper';
 
 class NotificationHandler {
   // 🔥 Navigation lock to prevent duplicate navigation
@@ -350,7 +350,7 @@ class NotificationHandler {
         // Navigate to EditAlertScreen
         const editParams = {
           alertId: notificationData.alertId?.replace('alert_', '') || notification.id?.replace('alert_', ''),
-          originalReason: extractLatestComment(notification.body || notificationData.reason || notificationData.note || ''),
+          originalReason: cleanNotificationSuffix(notificationData.reason || notificationData.note || notification.body || ''),
           originalDate: notificationData.date,
           originalTime: notificationData.time,
           repeatDaily: notificationData.repeatDaily,
@@ -470,7 +470,7 @@ class NotificationHandler {
         const params = {
           alertId: cleanAlertId,
           originalTitle: popupData.title,
-          originalReason: extractLatestComment(popupData.note || popupData.reason || notificationData.reason || ''),
+          originalReason: cleanNotificationSuffix(notificationData.reason || popupData.reason || popupData.note || ''),
           originalDate: notificationData.scheduledDate || notificationData.date || notificationData.reminderTime || '',
           originalTime: notificationData.scheduledTime || notificationData.time || '',
           scheduledDateTime: notificationData.nextScheduledAt || notificationData.scheduledDateTime || notificationData.scheduledAt || '',

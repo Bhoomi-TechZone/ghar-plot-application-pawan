@@ -1075,6 +1075,9 @@ const AdminNotificationPopup = ({
                             l = l.replace(/🏷️\s*Category:[^|\n]+(\|)?/gi, '');
                             l = l.replace(/Client:[^|\n]+(\|)?/gi, '');
                             l = l.replace(/Category:[^|\n]+(\|)?/gi, '');
+                            l = l.replace(/\s*⏰\s*Scheduled:[^\n]*(?:\s*🔁\s*Next:[^\n]*)?(?:\s*⏳\s*In[^\n]*)?/gi, '');
+                            l = l.replace(/\s*🔁\s*Next:[^\n]*(?:\s*⏳\s*In[^\n]*)?/gi, '');
+                            l = l.replace(/\s*⏳\s*In\s+[^\n]*/gi, '');
                             return l.trim().replace(/^\|\s*|\s*\|$/g, '');
                           })
                           .filter(line => {

@@ -12,6 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { cleanNotificationSuffix } from '../utils/commentHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -148,7 +149,7 @@ const EmployeeNotificationPopup = ({
                   <MaterialIcons name="description" size={20} color={primaryColor} />
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>Reason</Text>
-                    <Text style={styles.detailValue}>{reason}</Text>
+                    <Text style={styles.detailValue}>{cleanNotificationSuffix(reason)}</Text>
                   </View>
                 </View>
               ) : null}
@@ -159,7 +160,7 @@ const EmployeeNotificationPopup = ({
                   <MaterialIcons name="notes" size={20} color={primaryColor} />
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>Note</Text>
-                    <Text style={styles.detailValue}>{note}</Text>
+                    <Text style={styles.detailValue}>{cleanNotificationSuffix(note)}</Text>
                   </View>
                 </View>
               ) : null}
