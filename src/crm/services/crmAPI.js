@@ -111,4 +111,37 @@ export const buildQueryString = (params = {}) => {
   return queryParts.join('&');
 };
 
+/**
+ * Refresh admin access token using refresh token
+ */
+export const refreshAdminAccessToken = async () => {
+  try {
+    const refreshToken = (await AsyncStorage.getItem('admin_refresh_token')) || (await AsyncStorage.getItem('adminRefreshToken'));
+    if (!refreshToken) return null;
+
+    const res = await fetch(`${CRM_BASE_URL}/admin/refresh-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.token) {
+        await AsyncStorage.setItem('admin_token', data.token);
+        await AsyncStorage.setItem('adminToken', data.token);
+        if (data.refreshToken) {
+          await AsyncStorage.setItem('admin_refresh_token', data.refreshToken);
+          await AsyncStorage.setItem('adminRefreshToken', data.refreshToken);
+        }
+        console.log('🔄 Admin access token refreshed successfully');
+        return data.token;
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Token refresh failed:', err.message);
+  }
+  return null;
+};
+
 

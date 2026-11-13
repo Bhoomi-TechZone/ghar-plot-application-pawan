@@ -141,7 +141,16 @@ export const checkAutoLogin = async (navigation) => {
     console.log('🔍 Checking auto-login status...');
     
     // Check admin token FIRST - admins should go directly to AdminApp
-    const adminToken = (await AsyncStorage.getItem('admin_token')) || (await AsyncStorage.getItem('adminToken'));
+    let adminToken = (await AsyncStorage.getItem('admin_token')) || (await AsyncStorage.getItem('adminToken'));
+    if (!adminToken) {
+      const refreshToken = (await AsyncStorage.getItem('admin_refresh_token')) || (await AsyncStorage.getItem('adminRefreshToken'));
+      if (refreshToken) {
+        try {
+          const { refreshAdminAccessToken } = require('../crm/services/crmAPI');
+          adminToken = await refreshAdminAccessToken();
+        } catch (_) {}
+      }
+    }
     if (adminToken) {
       console.log('✅ Admin token found, triggering FCM sync & navigating to AdminApp');
       try {

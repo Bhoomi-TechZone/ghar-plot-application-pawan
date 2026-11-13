@@ -19,6 +19,7 @@ import {
   Switch,
 } from 'react-native';
 import { updateAlert, updateReminder, BASE_URL } from '../services/api';
+import { deleteReminder } from '../crm/services/crmReminderApi';
 import { deleteAlert, getAlertById } from '../crm/services/crmAlertApi'; // 🔥 Import deleteAlert, getAlertById
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getFCMToken } from '../utils/fcmService';
@@ -950,6 +951,9 @@ const EditAlertScreen = ({ route, navigation }) => {
               try {
                 result = await deleteAlert(alertId);
               } catch (delErr) {
+                try {
+                  result = await deleteReminder(alertId);
+                } catch (_) {}
                 console.log('⚠️ deleteAlert failed, trying USP delete:', delErr.message);
               }
 

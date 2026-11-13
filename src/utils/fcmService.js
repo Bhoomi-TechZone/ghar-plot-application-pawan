@@ -411,6 +411,7 @@ export const setupForegroundNotificationHandler = () => {
               ios: {
                 sound: 'default',
                 critical: false,
+                threadId: unifiedId,
                 foregroundPresentationOptions: {
                   alert: true,
                   badge: true,
@@ -764,6 +765,7 @@ export const backgroundMessageHandler = async (remoteMessage) => {
         ios: {
           sound: 'default',
           critical: false,
+          threadId: unifiedId,
           foregroundPresentationOptions: {
             alert: true,
             badge: true,

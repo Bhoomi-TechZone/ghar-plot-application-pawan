@@ -24,7 +24,8 @@
         "foregroundImage": "./src/assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.bhoomitechzone.gharplot"
+      "package": "com.bhoomitechzone.gharplot",
+      "versionCode": 9
     },
     "web": {
       "bundler": "metro",

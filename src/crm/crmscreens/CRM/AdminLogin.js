@@ -158,6 +158,11 @@ const AdminLogin = () => {
           await AsyncStorage.setItem('isAuthenticated', 'true');
         }
 
+        if (data.refreshToken) {
+          await AsyncStorage.setItem('admin_refresh_token', data.refreshToken);
+          await AsyncStorage.setItem('adminRefreshToken', data.refreshToken);
+        }
+
         if (user) {
           await AsyncStorage.setItem('admin_user', JSON.stringify(user));
           await AsyncStorage.setItem('adminData', JSON.stringify(user)); // Also store with consistent key
