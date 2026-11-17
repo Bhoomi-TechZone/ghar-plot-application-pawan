@@ -3,6 +3,8 @@
  * Handles employee login, logout and authentication state
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { unregisterAdminFCMOnLogout } from '../../utils/fcmService';
+import { stopAdminNotificationPolling } from '../../services/AdminNotificationPollingService';
 
 // Storage Keys
 const EMPLOYEE_TOKEN_KEY = 'employee_auth_token';
@@ -152,7 +154,17 @@ export const employeeLogout = async () => {
 export const adminLogout = async () => {
   try {
     console.log('🔄 Admin logout initiated...');
-    
+
+    // 🛑 Stop admin notification polling
+    try {
+      stopAdminNotificationPolling();
+    } catch (_) {}
+
+    // 🛑 Unregister device FCM token from backend & Firebase so this device receives no more push notifications
+    try {
+      await unregisterAdminFCMOnLogout();
+    } catch (_) {}
+
     await AsyncStorage.multiRemove(AUTH_KEYS);
     
     // Verification

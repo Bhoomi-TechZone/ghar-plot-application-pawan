@@ -144,6 +144,77 @@ export const forceRefreshFCMToken = async () => {
 };
 
 /**
+ * Unregister and invalidate FCM device token on Admin Logout
+ * 1. Calls backend /admin/logout to remove this device & fcmToken from Admin model & Sessions
+ * 2. Revokes/deletes FCM token from Firebase servers so this device receives no more push
+ * 3. Cancels active notifications from tray via Notifee
+ * 4. Clears local FCM storage keys
+ */
+export const unregisterAdminFCMOnLogout = async () => {
+  try {
+    console.log('🔄 Unregistering admin FCM device session on logout...');
+
+    const adminToken = (await AsyncStorage.getItem('admin_token')) || (await AsyncStorage.getItem('adminToken'));
+    const adminEmail = await AsyncStorage.getItem('admin_email');
+    const adminId = await AsyncStorage.getItem('adminId');
+    const deviceId = await AsyncStorage.getItem('@device_id');
+    const fcmToken = await getStoredFCMToken();
+
+    // 1. Tell backend to remove this device token from Admin record
+    try {
+      const response = await fetch('https://gharplotbackend.gntechnology.de/admin/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {})
+        },
+        body: JSON.stringify({
+          deviceId: deviceId || undefined,
+          fcmToken: fcmToken || undefined,
+          email: adminEmail || undefined,
+          adminId: adminId || undefined,
+        }),
+      });
+      if (response.ok) {
+        const json = await response.json();
+        console.log('✅ Backend device logout succeeded:', json.message);
+      } else {
+        console.warn('⚠️ Backend device logout status:', response.status);
+      }
+    } catch (apiErr) {
+      console.warn('⚠️ Backend device logout request failed:', apiErr.message);
+    }
+
+    // 2. Revoke and expire the FCM token directly on Firebase servers
+    try {
+      await messaging().deleteToken();
+      console.log('🗑️ Local FCM registration token revoked and deleted on Firebase');
+    } catch (fbErr) {
+      console.warn('⚠️ messaging().deleteToken() failed:', fbErr.message);
+    }
+
+    // 3. Clear local FCM keys
+    await AsyncStorage.multiRemove([
+      FCM_TOKEN_KEY,
+      '@fcm_token_prev',
+      'fcmToken',
+      'admin_poll_known_ids',
+      'admin_poll_initialized',
+    ]);
+
+    // 4. Cancel active notifications in notification tray
+    try {
+      const notifee = require('@notifee/react-native').default;
+      await notifee.cancelAllNotifications();
+      console.log('🔕 Cancelled all Notifee notifications on logout');
+    } catch (_) {}
+
+  } catch (error) {
+    console.error('❌ Error in unregisterAdminFCMOnLogout:', error);
+  }
+};
+
+/**
  * Setup foreground notification handler
  * Shows alert when notification is received while app is in foreground
  */

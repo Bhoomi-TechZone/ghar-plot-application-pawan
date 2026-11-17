@@ -12,6 +12,8 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import TestAdminAuth from '../../../TEST_ADMIN_AUTH';
+import { adminLogout } from '../../services/employeeAuthService';
+import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const AdminMenuScreen = ({ navigation }) => {
   const menuSections = [
@@ -86,6 +88,31 @@ const AdminMenuScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  const handleLogout = () => {
+    CrossPlatformAlert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await adminLogout();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'AdminLogin' }],
+              });
+            } catch (err) {
+              console.error('Logout error:', err);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#3b82f6" />
@@ -122,10 +149,7 @@ const AdminMenuScreen = ({ navigation }) => {
         {/* Logout Button */}
         <TouchableOpacity 
           style={styles.logoutContainer}
-          onPress={() => {
-            // Handle logout - you can implement this
-            console.log('Logout pressed');
-          }}
+          onPress={handleLogout}
         >
           <View style={styles.logoutButton}>
             <MaterialIcons name="logout" size={20} color="#fff" />

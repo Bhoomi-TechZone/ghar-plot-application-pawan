@@ -13,6 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AuthService from '../../services/authService';
 import CrossPlatformAlert from '../../utils/crossPlatformAlert';
+import { unregisterAdminFCMOnLogout } from '../../utils/fcmService';
 
 const { width } = Dimensions.get('window');
 
@@ -67,6 +68,9 @@ const AdminDashboardScreen = ({ navigation, user }) => {
           style: 'destructive',
           onPress: async () => {
             try {
+              try {
+                await unregisterAdminFCMOnLogout();
+              } catch (_) {}
               await AuthService.logout();
               // Reset navigation stack with Home as base and LoginScreen on top
               // This allows user to go back to Home from LoginScreen
