@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 import { updateReminder, BASE_URL } from '../services/api';
 import { updateAlert, deleteAlert } from '../crm/services/crmAlertApi'; // 🔥 Import alerts API
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '../components/CustomDateTimePicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendTokenToBackend, getFCMToken } from '../utils/fcmService';
 //import ReminderNotificationService from '../services/ReminderNotificationService';

@@ -19,7 +19,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '../../../components/CustomDateTimePicker';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
@@ -1952,7 +1952,7 @@ const USPEmployeesScreen = ({ navigation }) => {
                           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                           minimumDate={new Date()}
                           onChange={(event, selectedDate) => {
-                            setShowReminderDatePicker(Platform.OS === 'ios');
+                            setShowReminderDatePicker(false);
                             if (selectedDate) setReminderDateObj(selectedDate);
                           }}
                         />
@@ -1988,7 +1988,7 @@ const USPEmployeesScreen = ({ navigation }) => {
                           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                           is24Hour={false}
                           onChange={(event, selectedTime) => {
-                            setShowReminderTimePicker(Platform.OS === 'ios');
+                            setShowReminderTimePicker(false);
                             if (selectedTime) setReminderTimeObj(selectedTime);
                           }}
                         />

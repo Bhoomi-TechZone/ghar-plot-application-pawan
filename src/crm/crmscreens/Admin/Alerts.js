@@ -14,7 +14,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '../../../components/CustomDateTimePicker';
 import * as crmAlertApi from '../../services/crmAlertApi';
 import AlertNotificationService from '../../../services/AlertNotificationService';
 import { useFocusEffect } from '@react-navigation/native';

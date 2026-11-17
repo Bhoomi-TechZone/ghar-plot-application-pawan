@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCRMAuthHeaders } from '../../services/crmAPI';
 import { sendAlertToAdmin } from '../../services/crmEnquiryApi';
 import { createAlert, updateAlert, BASE_URL } from '../../../services/api';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '../../../components/CustomDateTimePicker';
 import AlertNotificationService from '../../../services/AlertNotificationService';
 import { getFCMToken } from '../../../utils/fcmService';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
@@ -65,14 +65,14 @@ const CreateAlertScreen = ({ navigation, route }) => {
   };
 
   const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(Platform.OS === 'ios');
+    setShowDatePicker(false);
     if (selectedDate) {
       setFormData(prev => ({ ...prev, date: selectedDate }));
     }
   };
 
   const handleTimeChange = (event, selectedTime) => {
-    setShowTimePicker(Platform.OS === 'ios');
+    setShowTimePicker(false);
     if (selectedTime) {
       setFormData(prev => ({ ...prev, time: selectedTime }));
     }

@@ -4174,7 +4174,7 @@ const SitesManagementScreen = ({ route, navigation }) => {
         <Modal
           visible={datePickerConfig.show}
           transparent={true}
-          animationType="slide"
+          animationType="fade"
           onRequestClose={() => setDatePickerConfig(prev => ({ ...prev, show: false }))}
         >
           <TouchableOpacity
@@ -5473,13 +5473,16 @@ const styles = StyleSheet.create({
   datePickerModalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
   datePickerModalContent: {
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 340,
+    paddingBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.15,

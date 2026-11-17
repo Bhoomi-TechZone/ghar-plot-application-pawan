@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '../../../../components/CustomDateTimePicker';
 import ReminderPopup from '../../Reminders/ReminderPopup';
 import ReminderNotificationService from '../../../../services/ReminderNotificationService';
 import { createManualEnquiry } from '../../../services/enquiryService';
@@ -463,9 +463,7 @@ const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnqu
 
   // Handle date picker change
   const onDateChange = (event, selectedDate) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
+    setShowDatePicker(false);
     if (event.type === 'set' && selectedDate) {
       setWeekActionDate(selectedDate);
       updateWeekActionDateTime(selectedDate, weekActionTime);
@@ -474,9 +472,7 @@ const AddEnquiryModal = ({ visible, onClose, onSuccess, addEnquiryAPI, totalEnqu
 
   // Handle time picker change
   const onTimeChange = (event, selectedTime) => {
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-    }
+    setShowTimePicker(false);
     if (event.type === 'set' && selectedTime) {
       setWeekActionTime(selectedTime);
       updateWeekActionDateTime(weekActionDate, selectedTime);

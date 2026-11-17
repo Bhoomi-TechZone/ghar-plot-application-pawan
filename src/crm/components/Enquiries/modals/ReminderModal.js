@@ -16,7 +16,7 @@ import {
   Platform,
   Switch,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '../../../../components/CustomDateTimePicker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createReminder } from '../../../services/crmEnquiryApi';
@@ -111,12 +111,12 @@ const ReminderModal = ({ visible, onClose, enquiry, reminderToEdit = null, onSuc
   };
 
   const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(Platform.OS === 'ios');
+    setShowDatePicker(false);
     if (selectedDate) setFormData(prev => ({ ...prev, date: selectedDate }));
   };
 
   const handleTimeChange = (event, selectedTime) => {
-    setShowTimePicker(Platform.OS === 'ios');
+    setShowTimePicker(false);
     if (selectedTime) setFormData(prev => ({ ...prev, time: selectedTime }));
   };
 
