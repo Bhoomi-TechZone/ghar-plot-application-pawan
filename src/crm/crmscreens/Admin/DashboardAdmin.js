@@ -26,6 +26,7 @@ import { startAdminNotificationPolling, stopAdminNotificationPolling } from '../
 import { BASE_URL } from '../../../services/api';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 import { syncFCMTokenOnAutoLogin, unregisterAdminFCMOnLogout } from '../../../utils/fcmService';
+import { adminLogout } from '../../services/employeeAuthService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -217,33 +218,10 @@ const AdminDashboardScreen = ({ navigation, user }) => {
               // Set logging out flag to stop any ongoing API calls
               setIsLoggingOut(true);
 
-              // 🛑 Stop admin notification polling
-              stopAdminNotificationPolling();
+              // 🛑 Call centralized adminLogout (stops polling, expires FCM token, deletes sessions, wipes all tokens & cache)
+              await adminLogout();
 
-              // 🛑 Unregister device FCM token from backend & Firebase so this device receives no more push notifications
-              await unregisterAdminFCMOnLogout();
-
-              // Clear all auth tokens and saved credentials
-              await AsyncStorage.multiRemove([
-                'crm_auth_token',
-                'adminToken',
-                'admin_token',
-                'admin_email',
-                'admin_password',
-                'employee_auth_token',
-                'employee_token',
-                'employee_user',
-                'employee_profile',
-                'employee_permissions',
-                'authToken',
-                'userProfile',
-                'userToken',
-                'userId',
-                'refreshToken',
-                'fcmToken',
-              ]);
-
-              console.log('✅ Admin logged out - all tokens cleared');
+              console.log('✅ Admin logged out - all tokens & cache cleared');
 
               // Navigate to Admin login (reset stack to prevent back navigation)
               navigation.reset({

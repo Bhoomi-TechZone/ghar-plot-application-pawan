@@ -12,23 +12,46 @@ const EMPLOYEE_PROFILE_KEY = 'employee_profile';
 const EMPLOYEE_PERMISSIONS_KEY = 'employee_permissions';
 
 // All auth keys to clear on logout
-const AUTH_KEYS = [
-  'crm_auth_token',
-  'adminToken',
+export const AUTH_KEYS = [
+  // Admin auth & refresh tokens
   'admin_token',
+  'adminToken',
+  'admin_refresh_token',
+  'adminRefreshToken',
+  'crm_auth_token',
+  'crm_admin_token',
+  'admin_user',
+  'adminData',
+  'adminId',
   'admin_email',
   'admin_password',
+
+  // Common auth state
+  'userType',
+  'isAuthenticated',
+  'authToken',
+  'userToken',
+  'userId',
+  'userProfile',
+  'refreshToken',
+
+  // Employee auth & tokens
   'employee_auth_token',
   'employee_token',
+  'employeeToken',
   'employee_user',
   'employee_profile',
   'employee_permissions',
-  'authToken',
-  'userProfile',
-  'userToken',
-  'userId',
-  'refreshToken',
+  'employeeId',
+
+  // FCM & Polling & Notification caches
   'fcmToken',
+  '@fcm_token',
+  '@fcm_token_prev',
+  'admin_poll_known_ids',
+  'admin_poll_initialized',
+  'pendingNotificationData',
+  'forceLogout',
 ];
 
 /**

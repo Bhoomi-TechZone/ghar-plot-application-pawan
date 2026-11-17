@@ -137,6 +137,16 @@ export const refreshAdminAccessToken = async () => {
         console.log('🔄 Admin access token refreshed successfully');
         return data.token;
       }
+    } else if (res.status === 401 || res.status === 403) {
+      console.log('🚫 Refresh token rejected by server, clearing stored tokens');
+      await AsyncStorage.multiRemove([
+        'admin_token',
+        'adminToken',
+        'admin_refresh_token',
+        'adminRefreshToken',
+        'isAuthenticated',
+        'userType'
+      ]);
     }
   } catch (err) {
     console.warn('⚠️ Token refresh failed:', err.message);

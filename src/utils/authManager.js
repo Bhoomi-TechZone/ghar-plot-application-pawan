@@ -68,16 +68,48 @@ export const clearUserCredentials = async () => {
     
     // Clear ALL user-related data
     await AsyncStorage.multiRemove([
+      // Admin auth & tokens
+      'admin_token',
+      'adminToken',
+      'admin_refresh_token',
+      'adminRefreshToken',
+      'crm_auth_token',
+      'crm_admin_token',
+      'admin_user',
+      'adminData',
+      'adminId',
+      'admin_email',
+      'admin_password',
+
+      // Common auth
+      'userType',
+      'isAuthenticated',
       'userToken',
       'userId',
       'userProfile',
+      'authToken',
+      'refreshToken',
+
+      // Employee tokens
+      'employee_token',
+      'employeeToken',
+      'employee_auth_token',
+      'employee_user',
+      'employee_profile',
+      'employee_permissions',
+      'employeeId',
+
+      // Push & location & caches
       'fcmToken',
+      '@fcm_token',
+      '@fcm_token_prev',
       'avatarUpdatedAt',
       'avatarLocalUri',
       'userLocation',
-      'refreshToken',
-      'admin_token',
-      'employee_token'
+      'admin_poll_known_ids',
+      'admin_poll_initialized',
+      'pendingNotificationData',
+      'forceLogout',
     ]);
     
     // Verify removal
