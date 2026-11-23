@@ -20,12 +20,13 @@ import {
   Switch,
 } from 'react-native';
 import { updateReminder, BASE_URL } from '../services/api';
-import { updateAlert, deleteAlert } from '../crm/services/crmAlertApi'; // 🔥 Import alerts API
+import { updateAlert, deleteAlert, getAlertById } from '../crm/services/crmAlertApi'; // 🔥 Import alerts API
 import DateTimePicker from '../components/CustomDateTimePicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendTokenToBackend, getFCMToken } from '../utils/fcmService';
 //import ReminderNotificationService from '../services/ReminderNotificationService';
 import CrossPlatformAlert from '../utils/crossPlatformAlert';
+import { CommentThreadView, parseCommentHistory } from '../utils/reminderCommentHelper';
 
 //const CRM_BASE_URL = 'https://gharplotbackend.gntechnology.de';
 
@@ -54,6 +55,18 @@ const EditReminderScreen = ({ route, navigation }) => {
   );
   const [title, setTitle] = useState(clientName || '');
   const [message, setMessage] = useState(originalMessage || '');
+  const [commentHistory, setCommentHistory] = useState(() => {
+    if (route.params?.commentHistory && Array.isArray(route.params.commentHistory)) {
+      return route.params.commentHistory;
+    }
+    return parseCommentHistory({
+      reason: originalMessage,
+      authorName: route.params?.authorName || clientName,
+      createdAt: route.params?.createdAt,
+    });
+  });
+  const [newMessage, setNewMessage] = useState('');
+  const [isEditingFullHistory, setIsEditingFullHistory] = useState(false);
   // 🔥 KEY FIX: Initialize scheduledDate to the NEXT scheduled date & time.
   // For Daily, Weekly, Monthly, Yearly, and Custom (minute/hourly) repeating reminders:
   // always display the NEXT scheduled date & time (matching My Reminders card),
@@ -232,11 +245,13 @@ const EditReminderScreen = ({ route, navigation }) => {
     const init = initialValuesRef.current;
     const currentTitle = (title || '').trim();
     const currentMessage = (message || '').trim();
+    const currentNewMessage = (newMessage || '').trim();
     const initTitle = (init.title || '').trim();
     const initMessage = (init.message || '').trim();
 
     return currentTitle !== initTitle ||
       currentMessage !== initMessage ||
+      currentNewMessage !== '' ||
       repeatFrequency !== init.repeatFrequency ||
       String(customIntervalMinutes || '') !== String(init.customIntervalMinutes || '');
   };
@@ -300,6 +315,27 @@ const EditReminderScreen = ({ route, navigation }) => {
       }
     };
     syncFCMToken();
+
+    // 🔥 Load fresh comment history directly from backend if available
+    if (reminderId) {
+      const cleanId = String(reminderId).replace(/^(alert_|reminder_)/, '');
+      getAlertById(cleanId)
+        .then((res) => {
+          if (res?.data) {
+            const fetched = res.data;
+            const parsed = parseCommentHistory(fetched);
+            if (parsed && parsed.length > 0) {
+              setCommentHistory(parsed);
+              if (fetched.reason && !originalMessage) {
+                setMessage(fetched.reason);
+              }
+            }
+          }
+        })
+        .catch((err) => {
+          console.log('Note: Could not fetch fresh comment history:', err?.message);
+        });
+    }
   }, [reminderId, fromNotification, navigation, clientName, originalMessage]);
 
   const handleDateChange = (event, selectedDate) => {
@@ -475,8 +511,9 @@ const EditReminderScreen = ({ route, navigation }) => {
       CrossPlatformAlert.alert('Validation Error', 'Please enter a title');
       return;
     }
-    if (!message.trim()) {
-      CrossPlatformAlert.alert('Validation Error', 'Please enter a message');
+    const hasExistingComments = commentHistory && commentHistory.length > 0;
+    if (!hasExistingComments && !message.trim()) {
+      CrossPlatformAlert.alert('Validation Error', 'Please enter a reminder message');
       return;
     }
 
@@ -533,11 +570,28 @@ const EditReminderScreen = ({ route, navigation }) => {
       const hours = scheduledDate.getHours().toString().padStart(2, '0');
       const minutes = scheduledDate.getMinutes().toString().padStart(2, '0');
 
+      const hasHistory = commentHistory && commentHistory.length > 0;
+      const trimmedNew = newMessage.trim();
+      let finalReason = message.trim();
+      let newCommentToSend = undefined;
+
+      if (!isEditingFullHistory && hasHistory) {
+        if (trimmedNew) {
+          newCommentToSend = trimmedNew;
+          finalReason = trimmedNew;
+        } else {
+          finalReason = message.trim();
+        }
+      } else {
+        finalReason = message.trim();
+      }
+
       // 🔥 UPDATE existing reminder via alerts / reminder API
       const isCustom = repeatFrequency === 'custom';
       const reminderPayload = {
         title: title.trim() || 'Reminder',
-        reason: message.trim(),
+        reason: finalReason,
+        newComment: newCommentToSend,
         date: `${year}-${month}-${day}`, // Local date Format: YYYY-MM-DD
         time: `${hours}:${minutes}`, // Local time Format: HH:mm
         repeatFrequency: repeatFrequency !== 'none' ? repeatFrequency : 'none',
@@ -584,6 +638,7 @@ const EditReminderScreen = ({ route, navigation }) => {
             title: reminderPayload.title,
             comment: reminderPayload.reason,
             note: reminderPayload.reason,
+            newComment: newCommentToSend,
             reminderDateTime: scheduledDate.toISOString(),
             isRepeating: repeatFrequency !== 'none',
             repeatType: repeatFrequency,
@@ -832,19 +887,59 @@ const EditReminderScreen = ({ route, navigation }) => {
           />
         </View>
 
-        {/* Message */}
+        {/* Message History Thread (Previous comments) */}
+        {commentHistory && commentHistory.length > 0 && !isEditingFullHistory && (
+          <View style={styles.fieldContainer}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={styles.label}>Message History</Text>
+              <TouchableOpacity onPress={() => setIsEditingFullHistory(true)}>
+                <Text style={{ fontSize: 12, color: '#2563eb', fontWeight: '600' }}>✏️ Edit Full Text</Text>
+              </TouchableOpacity>
+            </View>
+            <CommentThreadView comments={commentHistory} />
+          </View>
+        )}
+
+        {/* Message Input */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Reminder Message *</Text>
-          <TextInput
-            style={styles.textArea}
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Enter reminder message (e.g., Shivam is coming in 10 min)"
-            placeholderTextColor="#999"
-            multiline
-            numberOfLines={12}
-            textAlignVertical="top"
-          />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <Text style={styles.label}>
+              {isEditingFullHistory
+                ? 'Edit Full Thread / Message *'
+                : (commentHistory && commentHistory.length > 0 ? 'Add New Message / Comment *' : 'Reminder Message *')}
+            </Text>
+            {isEditingFullHistory && (
+              <TouchableOpacity onPress={() => setIsEditingFullHistory(false)}>
+                <Text style={{ fontSize: 12, color: '#64748b', fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {isEditingFullHistory ? (
+            <TextInput
+              style={styles.textArea}
+              value={message}
+              onChangeText={setMessage}
+              placeholder="Edit full message thread..."
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={10}
+              textAlignVertical="top"
+            />
+          ) : (
+            <TextInput
+              style={styles.textArea}
+              value={commentHistory && commentHistory.length > 0 ? newMessage : message}
+              onChangeText={commentHistory && commentHistory.length > 0 ? setNewMessage : setMessage}
+              placeholder={commentHistory && commentHistory.length > 0
+                ? "Enter new comment / update message..."
+                : "Enter reminder message (e.g., Shivam is coming in 10 min)"}
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={commentHistory && commentHistory.length > 0 ? 5 : 10}
+              textAlignVertical="top"
+            />
+          )}
         </View>
 
         {/* Place a Reminder Toggle Card */}

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
+import { employeeLogout } from '../../services/employeeAuthService';
 
 const EmployeeProfile = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -82,10 +83,8 @@ const EmployeeProfile = ({ navigation }) => {
           text: "Logout",
           onPress: async () => {
             try {
-              // Clear all stored data
-              await AsyncStorage.removeItem('employeeToken');
-              await AsyncStorage.removeItem('employeeData');
-              await AsyncStorage.removeItem('userRole');
+              // Unregister employee FCM token, cancel Notifee notifications, and wipe tokens
+              await employeeLogout();
 
               // Navigate back to EmployeeLogin screen by resetting the navigation stack
               navigation.getParent()?.reset({

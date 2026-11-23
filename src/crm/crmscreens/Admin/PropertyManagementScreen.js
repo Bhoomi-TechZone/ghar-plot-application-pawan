@@ -28,6 +28,7 @@ import {
   getAllProperties,
   getPropertiesByCategory,
   deleteProperty,
+  toggleFeaturedProperty,
   checkUserRole,
 } from '../../../services/propertyService';
 
@@ -243,6 +244,59 @@ const PropertyManagementScreen = ({ navigation }) => {
     );
   }, [isAdmin, loadPropertyData]);
 
+  const handleToggleFeatured = useCallback(async (propertyId, newFeaturedStatus, propertyTitle) => {
+    if (!isAdmin) {
+      CrossPlatformAlert.alert('Access Denied', 'Only administrators can manage featured properties');
+      return;
+    }
+
+    // Optimistic UI update
+    setProperties(prev => prev.map(p => {
+      const pid = p.id || p._id;
+      if (pid === propertyId) {
+        return { ...p, isFeatured: newFeaturedStatus };
+      }
+      return p;
+    }));
+
+    setFilteredProperties(prev => prev.map(p => {
+      const pid = p.id || p._id;
+      if (pid === propertyId) {
+        return { ...p, isFeatured: newFeaturedStatus };
+      }
+      return p;
+    }));
+
+    try {
+      await toggleFeaturedProperty(propertyId, newFeaturedStatus);
+      CrossPlatformAlert.alert(
+        newFeaturedStatus ? 'Featured Marked' : 'Featured Removed',
+        newFeaturedStatus
+          ? `"${propertyTitle}" marked as Featured and will now appear in the Home screen Featured section.`
+          : `"${propertyTitle}" removed from Featured properties.`
+      );
+    } catch (error) {
+      // Revert on error
+      setProperties(prev => prev.map(p => {
+        const pid = p.id || p._id;
+        if (pid === propertyId) {
+          return { ...p, isFeatured: !newFeaturedStatus };
+        }
+        return p;
+      }));
+
+      setFilteredProperties(prev => prev.map(p => {
+        const pid = p.id || p._id;
+        if (pid === propertyId) {
+          return { ...p, isFeatured: !newFeaturedStatus };
+        }
+        return p;
+      }));
+
+      CrossPlatformAlert.alert('Error', error.message || 'Failed to update featured status');
+    }
+  }, [isAdmin]);
+
   const formatPrice = (price) => {
     if (!price) return 'Price not available';
 
@@ -396,6 +450,28 @@ const PropertyManagementScreen = ({ navigation }) => {
           </TouchableOpacity>
         )}
 
+        {/* Featured star toggle button for admin */}
+        {isAdmin && (
+          <TouchableOpacity
+            style={[
+              styles.featuredStarBtn,
+              item.isFeatured ? styles.featuredStarBtnActive : styles.featuredStarBtnInactive
+            ]}
+            onPress={() => handleToggleFeatured(
+              item.id || item._id,
+              !item.isFeatured,
+              getPropertyName()
+            )}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <MaterialIcons
+              name={item.isFeatured ? "star" : "star-border"}
+              size={16}
+              color={item.isFeatured ? "#FFFFFF" : "#E5E7EB"}
+            />
+          </TouchableOpacity>
+        )}
+
         {/* View Details - Clickable card background */}
         <TouchableOpacity
           style={[StyleSheet.absoluteFill, { zIndex: 0 }]}
@@ -446,7 +522,7 @@ const PropertyManagementScreen = ({ navigation }) => {
         </View>
       </View>
     );
-  }, [isAdmin, handleDeleteProperty]);
+  }, [isAdmin, handleDeleteProperty, handleToggleFeatured]);
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
@@ -1236,6 +1312,71 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
 
+  featuredStarBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 38,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  featuredStarBtnActive: {
+    backgroundColor: '#F59E0B',
+  },
+  featuredStarBtnInactive: {
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  featuredBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    zIndex: 1,
+    gap: 2,
+  },
+  featuredBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  featuredActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    marginTop: 8,
+    borderWidth: 1,
+    gap: 4,
+  },
+  featuredActionBtnActive: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
+  },
+  featuredActionBtnInactive: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#D1D5DB',
+  },
+  featuredActionText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  featuredActionTextActive: {
+    color: '#B45309',
+  },
+  featuredActionTextInactive: {
+    color: '#4B5563',
+  },
   statusBadge: {
     position: 'absolute',
     top: 8,

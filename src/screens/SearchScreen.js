@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -30,6 +29,16 @@ const BUDGET_PRESETS = [
   { label: "Above ₹1 Cr", min: 10000000, max: null },
 ];
 
+// Sort Options (Price Low to High, High to Low, etc.)
+const SORT_OPTIONS = [
+  { label: "Price: Low to High", value: "price_asc", icon: "trending-up-outline" },
+  { label: "Price: High to Low", value: "price_desc", icon: "trending-down-outline" },
+  { label: "Newest First", value: "newest", icon: "sparkles-outline" },
+];
+
+// Popular Locations for Quick Filter
+const POPULAR_LOCATIONS = ["Delhi", "Kalka ji", "Noida", "Gurgaon", "Faridabad", "Ghaziabad"];
+
 // Property Type Presets
 const TYPE_PRESETS = [
   { label: "All Properties", value: "all", icon: "grid-outline" },
@@ -42,6 +51,7 @@ const SearchScreen = ({ navigation, route }) => {
 
   // Filter States
   const [locationText, setLocationText] = useState(initialQuery);
+  const [selectedSort, setSelectedSort] = useState("newest");
   const [selectedBudgetIndex, setSelectedBudgetIndex] = useState(0);
   const [customMaxPrice, setCustomMaxPrice] = useState("");
   const [selectedType, setSelectedType] = useState("all");
@@ -51,13 +61,27 @@ const SearchScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [searchedOnce, setSearchedOnce] = useState(false);
 
+  // Sort helper function
+  const sortResults = (list, sortMode) => {
+    const sorted = [...list];
+    if (sortMode === "price_asc") {
+      sorted.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+    } else if (sortMode === "price_desc") {
+      sorted.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+    } else if (sortMode === "newest") {
+      sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    }
+    return sorted;
+  };
+
   // Fetch properties from backend API
-  const performSearch = useCallback(async (locOverride, budgetOverride, typeOverride) => {
+  const performSearch = useCallback(async (locOverride, budgetOverride, typeOverride, sortOverride) => {
     try {
       setLoading(true);
       const loc = locOverride !== undefined ? locOverride : locationText;
       const budget = budgetOverride !== undefined ? budgetOverride : BUDGET_PRESETS[selectedBudgetIndex];
       const type = typeOverride !== undefined ? typeOverride : selectedType;
+      const sort = sortOverride !== undefined ? sortOverride : selectedSort;
 
       let minPrice = budget.min !== null ? budget.min : undefined;
       let maxPrice = budget.max !== null ? budget.max : undefined;
@@ -76,9 +100,12 @@ const SearchScreen = ({ navigation, route }) => {
         minPrice,
         maxPrice,
         residentialType: type,
+        sortBy: sort,
       });
 
-      setProperties(results);
+      // Apply client-side sorting guarantee
+      const finalSorted = sortResults(results, sort);
+      setProperties(finalSorted);
       setSearchedOnce(true);
     } catch (error) {
       console.error("Search error:", error);
@@ -86,9 +113,9 @@ const SearchScreen = ({ navigation, route }) => {
     } finally {
       setLoading(false);
     }
-  }, [locationText, selectedBudgetIndex, customMaxPrice, selectedType]);
+  }, [locationText, selectedBudgetIndex, customMaxPrice, selectedType, selectedSort]);
 
-  // Initial load or on parameter change
+  // Initial load
   useEffect(() => {
     performSearch(initialQuery);
   }, []);
@@ -98,10 +125,24 @@ const SearchScreen = ({ navigation, route }) => {
     performSearch();
   };
 
+  const handleQuickLocationSelect = (loc) => {
+    Keyboard.dismiss();
+    setLocationText(loc);
+    performSearch(loc, BUDGET_PRESETS[selectedBudgetIndex], selectedType, selectedSort);
+  };
+
+  const handleSortSelect = (sortValue) => {
+    setSelectedSort(sortValue);
+    // Instantly sort already loaded properties
+    setProperties((prev) => sortResults(prev, sortValue));
+    // Also re-query backend
+    performSearch(locationText, BUDGET_PRESETS[selectedBudgetIndex], selectedType, sortValue);
+  };
+
   const handleBudgetSelect = (index) => {
     setSelectedBudgetIndex(index);
     setCustomMaxPrice("");
-    performSearch(locationText, BUDGET_PRESETS[index], selectedType);
+    performSearch(locationText, BUDGET_PRESETS[index], selectedType, selectedSort);
   };
 
   const handleApplyCustomBudget = () => {
@@ -111,15 +152,16 @@ const SearchScreen = ({ navigation, route }) => {
 
   const handleTypeSelect = (typeValue) => {
     setSelectedType(typeValue);
-    performSearch(locationText, BUDGET_PRESETS[selectedBudgetIndex], typeValue);
+    performSearch(locationText, BUDGET_PRESETS[selectedBudgetIndex], typeValue, selectedSort);
   };
 
   const handleClearFilters = () => {
     setLocationText("");
+    setSelectedSort("newest");
     setSelectedBudgetIndex(0);
     setCustomMaxPrice("");
     setSelectedType("all");
-    performSearch("", BUDGET_PRESETS[0], "all");
+    performSearch("", BUDGET_PRESETS[0], "all", "newest");
   };
 
   // Helper to extract image URL
@@ -136,7 +178,6 @@ const SearchScreen = ({ navigation, route }) => {
   // Render individual property card
   const renderPropertyCard = ({ item }) => {
     const imgUrl = getImageUrl(item);
-    const propId = item.customPropertyId || item._id;
 
     return (
       <TouchableOpacity
@@ -202,12 +243,12 @@ const SearchScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </LinearGradient>
 
-      {/* ── Search Bar: Step 1 (Location) ── */}
+      {/* ── Search Bar (Location Based Search) ── */}
       <View style={styles.searchBarContainer}>
-        <Icon name="search-outline" size={20} color="#0066ff" />
+        <Icon name="location" size={20} color="#0066ff" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search location (e.g. Delhi, Kalka ji)..."
+          placeholder="Search location (e.g. Delhi, Kalka ji, Noida)..."
           placeholderTextColor="#9ca3af"
           value={locationText}
           onChangeText={setLocationText}
@@ -215,17 +256,74 @@ const SearchScreen = ({ navigation, route }) => {
           returnKeyType="search"
         />
         {locationText.length > 0 && (
-          <TouchableOpacity onPress={() => { setLocationText(""); performSearch(""); }}>
-            <Icon name="close-circle" size={20} color="#9ca3af" />
+          <TouchableOpacity
+            style={{ padding: 4, marginRight: 6 }}
+            onPress={() => { setLocationText(""); performSearch(""); }}
+          >
+            <Icon name="close-circle" size={18} color="#9ca3af" />
           </TouchableOpacity>
         )}
+        <TouchableOpacity style={styles.searchIconBtn} onPress={handleLocationSubmit}>
+          <Icon name="search" size={18} color="#fff" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* ── Step 2: "Kitne rupees ka property chahiye?" (Budget Filter) ── */}
+        {/* ── Popular Location Chips ── */}
+        <View style={styles.popularLocContainer}>
+          <Text style={styles.popularLocTitle}>Popular:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {POPULAR_LOCATIONS.map((loc) => {
+              const isSelected = locationText.toLowerCase().includes(loc.toLowerCase());
+              return (
+                <TouchableOpacity
+                  key={loc}
+                  style={[styles.locChip, isSelected && styles.locChipActive]}
+                  onPress={() => handleQuickLocationSelect(loc)}
+                >
+                  <Text style={[styles.locChipText, isSelected && styles.locChipTextActive]}>
+                    {loc}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* ── Sort Filter (Price: Low to High / High to Low / Newest) ── */}
         <View style={styles.filterSection}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>💰 Kitne rupees ka property chahiye?</Text>
+            <Text style={styles.sectionTitle}>⚡ Sort by Price & Relevance</Text>
+          </View>
+          <View style={styles.sortRow}>
+            {SORT_OPTIONS.map((sortOpt) => {
+              const isActive = selectedSort === sortOpt.value;
+              return (
+                <TouchableOpacity
+                  key={sortOpt.value}
+                  style={[styles.sortBtn, isActive && styles.sortBtnActive]}
+                  onPress={() => handleSortSelect(sortOpt.value)}
+                  activeOpacity={0.8}
+                >
+                  <Icon
+                    name={sortOpt.icon}
+                    size={16}
+                    color={isActive ? "#0066ff" : "#64748b"}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={[styles.sortBtnText, isActive && styles.sortBtnTextActive]}>
+                    {sortOpt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ── Budget Filter: "Kitne rupees ka property chahiye?" ── */}
+        <View style={styles.filterSection}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>💰 Budget (Price Range)</Text>
           </View>
 
           {/* Quick Budget Pills */}
@@ -250,7 +348,7 @@ const SearchScreen = ({ navigation, route }) => {
           <View style={styles.customBudgetRow}>
             <TextInput
               style={styles.customBudgetInput}
-              placeholder="Or enter custom ₹ (e.g. 100000, 4000000)..."
+              placeholder="Or enter custom max ₹ (e.g. 2500000)..."
               placeholderTextColor="#9ca3af"
               keyboardType="numeric"
               value={customMaxPrice}
@@ -262,9 +360,9 @@ const SearchScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* ── Step 3: "Flat chahiye ya Independent?" (Type Filter) ── */}
+        {/* ── Property Type Filter ── */}
         <View style={styles.filterSection}>
-          <Text style={styles.sectionTitle}>🏠 Flat chahiye ya Independent?</Text>
+          <Text style={styles.sectionTitle}>🏠 Property Type</Text>
           <View style={styles.typeRow}>
             {TYPE_PRESETS.map((t) => {
               const isActive = selectedType === t.value;
@@ -285,15 +383,23 @@ const SearchScreen = ({ navigation, route }) => {
 
         {/* ── Results Header ── */}
         <View style={styles.resultsHeader}>
-          <Text style={styles.resultsCountText}>
-            {locationText.trim()
-              ? `Properties in "${locationText.trim()}"`
-              : "All Matched Properties"}
-          </Text>
+          <View>
+            <Text style={styles.resultsCountText}>
+              {locationText.trim()
+                ? `Properties in "${locationText.trim()}"`
+                : "All Properties"}
+            </Text>
+            <Text style={styles.sortIndicatorText}>
+              Sorted by:{" "}
+              <Text style={{ fontWeight: "700", color: "#0066ff" }}>
+                {SORT_OPTIONS.find((s) => s.value === selectedSort)?.label}
+              </Text>
+            </Text>
+          </View>
           <Text style={styles.resultsBadge}>{properties.length} found</Text>
         </View>
 
-        {/* ── Property List (All Matched) ── */}
+        {/* ── Property List ── */}
         {loading ? (
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#0066ff" />
@@ -310,7 +416,7 @@ const SearchScreen = ({ navigation, route }) => {
             <Icon name="home-outline" size={48} color="#9ca3af" />
             <Text style={styles.emptyTitle}>Koi Property Nahi Mili</Text>
             <Text style={styles.emptySubText}>
-              Is location ya budget me filhal property available nahi hai.
+              Is location ya filter criteria me property available nahi hai. Filter reset karke dobara dekhein.
             </Text>
             <TouchableOpacity style={styles.viewAllBtn} onPress={handleClearFilters}>
               <Text style={styles.viewAllText}>View All Available Properties</Text>
@@ -359,9 +465,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     marginHorizontal: 16,
     marginTop: -10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -370,20 +476,57 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    marginLeft: 10,
-    fontSize: 15,
+    marginLeft: 8,
+    fontSize: 14,
     color: "#1e293b",
     paddingVertical: 0,
+  },
+  searchIconBtn: {
+    backgroundColor: "#0066ff",
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 60,
   },
+  popularLocContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  popularLocTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748b",
+    marginRight: 6,
+  },
+  locChip: {
+    backgroundColor: "#e2e8f0",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 6,
+  },
+  locChipActive: {
+    backgroundColor: "#0066ff",
+  },
+  locChipText: {
+    fontSize: 12,
+    color: "#334155",
+    fontWeight: "600",
+  },
+  locChipTextActive: {
+    color: "#fff",
+  },
   filterSection: {
     backgroundColor: "#fff",
     borderRadius: 12,
     padding: 14,
-    marginBottom: 14,
+    marginBottom: 12,
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -400,6 +543,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#1e293b",
+    marginBottom: 8,
+  },
+  sortRow: {
+    flexDirection: "column",
+    gap: 8,
+  },
+  sortBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+  },
+  sortBtnActive: {
+    backgroundColor: "#eff6ff",
+    borderColor: "#0066ff",
+  },
+  sortBtnText: {
+    fontSize: 13,
+    color: "#475569",
+    fontWeight: "600",
+  },
+  sortBtnTextActive: {
+    color: "#0066ff",
+    fontWeight: "700",
   },
   pillRow: {
     flexDirection: "row",
@@ -457,7 +628,7 @@ const styles = StyleSheet.create({
   typeRow: {
     flexDirection: "column",
     gap: 8,
-    marginTop: 8,
+    marginTop: 4,
   },
   typeBtn: {
     backgroundColor: "#f1f5f9",
@@ -485,21 +656,26 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
-    marginTop: 4,
+    marginTop: 6,
   },
   resultsCountText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#334155",
+    color: "#1e293b",
+  },
+  sortIndicatorText: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 2,
   },
   resultsBadge: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#0066ff",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: "hidden",
     elevation: 3,
     shadowColor: "#000",
@@ -509,7 +685,7 @@ const styles = StyleSheet.create({
   },
   cardImage: {
     width: "100%",
-    height: 160,
+    height: 165,
   },
   cardContent: {
     padding: 12,

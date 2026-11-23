@@ -325,8 +325,9 @@ const AppMain = () => {
 
         // 🚀 Ensure FCM token is kept active and in sync when app wakes up from background / idle state
         try {
-          const { syncFCMTokenOnAutoLogin } = require('./src/utils/fcmService');
+          const { syncFCMTokenOnAutoLogin, sendDeviceHeartbeat } = require('./src/utils/fcmService');
           syncFCMTokenOnAutoLogin(false).catch(err => console.warn('Foreground FCM sync failed:', err.message));
+          if (sendDeviceHeartbeat) sendDeviceHeartbeat().catch(() => {});
         } catch (_) {}
 
         // 🔥 Prevent multiple processing

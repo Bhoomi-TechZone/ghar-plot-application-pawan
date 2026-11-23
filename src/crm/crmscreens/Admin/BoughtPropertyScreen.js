@@ -57,10 +57,9 @@ const BoughtPropertyScreen = () => {
 
   // Authentication Helper
   const getAuthHeaders = async () => {
-    const adminToken = await AsyncStorage.getItem('adminToken');
+    const adminToken = (await AsyncStorage.getItem('adminToken')) || (await AsyncStorage.getItem('admin_token'));
     if (!adminToken) {
-      CrossPlatformAlert.alert('Error', 'Admin authentication required');
-      navigation.goBack();
+      console.warn('⚠️ Admin token missing in BoughtPropertyScreen');
       return null;
     }
     return {

@@ -43,6 +43,7 @@ const EmployeeReminders = ({ navigation, route, openDrawer }) => {
   const [popupData, setPopupData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const SHOW_DELETE_ALL = false; // Hidden from UI; set to true if needed
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -620,12 +621,15 @@ const EmployeeReminders = ({ navigation, route, openDrawer }) => {
             </TouchableOpacity>
           ) : (
             <>
-              <TouchableOpacity
-                style={[styles.deleteBtn, { backgroundColor: '#64748b', marginRight: 10, paddingHorizontal: 12, paddingVertical: 8 }]}
-                onPress={handleDeleteAll}
-              >
-                <Text style={styles.createBtnText}>Delete All</Text>
-              </TouchableOpacity>
+              {/* Delete All functionality preserved; hidden from UI */}
+              {SHOW_DELETE_ALL && (
+                <TouchableOpacity
+                  style={[styles.deleteBtn, { backgroundColor: '#64748b', marginRight: 10, paddingHorizontal: 12, paddingVertical: 8 }]}
+                  onPress={handleDeleteAll}
+                >
+                  <Text style={styles.createBtnText}>Delete All</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.createBtn}
                 onPress={() => navigation.navigate('CreateAlert', { forceCategory: filterCategory })}

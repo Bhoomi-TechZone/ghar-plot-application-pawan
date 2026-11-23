@@ -383,6 +383,36 @@ const AdminReminderDetailsScreen = ({ route, navigation }) => {
               <Text style={styles.infoLabel}>Note / Comment</Text>
               <Text style={styles.noteBody}>{currentNote || 'No notes provided'}</Text>
             </View>
+            {fetchedDetails?.lastEditedByName ? (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Last Edited By</Text>
+                  <View style={{ alignItems: 'flex-end', flex: 1, marginLeft: 12 }}>
+                    <Text style={[styles.infoValue, { fontWeight: '600', color: '#1F2937' }]}>
+                      {fetchedDetails.lastEditedByName} ({fetchedDetails.lastEditedByRole === 'admin' ? 'Admin' : 'Employee'})
+                    </Text>
+                    {fetchedDetails.lastEditedAt ? (
+                      <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                        {new Date(fetchedDetails.lastEditedAt).toLocaleString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </Text>
+                    ) : null}
+                    {fetchedDetails.lastEditSummary ? (
+                      <Text style={{ fontSize: 11, color: '#4F46E5', marginTop: 2, textAlign: 'right' }}>
+                        {fetchedDetails.lastEditSummary}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              </>
+            ) : null}
           </View>
         </View>
 

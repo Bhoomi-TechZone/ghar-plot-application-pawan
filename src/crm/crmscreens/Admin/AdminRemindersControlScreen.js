@@ -265,32 +265,42 @@ const AdminRemindersControlScreen = ({ navigation }) => {
 
   // Initial Load
   useEffect(() => {
+    let intervalId = null;
+    let isMounted = true;
+
     const init = async () => {
-      const adminToken = await AsyncStorage.getItem('adminToken');
+      const adminToken = (await AsyncStorage.getItem('adminToken')) || (await AsyncStorage.getItem('admin_token'));
       if (!adminToken) {
-        CrossPlatformAlert.alert('Error', 'Admin token not found. Please login again.');
+        console.warn('⚠️ Admin token not found, skipping AdminRemindersControl init');
         return;
       }
 
-      await Promise.all([
-        fetchStats(),
-        fetchEmployees(1, ''),
-        fetchDueReminders(),
-      ]);
+      try {
+        await Promise.all([
+          fetchStats(),
+          fetchEmployees(1, ''),
+          fetchDueReminders(),
+        ]);
 
-      // Start polling for due reminders
-      const interval = setInterval(() => {
-        fetchDueReminders();
-      }, 60000); // Every 60 seconds
-
-      setPollingInterval(interval);
+        if (isMounted) {
+          // Start polling for due reminders
+          intervalId = setInterval(() => {
+            if (isMounted) {
+              fetchDueReminders();
+            }
+          }, 60000); // Every 60 seconds
+        }
+      } catch (err) {
+        console.error('Error initializing AdminRemindersControl:', err);
+      }
     };
 
     init();
 
     return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
+      isMounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
   }, []);

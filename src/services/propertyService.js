@@ -165,6 +165,28 @@ export const deleteProperty = async (propertyId) => {
   }
 };
 
+// Toggle property featured status (Admin only)
+export const toggleFeaturedProperty = async (propertyId, isFeatured) => {
+  try {
+    const { headers, isAdmin } = await getAuthConfig();
+
+    if (!isAdmin) {
+      throw new Error('Only administrators can manage featured properties');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/property/toggle-featured/${propertyId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ isFeatured }),
+    });
+
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error toggling featured property:', error);
+    throw error;
+  }
+};
+
 // Get properties by category
 export const getPropertiesByCategory = async (category) => {
   try {

@@ -6,9 +6,92 @@ import { DeviceEventEmitter } from 'react-native';
  * Handles local notification storage and management
  */
 
+/**
+ * Helper to identify whether a notification is an Admin, Employee, or CRM internal alert/reminder
+ * These should NEVER appear in the user / client notification inbox or badge count.
+ */
+export const isAdminOrStaffNotification = (notification) => {
+  if (!notification) return false;
+
+  const type = String(notification.type || notification.notificationType || notification.data?.type || '').toLowerCase();
+  const category = String(notification.category || notification.data?.category || '').toLowerCase();
+  const title = String(notification.title || notification.reminderTitle || '').toLowerCase();
+  const body = String(notification.message || notification.body || notification.note || notification.reason || '').toLowerCase();
+  const data = notification.data || {};
+
+  // Check types explicitly associated with Admin / CRM / Employees
+  const adminStaffTypes = [
+    'admin_reminder',
+    'employee_due_reminder',
+    'employee_reminder_to_admin',
+    'employee_alert',
+    'employee_alert_to_admin',
+    'admin_alert',
+    'system_alert',
+    'reminder',
+    'reminder_alert',
+    'alert',
+    'attendance_alert',
+    'bad_attendance_alerts',
+    'client_enquiry_alert',
+    'lead_reminder',
+    'follow_up',
+    'followup',
+  ];
+
+  if (adminStaffTypes.includes(type) || adminStaffTypes.includes(category)) {
+    return true;
+  }
+
+  // Check data attributes specific to CRM / staff reminders
+  if (
+    notification.reminderId ||
+    data.reminderId ||
+    notification.alertId ||
+    data.alertId ||
+    data.adminId ||
+    data.employeeId ||
+    notification.employeeId ||
+    data.isEmployeeNotification ||
+    data.forAdmin ||
+    data.forEmployee ||
+    data.targetRole === 'admin' ||
+    data.targetRole === 'employee'
+  ) {
+    return true;
+  }
+
+  // Property inquiry notifications targeted to admins
+  if (type === 'property_inquiry' && (data.targetRole === 'admin' || data.forAdmin || !data.propertyLocation)) {
+    return true;
+  }
+
+  // Check typical reminder keywords in title/body (scheduled times, repetition, etc.)
+  if (
+    body.includes('⏰ scheduled:') ||
+    body.includes('scheduled:') ||
+    body.includes('🔁 next:') ||
+    body.includes('in 24 hr') ||
+    title.includes('reminder alert') ||
+    title.includes('system alert') ||
+    title.includes('bad attendance') ||
+    body.includes('bad attendance')
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
 // Add a new notification to the list
 export const addNotification = async (notification) => {
   try {
+    // 🛡️ Filter out Admin/Employee/Staff notifications so they NEVER enter client storage
+    if (isAdminOrStaffNotification(notification)) {
+      console.log('🛡️ Blocked Admin/Staff notification from client notification inbox:', notification?.title);
+      return null;
+    }
+
     const newNotification = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       timestamp: new Date().toISOString(),
@@ -16,7 +99,7 @@ export const addNotification = async (notification) => {
       ...notification
     };
 
-    // Get existing notifications
+    // Get existing notifications (already sanitized)
     const existingNotifications = await getNotifications();
     const updatedNotifications = [newNotification, ...existingNotifications];
 
@@ -36,7 +119,7 @@ export const addNotification = async (notification) => {
       count: unreadCount
     });
 
-    console.log('✅ Notification added:', newNotification.title);
+    console.log('✅ Client notification added:', newNotification.title);
     return newNotification;
   } catch (error) {
     console.error('❌ Error adding notification:', error);
@@ -44,29 +127,43 @@ export const addNotification = async (notification) => {
   }
 };
 
-// Get all notifications
+// Get all notifications (filtered strictly for client / user notifications)
 export const getNotifications = async () => {
   try {
     const stored = await AsyncStorage.getItem('app_notifications');
     if (!stored) return [];
 
     let notifications = JSON.parse(stored);
+    if (!Array.isArray(notifications)) return [];
 
-    // 🔥 Remove old generic "Reminder Alert" notifications automatically
-    notifications = notifications.filter(n => !String(n.title).includes('Reminder Alert'));
+    const originalLength = notifications.length;
 
-    return notifications;
+    // 🔥 Filter out all admin/staff notifications
+    const filtered = notifications.filter(n => !isAdminOrStaffNotification(n));
+
+    // If any admin/staff notifications were found and purged, update storage immediately
+    if (filtered.length !== originalLength) {
+      await AsyncStorage.setItem('app_notifications', JSON.stringify(filtered));
+      const unreadCount = filtered.filter(n => !n.read).length;
+      await AsyncStorage.setItem('notification_count', unreadCount.toString());
+      DeviceEventEmitter.emit('notificationCountUpdated', unreadCount);
+      console.log(`🧹 Purged ${originalLength - filtered.length} admin/staff notifications from client inbox`);
+    }
+
+    return filtered;
   } catch (error) {
     console.error('❌ Error getting notifications:', error);
     return [];
   }
 };
 
-// Get unread notification count
+// Get unread notification count for client / user
 export const getNotificationCount = async () => {
   try {
-    const count = await AsyncStorage.getItem('notification_count');
-    return count ? parseInt(count, 10) : 0;
+    const notifications = await getNotifications();
+    const unreadCount = notifications.filter(n => !n.read).length;
+    await AsyncStorage.setItem('notification_count', unreadCount.toString());
+    return unreadCount;
   } catch (error) {
     console.error('❌ Error getting notification count:', error);
     return 0;

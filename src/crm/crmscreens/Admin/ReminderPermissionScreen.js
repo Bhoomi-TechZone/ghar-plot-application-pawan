@@ -46,12 +46,12 @@ const ReminderPermissionScreen = ({ navigation }) => {
 
   const loadTokenAndFetch = async () => {
     try {
-      const token = await AsyncStorage.getItem('adminToken');
+      const token = (await AsyncStorage.getItem('adminToken')) || (await AsyncStorage.getItem('admin_token'));
       if (token) {
         setAdminToken(token);
         fetchEmployees(token);
       } else {
-        CrossPlatformAlert.alert('Error', 'Admin authentication required');
+        console.warn('⚠️ Admin token missing in ReminderPermissionScreen');
         navigation.goBack();
       }
     } catch (error) {

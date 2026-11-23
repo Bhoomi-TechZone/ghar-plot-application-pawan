@@ -157,6 +157,7 @@ const AppNavigator = React.forwardRef((props, ref) => {
           <Stack.Screen name="Help" component={HelpScreen} />
           <Stack.Screen name="Saved" component={SavedScreen} />
           <Stack.Screen name="Search" component={SearchScreen} />
+          <Stack.Screen name="SearchScreen" component={SearchScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="HomeScreen" component={HomeScreen} />
           <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />

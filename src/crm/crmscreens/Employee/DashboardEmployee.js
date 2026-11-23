@@ -19,6 +19,7 @@ import * as crmEmployeeDashboardApi from '../../services/crmEmployeeDashboardApi
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { startAdminNotificationPolling, stopAdminNotificationPolling } from '../../../services/AdminNotificationPollingService';
+import { employeeLogout } from '../../services/employeeAuthService';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 
@@ -120,27 +121,10 @@ const DashboardEmployee = ({ navigation, openDrawer }) => {
               // Set logging out flag to stop any ongoing API calls
               setIsLoggingOut(true);
               
-              // Clear all auth tokens and saved credentials
-              await AsyncStorage.multiRemove([
-                'crm_auth_token',
-                'adminToken',
-                'admin_token',
-                'admin_email',
-                'admin_password',
-                'employee_auth_token',
-                'employee_token',
-                'employee_user',
-                'employee_profile',
-                'employee_permissions',
-                'authToken',
-                'userProfile',
-                'userToken',
-                'userId',
-                'refreshToken',
-                'fcmToken',
-              ]);
+              // Call employeeLogout to unregister FCM token, cancel Notifee notifications, and wipe tokens
+              await employeeLogout();
               
-              console.log('✅ Employee logged out - all tokens cleared');
+              console.log('✅ Employee logged out - all tokens and FCM sessions cleared');
               
               // Navigate to Employee login (reset stack to prevent back navigation)
               navigation.reset({

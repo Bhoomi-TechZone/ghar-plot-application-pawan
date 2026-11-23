@@ -150,6 +150,83 @@ export const forceRefreshFCMToken = async () => {
  * 3. Cancels active notifications from tray via Notifee
  * 4. Clears local FCM storage keys
  */
+/**
+ * Cryptographically secure UUID v4 generator for React Native installation identity
+ */
+export const generateUUIDv4 = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+/**
+ * Get or create persistent installationId (survives app life-cycle)
+ */
+export const getInstallationId = async () => {
+  try {
+    let installationId = await AsyncStorage.getItem('@installation_id');
+    if (!installationId) {
+      installationId = generateUUIDv4();
+      await AsyncStorage.setItem('@installation_id', installationId);
+    }
+    return installationId;
+  } catch (_) {
+    return generateUUIDv4();
+  }
+};
+
+/**
+ * Safely get supplementary platform device identifier (ANDROID_ID / IDFV)
+ */
+export const getPlatformDeviceId = async () => {
+  try {
+    const DeviceInfo = require('react-native-device-info').default;
+    if (DeviceInfo && typeof DeviceInfo.getUniqueId === 'function') {
+      const id = await DeviceInfo.getUniqueId();
+      if (id && typeof id === 'string') return id.trim();
+    }
+  } catch (_) {}
+  return '';
+};
+
+/**
+ * Send throttled device heartbeat (at most once every 6 hours)
+ */
+export const sendDeviceHeartbeat = async () => {
+  try {
+    const adminToken = (await AsyncStorage.getItem('admin_token')) || (await AsyncStorage.getItem('adminToken'));
+    if (!adminToken) return;
+
+    const lastHeartbeat = await AsyncStorage.getItem('@last_heartbeat_timestamp');
+    const now = Date.now();
+    if (lastHeartbeat && (now - parseInt(lastHeartbeat, 10)) < 6 * 60 * 60 * 1000) {
+      return;
+    }
+
+    const installationId = await getInstallationId();
+    const platformDeviceId = await getPlatformDeviceId();
+    const fcmToken = await getStoredFCMToken();
+
+    await fetch('https://gharplotbackend.gntechnology.de/admin/devices/heartbeat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        installationId,
+        platformDeviceId: platformDeviceId || undefined,
+        fcmToken: fcmToken || undefined,
+      }),
+    });
+
+    await AsyncStorage.setItem('@last_heartbeat_timestamp', String(now));
+    console.log('💓 Admin device heartbeat recorded');
+  } catch (_) {}
+};
+
 export const unregisterAdminFCMOnLogout = async () => {
   try {
     console.log('🔄 Unregistering admin FCM device session on logout...');
@@ -157,10 +234,31 @@ export const unregisterAdminFCMOnLogout = async () => {
     const adminToken = (await AsyncStorage.getItem('admin_token')) || (await AsyncStorage.getItem('adminToken'));
     const adminEmail = await AsyncStorage.getItem('admin_email');
     const adminId = await AsyncStorage.getItem('adminId');
-    const deviceId = await AsyncStorage.getItem('@device_id');
+    const installationId = await getInstallationId();
+    const platformDeviceId = await getPlatformDeviceId();
+    const deviceId = (await AsyncStorage.getItem('@device_id')) || installationId;
     const fcmToken = await getStoredFCMToken();
 
-    // 1. Tell backend to remove this device token from Admin record
+    // 1a. Tell dedicated AdminDevice service to deactivate this device
+    try {
+      await fetch('https://gharplotbackend.gntechnology.de/admin/devices/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {})
+        },
+        body: JSON.stringify({
+          installationId: installationId || deviceId,
+          platformDeviceId: platformDeviceId || undefined,
+          fcmToken: fcmToken || undefined,
+        }),
+      });
+      console.log('✅ AdminDevice logout API notified');
+    } catch (dErr) {
+      console.warn('⚠️ AdminDevice logout request warning:', dErr.message);
+    }
+
+    // 1b. Tell backend to remove this device token from Admin record (Legacy)
     try {
       const response = await fetch('https://gharplotbackend.gntechnology.de/admin/logout', {
         method: 'POST',
@@ -215,6 +313,80 @@ export const unregisterAdminFCMOnLogout = async () => {
 };
 
 /**
+ * Unregister Employee FCM token and expire push notifications on logout
+ * 1. Tells backend to remove device token from Employee record
+ * 2. Revokes the device token on Firebase server via messaging().deleteToken()
+ * 3. Cancels active notifications from tray via Notifee
+ * 4. Clears local FCM storage keys
+ */
+export const unregisterEmployeeFCMOnLogout = async () => {
+  try {
+    console.log('🔄 Unregistering employee FCM device session on logout...');
+
+    const employeeToken = 
+      (await AsyncStorage.getItem('employee_auth_token')) || 
+      (await AsyncStorage.getItem('employee_token')) ||
+      (await AsyncStorage.getItem('employeeToken')) ||
+      (await AsyncStorage.getItem('crm_auth_token'));
+
+    const employeeEmail = (await AsyncStorage.getItem('employee_email')) || (await AsyncStorage.getItem('email'));
+    const employeeId = (await AsyncStorage.getItem('employee_id')) || (await AsyncStorage.getItem('userId'));
+    const deviceId = await AsyncStorage.getItem('@device_id');
+    const fcmToken = await getStoredFCMToken();
+
+    // 1. Tell backend to remove this device token from Employee record
+    try {
+      const response = await fetch('https://gharplotbackend.gntechnology.de/employee/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(employeeToken ? { Authorization: `Bearer ${employeeToken}` } : {})
+        },
+        body: JSON.stringify({
+          deviceId: deviceId || undefined,
+          fcmToken: fcmToken || undefined,
+          email: employeeEmail || undefined,
+          employeeId: employeeId || undefined,
+        }),
+      });
+      if (response.ok) {
+        const json = await response.json();
+        console.log('✅ Backend employee device logout succeeded:', json.message);
+      } else {
+        console.warn('⚠️ Backend employee device logout status:', response.status);
+      }
+    } catch (apiErr) {
+      console.warn('⚠️ Backend employee device logout request failed:', apiErr.message);
+    }
+
+    // 2. Revoke and expire the FCM token directly on Firebase servers
+    try {
+      await messaging().deleteToken();
+      console.log('🗑️ Local FCM registration token revoked and deleted on Firebase for employee');
+    } catch (fbErr) {
+      console.warn('⚠️ messaging().deleteToken() failed:', fbErr.message);
+    }
+
+    // 3. Clear local FCM keys
+    await AsyncStorage.multiRemove([
+      FCM_TOKEN_KEY,
+      '@fcm_token_prev',
+      'fcmToken',
+    ]);
+
+    // 4. Cancel active notifications in notification tray
+    try {
+      const notifee = require('@notifee/react-native').default;
+      await notifee.cancelAllNotifications();
+      console.log('🔕 Cancelled all Notifee notifications on employee logout');
+    } catch (_) {}
+
+  } catch (error) {
+    console.error('❌ Error in unregisterEmployeeFCMOnLogout:', error);
+  }
+};
+
+/**
  * Setup foreground notification handler
  * Shows alert when notification is received while app is in foreground
  */
@@ -244,6 +416,23 @@ export const setupForegroundNotificationHandler = () => {
       console.log('⏭️ Skipping empty / test / ping FCM message (no reminder or alert payload)');
       return;
     }
+
+    // 🛑 Gate: If no user (Admin or Employee) is currently logged in, ignore notifications!
+    try {
+      const activeSessionTokens = await AsyncStorage.multiGet([
+        'adminToken',
+        'admin_token',
+        'employee_auth_token',
+        'employee_token',
+        'employeeToken',
+        'crm_auth_token'
+      ]);
+      const isLoggedIn = activeSessionTokens.some(([_, val]) => !!val && val.trim() !== '');
+      if (!isLoggedIn) {
+        console.log('🛑 [FCM] Notification ignored in foreground because user is logged out.');
+        return;
+      }
+    } catch (_) {}
 
     // Get notification details - Support both data-only and notification+data formats
     const title = remoteMessage.notification?.title || remoteMessage.data?.title || '🔔 सूचना';
@@ -366,9 +555,8 @@ export const setupForegroundNotificationHandler = () => {
 
       // SYNC ID PREFIXING logic with AlertNotificationService.js
       const prefix = isActuallyAlert ? 'alert_' : (isActuallyAdminRem ? 'reminder_' : 'notif_');
-      // 🔥 CHANGED: Add timestamp to make each notification unique so they don't replace each other
-      const uniqueTimestamp = Date.now();
-      const unifiedId = `${prefix}${cleanId}_${uniqueTimestamp}`;
+      // 🛡️ DEDUP FIX: Consistent unifiedId per alert/reminder so repeated pushes update rather than stacking duplicate cards
+      const unifiedId = `${prefix}${cleanId}`;
 
       // NOTE: Do NOT update global.lastGlobalReminderTime here.
       // That global is only updated by App.js AFTER a popup is successfully shown.
@@ -553,9 +741,9 @@ export const setupForegroundNotificationHandler = () => {
     }
 
 
-    // Save notification to local storage
+    // Save notification to local storage (Client notifications ONLY)
     try {
-      const { addNotification } = require('./notificationManager');
+      const { addNotification, isAdminOrStaffNotification } = require('./notificationManager');
 
       // Support both data-only and notification+data formats
       if (remoteMessage && (remoteMessage.notification || remoteMessage.data)) {
@@ -580,8 +768,12 @@ export const setupForegroundNotificationHandler = () => {
           image: data.image
         };
 
-        await addNotification(notification);
-        console.log('✅ Foreground notification saved to local storage');
+        if (!isAdminOrStaffNotification(notification)) {
+          await addNotification(notification);
+          console.log('✅ Foreground client notification saved to local storage');
+        } else {
+          console.log('🛡️ Ignored admin/staff notification from client storage in foreground');
+        }
       }
     } catch (error) {
       console.error('❌ Error saving foreground notification:', error);
@@ -630,6 +822,23 @@ export const backgroundMessageHandler = async (remoteMessage) => {
 
     const notificationType = data.type || data.notificationType || 'system';
 
+    // 🛑 Gate: If no user (Admin or Employee) is currently logged in, ignore notifications in background!
+    try {
+      const activeSessionTokens = await AsyncStorage.multiGet([
+        'adminToken',
+        'admin_token',
+        'employee_auth_token',
+        'employee_token',
+        'employeeToken',
+        'crm_auth_token'
+      ]);
+      const isLoggedIn = activeSessionTokens.some(([_, val]) => !!val && val.trim() !== '');
+      if (!isLoggedIn) {
+        console.log('🛑 [FCM] Notification ignored in background because user is logged out.');
+        return;
+      }
+    } catch (_) {}
+
     console.log(`🎯 Processing ${notificationType} in background...`);
 
     // 🔥 FIXED: Robust Timestamp Check (Background)
@@ -669,9 +878,9 @@ export const backgroundMessageHandler = async (remoteMessage) => {
     // 🎯 Deduplication handled by ID mapping
 
 
-    // 1️⃣ Save to local storage for "Notifications" screen (Inbox)
+    // 1️⃣ Save to local storage for "Notifications" screen (Client notifications ONLY)
     try {
-      const { addNotification } = require('./notificationManager');
+      const { addNotification, isAdminOrStaffNotification } = require('./notificationManager');
       const storageNotification = {
         id: remoteMessage.messageId || (Date.now() + Math.random().toString(36).substr(2, 9)),
         type: notificationType,
@@ -683,8 +892,12 @@ export const backgroundMessageHandler = async (remoteMessage) => {
         read: false,
         image: data.image
       };
-      await addNotification(storageNotification);
-      console.log('✅ Background notification saved to local storage');
+      if (!isAdminOrStaffNotification(storageNotification)) {
+        await addNotification(storageNotification);
+        console.log('✅ Background client notification saved to local storage');
+      } else {
+        console.log('🛡️ Ignored admin/staff notification from client storage in background');
+      }
     } catch (saveError) {
       console.error('❌ Failed to save background notification:', saveError);
     }
@@ -756,9 +969,8 @@ export const backgroundMessageHandler = async (remoteMessage) => {
 
       const prefix = isAlert ? 'alert_' : (isAdminRem ? 'reminder_' : 'notif_');
       const rawId = data.reminderId || data._id || data.alertId;
-      // 🔥 CHANGED: Add timestamp to make each notification unique so they don't replace each other
-      const uniqueTimestamp = Date.now();
-      const unifiedId = rawId ? `${prefix}${rawId}_${uniqueTimestamp}` : (remoteMessage.messageId || `${uniqueTimestamp}`);
+      // 🛡️ DEDUP FIX: Consistent unifiedId per alert/reminder
+      const unifiedId = rawId ? `${prefix}${rawId}` : (remoteMessage.messageId || `notif_${Date.now()}`);
 
       // 🔥 RICH FORMATTING: Add scheduled time & next scheduled time at bottom
       let richBody = notifBody;
@@ -1092,17 +1304,47 @@ export const sendTokenToBackend = async (userId, token, options = {}) => {
     }
     const isAdminUser = !!adminToken && (!!adminId || !!userId || userId === 'admin');
 
+    const installationId = await getInstallationId();
+    const platformDeviceId = await getPlatformDeviceId();
     let deviceId = await AsyncStorage.getItem('@device_id');
     if (!deviceId) {
-      deviceId = `dev_${Platform.OS}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      deviceId = installationId;
       await AsyncStorage.setItem('@device_id', deviceId);
     }
     const oldToken = await AsyncStorage.getItem('@fcm_token_prev');
     const deviceInfo = `${Platform.OS} App`;
 
     if (isAdminUser) {
-      // 1️⃣ Admin: ONLY save to Admin model — never call save-employee-token
-      // (save-employee-token clears Admin tokens, causing missed push notifications)
+      // 1a. Register with Production-Grade AdminDevice Service
+      try {
+        const registerResponse = await fetch('https://gharplotbackend.gntechnology.de/admin/devices/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {})
+          },
+          body: JSON.stringify({
+            installationId: installationId,
+            platformDeviceId: platformDeviceId || undefined,
+            platform: Platform.OS,
+            deviceName: deviceInfo,
+            fcmToken: token,
+            isLoginEvent: options.isLoginEvent ?? true
+          }),
+          signal: controller.signal
+        });
+
+        if (registerResponse.ok) {
+          console.log('✅ FCM token & device registered with AdminDevice model');
+          await AsyncStorage.setItem('@last_device_register_time', String(Date.now()));
+        } else {
+          console.warn('⚠️ AdminDevice registration status:', registerResponse.status);
+        }
+      } catch (regErr) {
+        console.warn('⚠️ AdminDevice registration network warning:', regErr.message);
+      }
+
+      // 1b. Legacy synchronization for backward compatibility
       try {
         const adminResponse = await fetch('https://gharplotbackend.gntechnology.de/api/save-admin-token', {
           method: 'POST',
@@ -1114,14 +1356,14 @@ export const sendTokenToBackend = async (userId, token, options = {}) => {
             adminId: adminId || userId,
             fcmToken: token,
             oldToken: oldToken || undefined,
-            deviceId: deviceId,
+            deviceId: installationId || deviceId,
             deviceInfo: deviceInfo,
             isLoginEvent: options.isLoginEvent ?? true
           }),
           signal: controller.signal
         });
         if (adminResponse.ok) {
-          console.log('✅ FCM token saved to Admin model');
+          console.log('✅ FCM token saved to legacy Admin model');
           await AsyncStorage.setItem('@fcm_token_prev', token);
         } else {
           console.warn('⚠️ Admin token save response not ok');

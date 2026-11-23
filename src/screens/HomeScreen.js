@@ -253,8 +253,8 @@ const Homescreen = ({ navigation }) => {
         try {
             console.log('🏘️ Loading all properties from API (limit: 50)...');
 
-            // Fetch all properties from API with limit of 50
-            let allPropertiesData = await getRecentFeaturedProperties(50);
+            // Fetch all properties from API with limit of 50 (include all recent)
+            let allPropertiesData = await getRecentFeaturedProperties(50, false);
 
             // Filter out properties without images (empty photosAndVideo)
             allPropertiesData = allPropertiesData.filter(property => {
@@ -298,19 +298,20 @@ const Homescreen = ({ navigation }) => {
             setFeaturedError(null);
             console.log('🏠 Loading featured properties from API...');
 
-            // Fetch recent properties from API
-            let recentProperties = await getRecentFeaturedProperties();
+            // Fetch recent properties from API (featured only)
+            let recentProperties = await getRecentFeaturedProperties(15, true);
 
-            // Filter out properties without images (empty photosAndVideo)
+            // Filter out properties without images or not marked as featured
             recentProperties = recentProperties.filter(property => {
+                const isFeatured = property.isFeatured === true;
                 const hasImage = property.photosAndVideo &&
                     Array.isArray(property.photosAndVideo) &&
                     property.photosAndVideo.length > 0;
 
-                if (!hasImage) {
-                    console.log('⏭️ Skipping property without images:', property._id, property.description);
+                if (!hasImage || !isFeatured) {
+                    console.log('⏭️ Skipping property (no image or not marked featured):', property._id, property.description);
                 }
-                return hasImage;
+                return hasImage && isFeatured;
             });
 
             // Set the featured properties
@@ -882,9 +883,12 @@ const Homescreen = ({ navigation }) => {
     };
 
     const handleSearchSubmit = () => {
-        if (searchQuery.trim()) {
-            navigation.navigate('ServicesScreen', { query: searchQuery.trim() });
-            Keyboard.dismiss();
+        const query = searchQuery ? searchQuery.trim() : '';
+        Keyboard.dismiss();
+        try {
+            navigation.navigate('SearchScreen', { initialQuery: query });
+        } catch (_) {
+            navigation.navigate('Search', { initialQuery: query });
         }
     };
 
@@ -1384,20 +1388,36 @@ const Homescreen = ({ navigation }) => {
 
             {/* Fixed Search Bar */}
             <View style={[styles.fixedSearchBarContainer, { top: BANNER_HEIGHT - OVERLAP_AMOUNT }]}>
-                <View style={[styles.searchBar, { height: SEARCH_BAR_HEIGHT }]}>
-                    <TouchableOpacity onLongPress={checkLoginStatus} activeOpacity={0.7}>
-                        <Icon name="search" size={20} color={theme.COLORS.greyMedium} />
-                    </TouchableOpacity>
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search property (e.g. Delhi, Kalka ji)..."
-                        placeholderTextColor={theme.COLORS.greyMedium}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        onSubmitEditing={handleSearchSubmit}
-                        returnKeyType="search"
-                    />
-                </View>
+                <TouchableOpacity
+                    style={[styles.searchBar, { height: SEARCH_BAR_HEIGHT }]}
+                    activeOpacity={0.8}
+                    onPress={handleSearchSubmit}
+                >
+                    <Icon name="search" size={20} color={theme.COLORS.primary} style={{ marginRight: 6 }} />
+                    <View style={{ flex: 1, justifyContent: 'center' }} pointerEvents="none">
+                        <Text
+                            style={[
+                                styles.searchInput,
+                                {
+                                    color: theme.COLORS.greyMedium,
+                                    textAlignVertical: 'center',
+                                    paddingVertical: 0,
+                                }
+                            ]}
+                            numberOfLines={1}
+                        >
+                            Search property (e.g. Delhi, Kalka ji)...
+                        </Text>
+                    </View>
+                    <View style={styles.searchSubmitBtn} pointerEvents="none">
+                        <LinearGradient
+                            colors={theme.GRADIENTS.primary}
+                            style={styles.searchSubmitBtnGradient}
+                        >
+                            <Icon name="search" size={16} color="#fff" />
+                        </LinearGradient>
+                    </View>
+                </TouchableOpacity>
             </View>
 
             {/* Content with keyboard avoiding */}
@@ -1697,11 +1717,23 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        paddingHorizontal: 12,
+        paddingHorizontal: 8,
         fontSize: 15,
         color: '#1F2937',
         fontWeight: '600',
         paddingVertical: Platform.OS === 'ios' ? 12 : 0,
+    },
+    searchSubmitBtn: {
+        borderRadius: 14,
+        overflow: 'hidden',
+        marginLeft: 4,
+    },
+    searchSubmitBtnGradient: {
+        width: 32,
+        height: 32,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     scrollableContent: {
         flex: 1

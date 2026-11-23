@@ -42,9 +42,9 @@ const AdminPopupSettings = ({ navigation }) => {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('adminToken');
+      const token = (await AsyncStorage.getItem('adminToken')) || (await AsyncStorage.getItem('admin_token'));
       if (!token) {
-        CrossPlatformAlert.alert('Error', 'Admin authentication required');
+        console.warn('⚠️ Admin token missing in AdminPopupSettings');
         navigation.goBack();
         return;
       }

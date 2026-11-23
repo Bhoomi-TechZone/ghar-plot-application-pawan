@@ -390,12 +390,13 @@ export const updateProperty = async (propertyId, data = {}, files = []) => {
  * @param {number} limit - Maximum number of properties to fetch (default: 15 for featured, 50 for all)
  * @returns {Promise<Array<object>>} An array of recent property objects
  */
-export const getRecentFeaturedProperties = async (limit = 15) => {
+export const getRecentFeaturedProperties = async (limit = 15, featuredOnly = false) => {
     try {
         // Get token if available (optional for public browsing)
         const token = await AsyncStorage.getItem('userToken');
 
-        const url = `https://gharplotbackend.gntechnology.de/api/properties/recent/all?limit=${limit}`;
+        const featuredParam = featuredOnly ? '&featured=true' : '';
+        const url = `https://gharplotbackend.gntechnology.de/api/properties/recent/all?limit=${limit}${featuredParam}`;
 
         console.log('[propertyapi] Fetching recent featured properties from:', url);
         console.log('[propertyapi] Token available:', !!token, '(optional for browsing)');
@@ -470,7 +471,7 @@ export const fetchNearbyProperties = async (lat, lng, distance) => {
 /**
  * Dynamic Property Search by location, budget and type (Flat vs Independent)
  */
-export const searchPropertiesAPI = async ({ location, minPrice, maxPrice, propertyType, residentialType, limit }) => {
+export const searchPropertiesAPI = async ({ location, minPrice, maxPrice, propertyType, residentialType, limit, sortBy }) => {
     try {
         const queryParams = new URLSearchParams();
         if (location) queryParams.append('location', location);
@@ -479,6 +480,7 @@ export const searchPropertiesAPI = async ({ location, minPrice, maxPrice, proper
         if (propertyType) queryParams.append('propertyType', propertyType);
         if (residentialType) queryParams.append('residentialType', residentialType);
         if (limit) queryParams.append('limit', limit);
+        if (sortBy) queryParams.append('sortBy', sortBy);
 
         const url = `${BASE_URL}/api/properties/search?${queryParams.toString()}`;
         console.log('[propertyapi] searchPropertiesAPI url:', url);

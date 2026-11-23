@@ -28,6 +28,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getHeaderTopPadding } from '../../../utils/safeAreaHelper';
 import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
+import { CommentThreadView, parseCommentHistory } from '../../../utils/reminderCommentHelper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -93,12 +94,9 @@ const AdminReminderControlScreen = () => {
 
   // Authentication Helper
   const getAuthHeaders = async () => {
-    const adminToken = await AsyncStorage.getItem('adminToken');
-    console.log('?? Retrieved adminToken:', adminToken ? `${adminToken.substring(0, 20)}...` : 'NULL');
-
+    const adminToken = (await AsyncStorage.getItem('adminToken')) || (await AsyncStorage.getItem('admin_token'));
     if (!adminToken) {
-      CrossPlatformAlert.alert('Error', 'Admin authentication required. Please login again.');
-      navigation.goBack();
+      console.log('ℹ️ No adminToken available, skipping reminder control request');
       return null;
     }
     return {
@@ -555,12 +553,17 @@ const AdminReminderControlScreen = () => {
 
   // Effects
   useEffect(() => {
+    let interval = null;
+    let isMounted = true;
+
     const initializeScreen = async () => {
       try {
-        const adminToken = await AsyncStorage.getItem('adminToken');
+        const adminToken = (await AsyncStorage.getItem('adminToken')) || (await AsyncStorage.getItem('admin_token'));
         if (!adminToken) {
-          CrossPlatformAlert.alert('Authentication Required', 'Please login as admin first');
-          navigation.goBack();
+          if (isMounted) {
+            CrossPlatformAlert.alert('Authentication Required', 'Please login as admin first');
+            navigation.goBack();
+          }
           return;
         }
 
@@ -572,19 +575,30 @@ const AdminReminderControlScreen = () => {
           fetchActiveEmployeeReminders()
         ]);
 
-        // Set up auto-refresh for due reminders every 60 seconds
-        const interval = setInterval(() => {
-          fetchDueReminders();
-        }, 60000);
-
-        return () => clearInterval(interval);
+        if (isMounted) {
+          // Set up auto-refresh for due reminders every 60 seconds
+          interval = setInterval(() => {
+            if (isMounted) {
+              fetchDueReminders();
+            }
+          }, 60000);
+        }
       } catch (error) {
         console.error('? Initialization error:', error);
-        CrossPlatformAlert.alert('Error', 'Failed to initialize screen');
+        if (isMounted) {
+          CrossPlatformAlert.alert('Error', 'Failed to initialize screen');
+        }
       }
     };
 
     initializeScreen();
+
+    return () => {
+      isMounted = false;
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, []);
 
   // Search effect with debounce
@@ -1151,12 +1165,21 @@ const AdminReminderControlScreen = () => {
                   {item.title || item.reason}
                 </Text>
 
-                {/* Note / Reason */}
-                {item.title && item.reason ? (
-                  <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>
-                    {item.reason}
-                  </Text>
-                ) : null}
+                {/* Note / Reason / Threaded Comments */}
+                {(() => {
+                  const comments = parseCommentHistory(item);
+                  if (comments.length > 0) {
+                    return <CommentThreadView comments={comments} />;
+                  }
+                  if (item.title && item.reason) {
+                    return (
+                      <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>
+                        {item.reason}
+                      </Text>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {/* Badges Row */}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
@@ -1217,6 +1240,7 @@ const AdminReminderControlScreen = () => {
                         reminderId: item._id,
                         clientName: item.clientName || item.title || 'Reminder',
                         originalMessage: item.reason || item.note || '',
+                        commentHistory: parseCommentHistory(item),
                         reminderTitle: item.title,
                         isAdmin: true,
                         time: item.time,

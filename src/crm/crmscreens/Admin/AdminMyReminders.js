@@ -466,6 +466,9 @@ const AdminMyReminders = ({ navigation }) => {
 
   // Initial Load
   useEffect(() => {
+    let intervalId = null;
+    let isMounted = true;
+
     const init = async () => {
       console.log('?? AdminMyReminders initializing...');
 
@@ -473,23 +476,17 @@ const AdminMyReminders = ({ navigation }) => {
       const adminToken = await AsyncStorage.getItem('adminToken');
       const employeeToken = await AsyncStorage.getItem('employeeToken');
 
-      console.log('?? Admin Token:', adminToken ? 'Found ?' : 'Missing ?');
-      console.log('?? Employee Token:', employeeToken ? 'Found ?' : 'Missing ?');
-
       let token = adminToken || employeeToken;
 
       if (!token) {
-        console.error('? No token found - cannot initialize');
-        CrossPlatformAlert.alert('Error', 'Authentication required. Please login again.');
+        console.warn('⚠️ No token found - cannot initialize AdminMyReminders');
         return;
       }
 
       if (adminToken) {
         console.log('?? Using admin token for admin features');
-        console.log('?? Admin token preview:', adminToken.substring(0, 30) + '...');
       } else {
         console.log('?? Using employee token as fallback (may have limited access)');
-        console.log('?? Employee token preview:', employeeToken.substring(0, 30) + '...');
       }
 
       try {
@@ -506,25 +503,30 @@ const AdminMyReminders = ({ navigation }) => {
 
         console.log('? All data loaded successfully');
 
-        // Start polling for due reminders every 1 minute (like web version)
-        const interval = setInterval(() => {
-          console.log('?? Polling for due reminders...');
-          fetchDueReminders();
-        }, 60000);
-
-        setPollingInterval(interval);
+        if (isMounted) {
+          // Start polling for due reminders every 1 minute (like web version)
+          intervalId = setInterval(() => {
+            if (isMounted) {
+              console.log('?? Polling for due reminders...');
+              fetchDueReminders();
+            }
+          }, 60000);
+        }
       } catch (error) {
         console.error('? Error during initialization:', error.message);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     init();
 
     return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
+      isMounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
   }, []);

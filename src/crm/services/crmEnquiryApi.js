@@ -879,6 +879,16 @@ const sendReminderToAdminAccessEmployees = async (notificationPayload, senderEmp
 export const sendAlertToAdmin = async (alertData) => {
   try {
     const notificationType = alertData.notificationType || 'employee_alert_to_admin';
+    const isReminder = notificationType === 'admin_reminder' ||
+                       notificationType === 'employee_reminder_to_admin' ||
+                       notificationType === 'reminder' ||
+                       alertData.category === 'reminder';
+
+    if (isReminder) {
+      console.log('ℹ️ [sendAlertToAdmin] Reminder creation notification to admin is disabled. Only scheduled notifications will trigger at due time.');
+      return { success: true, message: 'Creation notification skipped for reminders' };
+    }
+
     console.log(`📤 Sending admin alert notification (${notificationType}) for employee alert:`, alertData);
 
     // First check if employee has popup access enabled

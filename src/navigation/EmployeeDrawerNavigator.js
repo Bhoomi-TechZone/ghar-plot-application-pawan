@@ -27,6 +27,7 @@ import LinearGradient from "react-native-linear-gradient";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getHeaderTopPadding } from '../utils/safeAreaHelper';
+import { employeeLogout } from '../crm/services/employeeAuthService';
 
 // Permission Components
 import { usePermissions, MODULES, ACTIONS } from '../context/PermissionContext';
@@ -227,18 +228,7 @@ const DrawerMenu = ({ visible, onClose, navigation, accessibleMenuItems, employe
   const handleLogout = async () => {
     onClose();
     try {
-      await AsyncStorage.multiRemove([
-        'crm_auth_token',
-        'adminToken',
-        'admin_token',
-        'employee_auth_token',
-        'employee_token',
-        'employee_user',
-        'employee_profile',
-        'employee_permissions',
-        'userType',
-        'fcmToken',
-      ]);
+      await employeeLogout();
       navigation.reset({
         index: 0,
         routes: [{ name: 'EmployeeLogin' }],

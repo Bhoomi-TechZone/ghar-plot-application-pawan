@@ -717,18 +717,6 @@ const AdminDashboardScreen = ({ navigation, user }) => {
                   style={styles.drawerItem}
                   onPress={() => {
                     setDrawerVisible(false);
-                    navigation.navigate('AdminRemindersControl');
-                  }}
-                >
-                  <Icon name="notifications" size={20} color="#f59e0b" />
-                  <Text style={styles.drawerItemText}>Admin Reminders Control</Text>
-                  <Icon name="chevron-forward" size={16} color="#9ca3af" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.drawerItem}
-                  onPress={() => {
-                    setDrawerVisible(false);
                     navigation.navigate('BoughtProperty');
                   }}
                 >
@@ -832,6 +820,18 @@ const AdminDashboardScreen = ({ navigation, user }) => {
                 >
                   <Icon name="alarm" size={20} color="#f59e0b" />
                   <Text style={styles.drawerItemText}>My Reminders</Text>
+                  <Icon name="chevron-forward" size={16} color="#9ca3af" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.drawerItem}
+                  onPress={() => {
+                    setDrawerVisible(false);
+                    navigation.navigate('AdminRemindersControl');
+                  }}
+                >
+                  <Icon name="notifications" size={20} color="#f59e0b" />
+                  <Text style={styles.drawerItemText}>Admin Reminders Control</Text>
                   <Icon name="chevron-forward" size={16} color="#9ca3af" />
                 </TouchableOpacity>
 

@@ -16,6 +16,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { formatImageUrl } from '../services/homeApi';
+import { getNotifications, clearAllNotifications as clearManagerNotifications } from '../utils/notificationManager';
 import { runCompleteFCMTest, showFCMTestResults, sendTestFCMNotification } from '../utils/fcmTestService';
 import CrossPlatformAlert from '../utils/crossPlatformAlert';
 
@@ -24,17 +25,18 @@ const NotificationListScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load notifications from AsyncStorage
+  // Load notifications from AsyncStorage (filtered for client only)
   const loadNotifications = async () => {
     try {
-      const stored = await AsyncStorage.getItem('app_notifications');
-      if (stored) {
-        const notificationsList = JSON.parse(stored);
+      const notificationsList = await getNotifications();
+      if (notificationsList) {
         // Sort by timestamp (newest first)
         const sortedNotifications = notificationsList.sort((a, b) => 
           new Date(b.timestamp) - new Date(a.timestamp)
         );
         setNotifications(sortedNotifications);
+      } else {
+        setNotifications([]);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);

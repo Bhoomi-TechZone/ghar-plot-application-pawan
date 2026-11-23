@@ -329,8 +329,11 @@ const CreateAlertScreen = ({ navigation, route }) => {
           console.log('📱 Local notification SKIPPED — relying on backend FCM only');
 
           // 🔔 Send notification to admin if employee has popup access enabled
-          // ⚠️ Skip if current user is admin (admin already has local backup scheduled)
-          if (!isAdmin) {
+          // ⚠️ Skip if current user is admin OR if this is a reminder creation
+          // ℹ️ Immediate notification to admin on reminder creation has been disabled as per user requirement.
+          // Scheduled notifications will trigger at due time via backend cron.
+          const isReminderCreation = finalCategory === 'reminder' || finalNotificationType === 'admin_reminder';
+          if (!isAdmin && !isReminderCreation) {
             try {
               console.log('📤 Checking if admin notification should be sent...');
               const adminNotifyResult = await sendAlertToAdmin({
@@ -351,6 +354,8 @@ const CreateAlertScreen = ({ navigation, route }) => {
               console.warn('⚠️ Error sending admin notification:', adminNotifyError);
               // Don't fail the whole operation
             }
+          } else if (isReminderCreation) {
+            console.log('ℹ️ Skipping immediate admin notification for reminder creation. Scheduled notification will be delivered at due time.');
           } else {
             console.log('ℹ️ Skipping admin notification for admin-created alert');
           }

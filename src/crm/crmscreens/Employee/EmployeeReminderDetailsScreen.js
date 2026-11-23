@@ -421,6 +421,35 @@ const EmployeeReminderDetailsScreen = ({ route, navigation }) => {
             </View>
           </View>
 
+          {fetchedDetails?.lastEditedByName ? (
+            <View style={[styles.infoItem, { alignItems: 'flex-start' }]}>
+              <Icon name="pencil-outline" size={18} color="#4F46E5" style={{ marginTop: 2 }} />
+              <View style={styles.infoItemText}>
+                <Text style={styles.infoLabel}>Last Edited By</Text>
+                <Text style={[styles.infoValue, { fontWeight: '600', color: '#1F2937' }]}>
+                  {fetchedDetails.lastEditedByName} ({fetchedDetails.lastEditedByRole === 'admin' ? 'Admin' : 'Employee'})
+                </Text>
+                {fetchedDetails.lastEditedAt ? (
+                  <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                    {new Date(fetchedDetails.lastEditedAt).toLocaleString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    })}
+                  </Text>
+                ) : null}
+                {fetchedDetails.lastEditSummary ? (
+                  <Text style={{ fontSize: 11, color: '#4F46E5', marginTop: 2 }}>
+                    {fetchedDetails.lastEditSummary}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
+
           {enquiryId && (
             <View style={styles.infoItem}>
               <Icon name="tag-outline" size={18} color="#6B7280" />

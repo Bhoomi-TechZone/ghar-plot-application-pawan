@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   ScrollView,
   Platform,
   Image,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { BASE_URL, post } from '../services/api';
@@ -31,9 +33,9 @@ const PropertyInquiryFormScreen = ({ route, navigation }) => {
     return p._id || p.id || p.propertyId || p.uuid || p.uid || null;
   };
   const normalizedPropertyId = getPropertyId(property);
-  
+
   // Check if inquiry was already submitted when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     const checkInquiryStatus = async () => {
       try {
         const propertyId = normalizedPropertyId;
@@ -61,9 +63,8 @@ const PropertyInquiryFormScreen = ({ route, navigation }) => {
     checkInquiryStatus();
   }, [normalizedPropertyId, navigation]);
 
-  // Resolve image URL: support property.image, or photosAndVideo array (may be relative path from backend)
+  // Resolve image URL
   const resolveImage = () => {
-    // Photos array from backend may be in property.photosAndVideo or property.photos
     const photos = property.photosAndVideo || property.photos || [];
     let img = null;
     if (Array.isArray(photos) && photos.length > 0) {
@@ -74,10 +75,8 @@ const PropertyInquiryFormScreen = ({ route, navigation }) => {
 
     if (!img) return null;
 
-    // If backend returned a relative path like 'uploads/xyz.jpg', prefix BASE_URL
     try {
       if (typeof img === 'string' && !img.startsWith('http')) {
-        // ensure no duplicate slashes
         return `${BASE_URL.replace(/\/+$/, '')}/${img.replace(/^\/+/, '')}`;
       }
     } catch (e) {
@@ -87,13 +86,19 @@ const PropertyInquiryFormScreen = ({ route, navigation }) => {
   };
   const imageUri = resolveImage();
 
+  // Form State (Email field removed)
   const [form, setForm] = useState({
     clientName: "",
-    email: "",
     contactNumber: "",
   });
   const [loading, setLoading] = useState(false);
-  
+
+  // OTP Verification States
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otpError, setOtpError] = useState("");
+  const otpInputs = useRef([]);
+
   // Auth Modal States
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -101,109 +106,163 @@ const PropertyInquiryFormScreen = ({ route, navigation }) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Handle OTP digit entry
+  const handleOtpChange = (text, index) => {
+    setOtpError("");
+    const cleaned = text.replace(/[^0-9]/g, '');
+
+    if (cleaned.length > 0) {
+      const newOtp = [...otp];
+      newOtp[index] = cleaned[cleaned.length - 1]; // take last entered digit
+      setOtp(newOtp);
+
+      // Auto move to next input box
+      if (index < 3) {
+        otpInputs.current[index + 1]?.focus();
+      }
+    } else {
+      const newOtp = [...otp];
+      newOtp[index] = "";
+      setOtp(newOtp);
+    }
+  };
+
+  const handleOtpKeyPress = (e, index) => {
+    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+      otpInputs.current[index - 1]?.focus();
+    }
+  };
+
+  // Initial Submit button press: validate and trigger OTP verification
   const handleSubmit = async () => {
     // Check authentication first
     const isAuthenticated = await isUserAuthenticated();
-    
+
     if (!isAuthenticated) {
-      // Guest user trying to submit inquiry - show auth modal
       console.log('🚫 Guest user trying to submit inquiry - Showing auth modal');
       setShowAuthModal(true);
       return;
     }
-    
-    if (!form.clientName || !form.email || !form.contactNumber) {
-      CrossPlatformAlert.alert("Missing Info", "Please fill all mandatory fields (*)");
+
+    if (!form.clientName || !form.clientName.trim()) {
+      CrossPlatformAlert.alert("Missing Info", "Please enter your full name.");
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email)) {
-      CrossPlatformAlert.alert("Invalid Email", "Please enter a valid email address.");
+    if (!form.contactNumber || !form.contactNumber.trim()) {
+      CrossPlatformAlert.alert("Missing Info", "Please enter your mobile number.");
       return;
     }
 
-    if (form.contactNumber.length < 8) {
-      CrossPlatformAlert.alert("Invalid Number", "Contact number seems too short.");
+    const cleanPhone = form.contactNumber.replace(/[^0-9]/g, '');
+    if (cleanPhone.length < 10) {
+      CrossPlatformAlert.alert("Invalid Number", "Please enter a valid 10-digit mobile number.");
       return;
     }
 
-    // Prepare payload for the inquiry endpoint
+    // Reset OTP and open OTP verification modal
+    setOtp(["", "", "", ""]);
+    setOtpError("");
+    setShowOtpModal(true);
+  };
+
+  // Verify entered OTP (static OTP: 1234)
+  const handleVerifyOtp = async () => {
+    const enteredOtp = otp.join("");
+
+    if (enteredOtp.length !== 4) {
+      setOtpError("Please enter complete 4-digit OTP.");
+      return;
+    }
+
+    // Static OTP validation
+    if (enteredOtp !== "1234") {
+      setOtpError("Invalid OTP. Please enter 1234.");
+      return;
+    }
+
+    // OTP Verified! Close OTP modal and execute inquiry submission
+    setShowOtpModal(false);
+    const cleanPhone = form.contactNumber.replace(/[^0-9]/g, '');
+    await executeInquirySubmission(cleanPhone);
+  };
+
+  // Execute submission to backend
+  const executeInquirySubmission = async (contactNumber) => {
     const payload = {
       propertyId: normalizedPropertyId || property._id || property.id,
-      fullName: form.clientName,
-      email: form.email,
-      contactNumber: form.contactNumber,
+      fullName: form.clientName.trim(),
+      contactNumber: contactNumber,
+      email: "", // Email removed from inquiry form
     };
 
-    // Attempt to attach ownerId if present on the property object
     const ownerCandidate = property.postedBy || property.userId || property.owner || property.ownerId;
     if (ownerCandidate) {
-      // postedBy might be an object or just an id string
       payload.ownerId = ownerCandidate._id || ownerCandidate.id || ownerCandidate;
     }
 
-    // Try to attach buyerId from storage if available
     setLoading(true);
-    AsyncStorage.getItem('userId')
-      .then((uid) => {
-        if (uid) payload.buyerId = uid;
-      })
-      .catch(() => {})
-      .finally(async () => {
+
+    try {
+      const uid = await AsyncStorage.getItem('userId');
+      if (uid) payload.buyerId = uid;
+
+      const res = await post('/api/inquiry/add', payload);
+
+      // Mark this property as having an inquiry so the app can remember it
+      try {
+        const pid = normalizedPropertyId || payload.propertyId;
+        if (pid) await AsyncStorage.setItem(`inquirySubmitted:${pid}`, '1');
+      } catch (setErr) {
+        console.warn('Failed to persist inquiry flag', setErr);
+      }
+
+      // ONLY show the clean Success popup
+      CrossPlatformAlert.alert(
+        'Inquiry Submitted!',
+        'Your inquiry has been submitted successfully! The owner/agent will contact you soon.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack()
+          }
+        ],
+        { cancelable: false }
+      );
+    } catch (err) {
+      console.error('Inquiry submit failed', err);
+      const message = err && err.message ? String(err.message) : 'Failed to submit inquiry. Please try again.';
+
+      // Check if duplicate inquiry
+      if (message.includes('already submitted') || message.includes('duplicate')) {
         try {
-          const res = await post('/api/inquiry/add', payload);
-          // Backend returns { message, inquiry }
-          const msg = (res && res.message) || 'Inquiry submitted successfully';
-          CrossPlatformAlert.alert('Success', msg);
-
-          // Mark this property as having an inquiry so the app can skip the form next time
-          try {
-            const pid = normalizedPropertyId || payload.propertyId;
-            if (pid) await AsyncStorage.setItem(`inquirySubmitted:${pid}`, '1');
-          } catch (setErr) {
-            console.warn('Failed to persist inquiry flag', setErr);
-          }
-
-          // Navigate back to PropertyDetailsScreen
-          navigation.goBack();
-        } catch (err) {
-          console.error('Inquiry submit failed', err);
-          const message = err && err.message ? String(err.message) : 'Failed to submit inquiry. Please try again.';
-          
-          // Check if error is about duplicate inquiry
-          if (message.includes('already submitted') || message.includes('duplicate')) {
-            // Mark as submitted and navigate back
-            try {
-              const pid = normalizedPropertyId || payload.propertyId;
-              if (pid) await AsyncStorage.setItem(`inquirySubmitted:${pid}`, '1');
-            } catch (setErr) {
-              console.warn('Failed to persist inquiry flag', setErr);
-            }
-            
-            CrossPlatformAlert.alert(
-              'Already Submitted',
-              'You have already submitted an inquiry for this property.',
-              [
-                {
-                  text: 'OK',
-                  onPress: () => navigation.goBack()
-                }
-              ]
-            );
-          } else {
-            CrossPlatformAlert.alert('Submission failed', message);
-          }
-        } finally {
-          setLoading(false);
+          const pid = normalizedPropertyId || payload.propertyId;
+          if (pid) await AsyncStorage.setItem(`inquirySubmitted:${pid}`, '1');
+        } catch (setErr) {
+          console.warn('Failed to persist inquiry flag', setErr);
         }
-      });
+
+        CrossPlatformAlert.alert(
+          'Already Submitted',
+          'You have already submitted an inquiry for this property.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack()
+            }
+          ]
+        );
+      } else {
+        CrossPlatformAlert.alert('Submission Failed', message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const textInputFields = [
-    { label: "Full Name*", field: "clientName", icon: "person-outline" },
-    { label: "Email*", field: "email", icon: "mail-outline", keyboardType: "email-address" },
-    { label: "Contact Number*", field: "contactNumber", icon: "call-outline", keyboardType: "phone-pad" },
+    { label: "Full Name*", field: "clientName", icon: "person-outline", keyboardType: "default" },
+    { label: "Mobile Number*", field: "contactNumber", icon: "call-outline", keyboardType: "phone-pad" },
   ];
 
   return (
@@ -249,6 +308,7 @@ const PropertyInquiryFormScreen = ({ route, navigation }) => {
                 placeholder={item.label}
                 keyboardType={item.keyboardType || "default"}
                 placeholderTextColor="#9CA3AF"
+                maxLength={item.field === 'contactNumber' ? 14 : 50}
               />
             </View>
           ))}
@@ -259,11 +319,88 @@ const PropertyInquiryFormScreen = ({ route, navigation }) => {
             activeOpacity={0.8}
             disabled={loading}
           >
-            <Text style={styles.submitText}>{loading ? 'Submitting...' : 'Submit Inquiry'}</Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.submitText}>Submit Inquiry</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
-      
+
+      {/* OTP Verification Modal */}
+      <Modal
+        visible={showOtpModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowOtpModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.otpModalContainer}>
+            <View style={styles.otpIconCircle}>
+              <Icon name="shield-checkmark" size={32} color="#1E90FF" />
+            </View>
+
+            <Text style={styles.otpModalTitle}>Verify Mobile Number</Text>
+            <Text style={styles.otpModalSubtitle}>
+              Enter 4-digit OTP sent to{"\n"}
+              <Text style={{ fontWeight: '700', color: '#1F2937' }}>
+                +91 {form.contactNumber}
+              </Text>
+            </Text>
+
+            {/* Static OTP Hint Pill */}
+            <View style={styles.otpHintPill}>
+              <Icon name="information-circle-outline" size={16} color="#D97706" style={{ marginRight: 4 }} />
+              <Text style={styles.otpHintText}>Static Demo OTP: 1234</Text>
+            </View>
+
+            {/* 4 Digit OTP Inputs */}
+            <View style={styles.otpBoxesRow}>
+              {otp.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  ref={(ref) => (otpInputs.current[index] = ref)}
+                  style={[
+                    styles.otpBox,
+                    digit ? styles.otpBoxFilled : null,
+                    otpError ? styles.otpBoxError : null,
+                  ]}
+                  value={digit}
+                  onChangeText={(text) => handleOtpChange(text, index)}
+                  onKeyPress={(e) => handleOtpKeyPress(e, index)}
+                  keyboardType="numeric"
+                  maxLength={1}
+                  textAlign="center"
+                  selectTextOnFocus
+                />
+              ))}
+            </View>
+
+            {otpError ? (
+              <Text style={styles.otpErrorText}>{otpError}</Text>
+            ) : null}
+
+            {/* Action Buttons */}
+            <TouchableOpacity
+              style={styles.verifyButton}
+              onPress={handleVerifyOtp}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.verifyButtonText}>Verify & Submit</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelOtpButton}
+              onPress={() => setShowOtpModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cancelOtpText}>Change Mobile Number</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Authentication Modal */}
       <AuthModal
         visible={showAuthModal}
@@ -335,7 +472,7 @@ const styles = StyleSheet.create({
   propertyPrice: {
     marginTop: 4,
     fontSize: 16,
-  color: "#1E90FF",
+    color: "#1E90FF",
     fontWeight: "700",
   },
   formCard: {
@@ -368,12 +505,12 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === "ios" ? 12 : 10,
   },
   submitButton: {
-  backgroundColor: "#1E90FF",
+    backgroundColor: "#1E90FF",
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: "center",
     marginTop: 8,
-  shadowColor: "#1E90FF",
+    shadowColor: "#1E90FF",
     shadowOpacity: 0.3,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
@@ -384,6 +521,126 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
     letterSpacing: 0.3,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  otpModalContainer: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  otpIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#EFF6FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  otpModalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  otpModalSubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  otpHintPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginBottom: 20,
+  },
+  otpHintText: {
+    color: "#92400E",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  otpBoxesRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
+  },
+  otpBox: {
+    width: 52,
+    height: 54,
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
+    borderRadius: 12,
+    backgroundColor: "#F9FAFB",
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  otpBoxFilled: {
+    borderColor: "#1E90FF",
+    backgroundColor: "#EFF6FF",
+  },
+  otpBoxError: {
+    borderColor: "#EF4444",
+    backgroundColor: "#FEF2F2",
+  },
+  otpErrorText: {
+    color: "#EF4444",
+    fontSize: 13,
+    fontWeight: "500",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  verifyButton: {
+    width: "100%",
+    backgroundColor: "#1E90FF",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#1E90FF",
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+    marginTop: 4,
+  },
+  verifyButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  cancelOtpButton: {
+    marginTop: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  cancelOtpText: {
+    color: "#6B7280",
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
 
