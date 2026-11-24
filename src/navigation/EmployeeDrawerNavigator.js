@@ -44,6 +44,7 @@ import EditReminderScreen from "../screens/EditReminderScreen";
 import EditAlertScreen from "../screens/EditAlertScreen";
 import EmployeeProfile from "../crm/crmscreens/Employee/EmployeeProfile";
 import EmployeeExpensesScreen from "../crm/crmscreens/Employee/EmployeeExpensesScreen";
+import EmployeeAttendanceScreen from "../crm/crmscreens/Employee/EmployeeAttendanceScreen";
 
 // Admin Screens that employees might have access to based on permissions
 import EnquiriesScreen from "../crm/crmscreens/Admin/EnquiriesScreen";
@@ -106,6 +107,12 @@ const BOTTOM_TAB_ITEMS = [
 
 // Drawer Menu items - Only screens NOT in bottom tabs
 const DRAWER_MENU_ITEMS = [
+  {
+    name: 'My Attendance',
+    route: 'EmployeeAttendance',
+    icon: 'finger-print-outline',
+    color: '#0ea5e9',
+  },
   {
     name: 'Alerts',
     route: 'EmployeeAlerts',
@@ -655,6 +662,7 @@ const EmployeeDrawerNavigator = () => {
       <Stack.Screen name="EditReminder" component={EditReminderScreen} />
       <Stack.Screen name="EditAlert" component={EditAlertScreen} />
       <Stack.Screen name="EmployeeProfile" component={EmployeeProfile} />
+      <Stack.Screen name="EmployeeAttendance" component={EmployeeAttendanceScreen} />
       
       {/* Admin Screens accessible by permission */}
       <Stack.Screen name="EmployeeEnquiries" component={EnquiriesScreen} />

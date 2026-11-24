@@ -283,6 +283,24 @@ const DashboardEmployee = ({ navigation, openDrawer }) => {
           />
         }
       >
+        {/* Quick Attendance Card */}
+        <TouchableOpacity
+          style={styles.attendanceBannerCard}
+          onPress={() => navigation.navigate('EmployeeAttendance')}
+          activeOpacity={0.8}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={styles.attendanceBannerIconBox}>
+              <Icon name="finger-print" size={24} color="#0ea5e9" />
+            </View>
+            <View style={{ marginLeft: 12, flex: 1 }}>
+              <Text style={styles.attendanceBannerTitle}>Daily Attendance</Text>
+              <Text style={styles.attendanceBannerSub}>Punch in / out & view monthly sheet</Text>
+            </View>
+            <Icon name="chevron-forward" size={20} color="#94a3b8" />
+          </View>
+        </TouchableOpacity>
+
         {/* Stats Row */}
         <View style={styles.statsRow}>{statsCards.map(renderCard)}</View>
 
@@ -412,6 +430,41 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: "#f2f6ff",
+  },
+
+  /* Attendance Quick Banner */
+  attendanceBannerCard: {
+    backgroundColor: '#ffffff',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 6,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  attendanceBannerIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  attendanceBannerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  attendanceBannerSub: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
   },
 
   /* Header */

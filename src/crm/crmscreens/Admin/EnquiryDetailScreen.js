@@ -442,6 +442,39 @@ const EnquiryDetailScreen = ({ route, navigation }) => {
           </View>
         </View>
 
+        {/* Property Owner (Seller) Information */}
+        {displayData.ownerName ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Property Owner (Seller)</Text>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Owner Name</Text>
+              <Text style={styles.value}>{displayData.ownerName}</Text>
+            </View>
+
+            {displayData.ownerPhone ? (
+              <View style={styles.field}>
+                <Text style={styles.label}>Owner Phone</Text>
+                <Text style={styles.value}>{displayData.ownerPhone}</Text>
+              </View>
+            ) : null}
+
+            {displayData.ownerEmail ? (
+              <View style={styles.field}>
+                <Text style={styles.label}>Owner Email</Text>
+                <Text style={styles.value}>{displayData.ownerEmail}</Text>
+              </View>
+            ) : null}
+
+            {displayData.ownerClientCode ? (
+              <View style={styles.field}>
+                <Text style={styles.label}>Owner Client ID</Text>
+                <Text style={styles.value}>{displayData.ownerClientCode}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Property Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Property Information</Text>

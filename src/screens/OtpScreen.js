@@ -10,6 +10,9 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from "react-native-linear-gradient";
@@ -249,7 +252,7 @@ const OtpScreen = ({ route, navigation }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
       <ImageBackground
         source={require("../assets/realestate-bg.png")}
         style={styles.background}
@@ -277,77 +280,90 @@ const OtpScreen = ({ route, navigation }) => {
             </Animated.View>
           )}
 
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <Image
-              source={require("../assets/New_logo.png")}
-              style={styles.logo}
-            />
-            <Text style={styles.brandName}>Gharplot</Text>
-          </View>
-
-          {/* Card */}
-          <View style={styles.card}>
-            <Text style={styles.title}>Enter OTP</Text>
-            <Text style={styles.subtitle}>We sent an OTP to {phone}</Text>
-
-            {/* Development Mode Notice */}
-            {developmentOTP && (
-              <View style={styles.devModeContainer}>
-                <Text style={styles.devModeText}>
-                  🔧 Development Mode: OTP is {developmentOTP}
-                </Text>
-              </View>
-            )}
-
-            {/* OTP Boxes */}
-            <View style={styles.otpContainer}>
-              {otp.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={(ref) => (inputs.current[index] = ref)}
-                  style={styles.otpBox}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  value={digit}
-                  onChangeText={(text) => handleChange(text, index)}
-                  onKeyPress={({ nativeEvent }) => {
-                    if (
-                      nativeEvent.key === "Backspace" &&
-                      otp[index] === "" &&
-                      index > 0
-                    ) {
-                      inputs.current[index - 1].focus();
-                    }
-                  }}
-                />
-              ))}
-            </View>
-
-            {/* Verify Button */}
-            <TouchableOpacity onPress={verifyOtp} disabled={loading} style={styles.verifyBtnWrapper}>
-              <LinearGradient
-                colors={loading ? ["#ccc", "#aaa"] : ["#1E90FF", "#5DA9F6"]}
-                style={styles.loginBtn}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.btnText}>Verify OTP</Text>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Resend OTP */}
-            <TouchableOpacity
-              onPress={resendOtp}
-              disabled={resending}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
+          >
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              bounces={false}
             >
-              <Text style={styles.resendText}>
-                {resending ? "Sending..." : "Resend OTP"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+              {/* Logo */}
+              <View style={styles.logoContainer}>
+                <Image
+                  source={require("../assets/New_logo.png")}
+                  style={styles.logo}
+                />
+                <Text style={styles.brandName}>Gharplot</Text>
+              </View>
+
+              {/* Card */}
+              <View style={styles.card}>
+                <Text style={styles.title}>Enter OTP</Text>
+                <Text style={styles.subtitle}>We sent an OTP to {phone}</Text>
+
+                {/* Development Mode Notice */}
+                {developmentOTP && (
+                  <View style={styles.devModeContainer}>
+                    <Text style={styles.devModeText}>
+                      🔧 Development Mode: OTP is {developmentOTP}
+                    </Text>
+                  </View>
+                )}
+
+                {/* OTP Boxes */}
+                <View style={styles.otpContainer}>
+                  {otp.map((digit, index) => (
+                    <TextInput
+                      key={index}
+                      ref={(ref) => (inputs.current[index] = ref)}
+                      style={styles.otpBox}
+                      keyboardType="number-pad"
+                      maxLength={1}
+                      value={digit}
+                      onChangeText={(text) => handleChange(text, index)}
+                      onKeyPress={({ nativeEvent }) => {
+                        if (
+                          nativeEvent.key === "Backspace" &&
+                          otp[index] === "" &&
+                          index > 0
+                        ) {
+                          inputs.current[index - 1].focus();
+                        }
+                      }}
+                    />
+                  ))}
+                </View>
+
+                {/* Verify Button */}
+                <TouchableOpacity onPress={verifyOtp} disabled={loading} style={styles.verifyBtnWrapper}>
+                  <LinearGradient
+                    colors={loading ? ["#ccc", "#aaa"] : ["#1E90FF", "#5DA9F6"]}
+                    style={styles.loginBtn}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.btnText}>Verify OTP</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Resend OTP */}
+                <TouchableOpacity
+                  onPress={resendOtp}
+                  disabled={resending}
+                >
+                  <Text style={styles.resendText}>
+                    {resending ? "Sending..." : "Resend OTP"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </View>
       </ImageBackground>
     </SafeAreaView>
@@ -359,8 +375,12 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   logoContainer: { alignItems: "center", marginBottom: 30 },
   logo: { width: 110, height: 110, resizeMode: "contain" },

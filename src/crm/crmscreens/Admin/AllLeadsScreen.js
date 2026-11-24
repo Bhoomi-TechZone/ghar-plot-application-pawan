@@ -54,15 +54,19 @@ const AllLeadsScreen = ({ navigation }) => {
 
   const filteredLeads = leads.filter(l => {
     const enquiry = l.enquiry || {};
-    const clientName = enquiry.fullName || enquiry.name || '';
-    const phone = enquiry.phone || enquiry.mobile || '';
-    const employeeName = l.employeeId?.name || '';
+    const clientName = enquiry.clientName || enquiry.fullName || enquiry.name || enquiry.buyerId?.fullName || '';
+    const phone = enquiry.contactNumber || enquiry.phone || enquiry.mobile || enquiry.buyerId?.phone || '';
+    const employeeName = l.employeeId?.name || l.employeeId?.fullName || '';
+    const location = enquiry.location || enquiry.propertyLocation || enquiry.address || '';
+    const clientCode = enquiry.ClientCode || enquiry.clientCode || '';
     
     const searchLower = search.toLowerCase();
     return (
       clientName.toLowerCase().includes(searchLower) ||
       phone.includes(searchLower) ||
-      employeeName.toLowerCase().includes(searchLower)
+      employeeName.toLowerCase().includes(searchLower) ||
+      location.toLowerCase().includes(searchLower) ||
+      clientCode.toLowerCase().includes(searchLower)
     );
   });
 
@@ -75,23 +79,47 @@ const AllLeadsScreen = ({ navigation }) => {
 
   const renderLeadCard = ({ item, index }) => {
     const enquiry = item.enquiry || {};
-    const employeeName = item.employeeId?.name || 'Unassigned';
-    const clientName = enquiry.fullName || enquiry.name || 'N/A';
-    const phone = enquiry.phone || enquiry.mobile || 'N/A';
+    const employeeName = item.employeeId?.name || item.employeeId?.fullName || 'Unassigned';
+    const clientName = enquiry.clientName || enquiry.fullName || enquiry.name || enquiry.buyerId?.fullName || 'N/A';
+    const phone = enquiry.contactNumber || enquiry.phone || enquiry.mobile || enquiry.buyerId?.phone || 'N/A';
+    const email = enquiry.email || enquiry.buyerId?.email || null;
+    const location = enquiry.location || enquiry.propertyLocation || enquiry.address || enquiry.propertyId?.propertyLocation || null;
+    const productType = enquiry.productType || enquiry.propertyType || enquiry.propertyId?.propertyType || null;
+    const clientCode = enquiry.ClientCode || enquiry.clientCode || enquiry.buyerId?.clientCode || null;
+    const ownerName = enquiry.ownerName || enquiry.ownerId?.fullName || null;
+    const ownerPhone = enquiry.ownerPhone || enquiry.ownerId?.phone || null;
     const priority = item.priority || 'medium';
     const status = item.status || 'pending';
+    const isClientEnquiry = item.enquiryType === 'Inquiry';
+    const typeLabel = isClientEnquiry ? 'Property Inquiry' : 'Enquiry Lead';
 
     const priorityColor = priority === 'high' ? '#ef4444' : priority === 'medium' ? '#f59e0b' : '#6b7280';
     const statusColor = status === 'active' ? '#10b981' : status === 'completed' ? '#6366f1' : '#6b7280';
 
+    const targetEnquiryId = (item.enquiryId?._id || item.enquiryId || item.enquiry?._id || '').toString();
+
+    const handleOpenDetail = (isEdit = false) => {
+      if (targetEnquiryId) {
+        navigation.navigate('EnquiryDetail', {
+          enquiryId: targetEnquiryId,
+          clientName: clientName !== 'N/A' ? clientName : '',
+          isEdit,
+        });
+      }
+    };
+
     return (
-      <View style={styles.leadCard}>
+      <TouchableOpacity
+        style={styles.leadCard}
+        activeOpacity={0.85}
+        onPress={() => handleOpenDetail(false)}
+      >
         <View style={styles.cardHeader}>
           <View style={styles.cardLeft}>
             <Text style={styles.cardNumber}>#{index + 1}</Text>
-            <View style={styles.typeBadge}>
-              <Icon name="document-text" size={12} color="#3b82f6" />
-              <Text style={styles.typeText}>Enquiry Lead</Text>
+            <View style={[styles.typeBadge, isClientEnquiry && { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}>
+              <Icon name={isClientEnquiry ? "home-outline" : "document-text"} size={12} color={isClientEnquiry ? "#2563eb" : "#3b82f6"} />
+              <Text style={[styles.typeText, isClientEnquiry && { color: '#2563eb' }]}>{typeLabel}</Text>
             </View>
           </View>
           <View style={styles.cardRight}>
@@ -107,7 +135,14 @@ const AllLeadsScreen = ({ navigation }) => {
           <View style={styles.infoRow}>
             <Icon name="person" size={16} color="#6b7280" />
             <Text style={styles.infoLabel}>Client:</Text>
-            <Text style={styles.infoValue}>{clientName}</Text>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <Text style={styles.infoValue}>{clientName}</Text>
+              {clientCode ? (
+                <View style={{ backgroundColor: '#eff6ff', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, borderWidth: 1, borderColor: '#bfdbfe' }}>
+                  <Text style={{ color: '#1d4ed8', fontSize: 10, fontWeight: '700' }}>{clientCode}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
 
           <View style={styles.infoRow}>
@@ -115,6 +150,32 @@ const AllLeadsScreen = ({ navigation }) => {
             <Text style={styles.infoLabel}>Phone:</Text>
             <Text style={styles.infoValue}>{phone}</Text>
           </View>
+
+          {location ? (
+            <View style={styles.infoRow}>
+              <Icon name="location" size={16} color="#6b7280" />
+              <Text style={styles.infoLabel}>Location:</Text>
+              <Text style={styles.infoValue}>{location}</Text>
+            </View>
+          ) : null}
+
+          {productType ? (
+            <View style={styles.infoRow}>
+              <Icon name="business" size={16} color="#6b7280" />
+              <Text style={styles.infoLabel}>Type:</Text>
+              <Text style={styles.infoValue}>{productType}</Text>
+            </View>
+          ) : null}
+
+          {ownerName ? (
+            <View style={styles.infoRow}>
+              <Icon name="home" size={16} color="#16a34a" />
+              <Text style={[styles.infoLabel, { color: '#16a34a' }]}>Owner:</Text>
+              <Text style={[styles.infoValue, { color: '#166534', fontWeight: '600' }]}>
+                {ownerName} {ownerPhone ? `(📞 ${ownerPhone})` : ''}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.infoRow}>
             <Icon name="people" size={16} color="#6b7280" />
@@ -134,16 +195,22 @@ const AllLeadsScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.cardFooter}>
-          <TouchableOpacity style={styles.actionBtn}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => handleOpenDetail(false)}
+          >
             <Icon name="eye-outline" size={18} color="#3b82f6" />
             <Text style={styles.actionText}>View</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => handleOpenDetail(true)}
+          >
             <Icon name="create-outline" size={18} color="#10b981" />
             <Text style={[styles.actionText, { color: '#10b981' }]}>Edit</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -180,8 +247,8 @@ const AllLeadsScreen = ({ navigation }) => {
 
       <View style={styles.statsRow}>
         <StatCard title="TOTAL" value={leads.length} />
-        <StatCard title="ENQUIRY" value={leads.length} />
-        <StatCard title="CLIENT" value={0} />
+        <StatCard title="ENQUIRY" value={leads.filter(l => l.enquiryType === 'ManualInquiry' || !l.enquiryType).length} />
+        <StatCard title="CLIENT" value={leads.filter(l => l.enquiryType === 'Inquiry').length} />
       </View>
       
     </LinearGradient>

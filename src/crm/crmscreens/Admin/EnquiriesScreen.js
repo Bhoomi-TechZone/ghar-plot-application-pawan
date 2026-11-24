@@ -461,8 +461,14 @@ const EnquiriesScreen = ({ navigation, route }) => {
         const propertyId = typeof enquiry.propertyId === 'object' ? enquiry.propertyId?.customPropertyId || enquiry.propertyId?._id : enquiry.propertyId;
         const clientCode = enquiry.buyerId?.clientCode || enquiry.clientCode || enquiry.ClientCode || '';
         const propertyLocation = enquiry.propertyLocation || '';
+        const ownerName = enquiry.ownerName || '';
+        const ownerPhone = enquiry.ownerPhone || '';
+        const ownerClientCode = enquiry.ownerClientCode || '';
 
         return clientName.toLowerCase().includes(searchLower) ||
+          ownerName.toLowerCase().includes(searchLower) ||
+          ownerPhone.includes(searchText) ||
+          ownerClientCode.toLowerCase().includes(searchLower) ||
           email.toLowerCase().includes(searchLower) ||
           contactNumber.includes(searchText) ||
           (propertyId && propertyId.toString().toLowerCase().includes(searchLower)) ||

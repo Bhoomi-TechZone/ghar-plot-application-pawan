@@ -42,6 +42,8 @@ import AdminNotificationsInbox from '../crm/crmscreens/Admin/AdminNotificationsI
 import PropertyAnalytics from '../screens/CRM/PropertyManagement/PropertyAnalytics';
 import AllPropertiesScreen from '../screens/AllPropertiesScreen';
 import SitesManagementScreen from '../crm/crmscreens/Admin/SitesManagementScreen';
+import AdminAttendanceScreen from '../crm/crmscreens/Admin/AdminAttendanceScreen';
+import EmployeeAttendanceScreen from '../crm/crmscreens/Employee/EmployeeAttendanceScreen';
 
 const Stack = createStackNavigator();
 
@@ -235,6 +237,16 @@ const AdminNavigator = ({ onLogout }) => {
       <Stack.Screen
         name="AdminFollowUps"
         component={AdminFollowUps}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AdminAttendance"
+        component={AdminAttendanceScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="EmployeeAttendance"
+        component={EmployeeAttendanceScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

@@ -212,9 +212,15 @@ export const getAllEnquiriesMerged = async () => {
     if (userResponse.status === 'fulfilled' && userResponse.value?.success) {
       const clientEnquiries = (userResponse.value.data || []).map(enquiry => {
         // Safely extract data from nested objects
-        const buyerData = enquiry.buyerId || {};
-        const propertyData = enquiry.propertyId || {};
+        const buyerData = (typeof enquiry.buyerId === 'object' && enquiry.buyerId !== null) ? enquiry.buyerId : {};
+        const ownerData = (typeof enquiry.ownerId === 'object' && enquiry.ownerId !== null) ? enquiry.ownerId : {};
+        const propertyData = (typeof enquiry.propertyId === 'object' && enquiry.propertyId !== null) ? enquiry.propertyId : {};
         const assignmentData = enquiry.assignment || null;
+
+        const ownerName = ownerData.fullName || enquiry.ownerName || '';
+        const ownerPhone = ownerData.phone || enquiry.ownerPhone || '';
+        const ownerEmail = ownerData.email || '';
+        const ownerClientCode = ownerData.clientCode || '';
 
         return {
           _id: enquiry._id,
@@ -223,6 +229,16 @@ export const getAllEnquiriesMerged = async () => {
           clientName: buyerData.fullName || enquiry.fullName || 'N/A',
           email: buyerData.email || enquiry.email || 'N/A',
           contactNumber: buyerData.phone || enquiry.contactNumber || 'N/A',
+          buyerName: buyerData.fullName || enquiry.fullName || 'N/A',
+          buyerEmail: buyerData.email || enquiry.email || 'N/A',
+          buyerPhone: buyerData.phone || enquiry.contactNumber || 'N/A',
+          buyerClientCode: buyerData.clientCode || enquiry.clientCode || '',
+          // Property Owner (Seller) details
+          ownerName: ownerName,
+          ownerPhone: ownerPhone,
+          ownerEmail: ownerEmail,
+          ownerClientCode: ownerClientCode,
+          customPropertyId: enquiry.customPropertyId || propertyData.customPropertyId || '',
           propertyType: propertyData.propertyType || 'N/A',
           propertyLocation: propertyData.propertyLocation || 'N/A',
           price: propertyData.price || 'N/A',
@@ -231,14 +247,19 @@ export const getAllEnquiriesMerged = async () => {
           assignment: assignmentData ? {
             _id: assignmentData._id,
             employeeId: assignmentData.employeeId || null,
-            assignedAt: assignmentData.assignedAt
+            employeeName: assignmentData.employeeName || (typeof assignmentData.employeeId === 'object' ? (assignmentData.employeeId.fullName || assignmentData.employeeId.name) : null) || 'Assigned',
+            employeeEmail: assignmentData.employeeEmail || '',
+            employeePhone: assignmentData.employeePhone || '',
+            status: assignmentData.status || 'active',
+            priority: assignmentData.priority || 'medium',
+            assignedAt: assignmentData.assignedDate || assignmentData.assignedAt,
+            notes: assignmentData.notes || '',
           } : null,
-          // Only include essential flat properties
-          propertyId: enquiry.propertyId?._id || null,
-          buyerId: enquiry.buyerId?._id || null,
-          ownerId: enquiry.ownerId?._id || null,
-          comments: enquiry.comments || [], // Add comments array
-          majorComments: enquiry.majorComments || '', // Add majorComments
+          propertyId: enquiry.propertyId?._id || enquiry.propertyId || null,
+          buyerId: buyerData._id || enquiry.buyerId?._id || enquiry.buyerId || null,
+          ownerId: ownerData._id || enquiry.ownerId?._id || enquiry.ownerId || null,
+          comments: enquiry.comments || [],
+          majorComments: enquiry.majorComments || '',
         };
       });
       mergedData = [...mergedData, ...clientEnquiries];

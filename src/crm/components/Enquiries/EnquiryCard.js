@@ -151,6 +151,27 @@ const EnquiryCard = ({
         <Text style={styles.propertyId}>Property ID: {safePropertyId}</Text>
       </View>
 
+      {/* Property Owner (Seller) Information */}
+      {enquiry.ownerName ? (
+        <View style={styles.ownerSection}>
+          <View style={styles.ownerHeaderRow}>
+            <Text style={styles.ownerBadgeText}>🏡 PROPERTY OWNER</Text>
+            {enquiry.ownerClientCode ? (
+              <View style={styles.ownerCodeBadge}>
+                <Text style={styles.ownerCodeText}>ID: {enquiry.ownerClientCode}</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.ownerNameText}>{enquiry.ownerName}</Text>
+          {enquiry.ownerPhone ? (
+            <View style={styles.ownerDetailRow}>
+              <Text style={{ fontSize: 13, color: '#059669' }}>📞</Text>
+              <Text style={styles.ownerDetailText}>{enquiry.ownerPhone}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       {/* Contact Details */}
       <View style={styles.detailsSection}>
         <View style={styles.detailRow}>
@@ -386,6 +407,54 @@ const styles = StyleSheet.create({
   checkboxDisabled: {
     borderColor: '#e5e7eb',
     backgroundColor: '#f9fafb',
+  },
+  ownerSection: {
+    backgroundColor: '#f0fdf4',
+    borderLeftWidth: 3,
+    borderLeftColor: '#16a34a',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
+  ownerHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  ownerBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#15803d',
+    textTransform: 'uppercase',
+  },
+  ownerCodeBadge: {
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  ownerCodeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  ownerNameText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#14532d',
+    marginBottom: 2,
+  },
+  ownerDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  ownerDetailText: {
+    fontSize: 12,
+    color: '#166534',
+    fontWeight: '500',
   },
   clientSection: {
     marginBottom: 12,

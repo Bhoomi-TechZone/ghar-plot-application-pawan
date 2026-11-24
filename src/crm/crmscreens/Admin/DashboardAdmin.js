@@ -449,10 +449,15 @@ const AdminDashboardScreen = ({ navigation, user }) => {
         <View style={styles.statsRow}>{statsCards.map(renderCard)}</View>
 
         {/* Enquiry Section */}
-        <View style={styles.whiteCard}>
+        <TouchableOpacity
+          style={styles.whiteCard}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Enquiries')}
+        >
           <View style={styles.sectionHeader}>
             <Icon name="analytics" size={20} color="#3b82f6" />
             <Text style={styles.sectionTitle}>All Clients</Text>
+            <Icon name="chevron-forward" size={16} color="#9ca3af" style={{ marginLeft: 'auto' }} />
           </View>
 
           <View style={styles.enquiryRow}>
@@ -477,7 +482,7 @@ const AdminDashboardScreen = ({ navigation, user }) => {
               </View>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Property Overview Section */}
         <View style={styles.whiteCard}>
@@ -705,6 +710,18 @@ const AdminDashboardScreen = ({ navigation, user }) => {
                   style={styles.drawerItem}
                   onPress={() => {
                     setDrawerVisible(false);
+                    navigation.navigate('AdminAttendance');
+                  }}
+                >
+                  <Icon name="calendar-outline" size={20} color="#0ea5e9" />
+                  <Text style={styles.drawerItemText}>Attendance Management</Text>
+                  <Icon name="chevron-forward" size={16} color="#9ca3af" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.drawerItem}
+                  onPress={() => {
+                    setDrawerVisible(false);
                     navigation.navigate('BadAttendantAlerts');
                   }}
                 >
@@ -773,6 +790,13 @@ const AdminDashboardScreen = ({ navigation, user }) => {
                       { name: 'Add Work Status', viewType: 'add_work_status' },
                       { name: 'Client Payments', viewType: 'client_payments' },
                       { name: 'Add Client Payment', viewType: 'add_client_payment' },
+                      { name: 'Site Issues', viewType: 'site_issues' },
+                      { name: 'Add Site Issues', viewType: 'add_site_issues' },
+                      { name: 'Add Site Issue Category', viewType: 'add_site_issue_category' },
+                      { name: 'Site Issue Category', viewType: 'site_issue_category' },
+                      { name: 'Tools', viewType: 'tools' },
+                      { name: 'Add Tool', viewType: 'add_tool' },
+                      { name: 'Verify Tool', viewType: 'verify_tool' },
                     ].map((subItem) => (
                       <TouchableOpacity
                         key={subItem.viewType}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   ScrollView,
   Keyboard,
   Platform,
+  Modal,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import LinearGradient from "react-native-linear-gradient";
@@ -55,6 +56,25 @@ const SearchScreen = ({ navigation, route }) => {
   const [selectedBudgetIndex, setSelectedBudgetIndex] = useState(0);
   const [customMaxPrice, setCustomMaxPrice] = useState("");
   const [selectedType, setSelectedType] = useState("all");
+
+  // Mobile Filter Modal State
+  const initialOpenFilter = route?.params?.openFilter || false;
+  const [filterModalVisible, setFilterModalVisible] = useState(initialOpenFilter);
+
+  useEffect(() => {
+    if (route?.params?.openFilter) {
+      setFilterModalVisible(true);
+    }
+  }, [route?.params?.openFilter]);
+
+  // Active filter count
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedSort !== "newest") count++;
+    if (selectedBudgetIndex !== 0 || customMaxPrice) count++;
+    if (selectedType !== "all") count++;
+    return count;
+  }, [selectedSort, selectedBudgetIndex, customMaxPrice, selectedType]);
 
   // Results & Loading
   const [properties, setProperties] = useState([]);
@@ -243,7 +263,7 @@ const SearchScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </LinearGradient>
 
-      {/* ── Search Bar (Location Based Search) ── */}
+      {/* ── Search Bar with Native Filter Button ── */}
       <View style={styles.searchBarContainer}>
         <Icon name="location" size={20} color="#0066ff" />
         <TextInput
@@ -257,129 +277,256 @@ const SearchScreen = ({ navigation, route }) => {
         />
         {locationText.length > 0 && (
           <TouchableOpacity
-            style={{ padding: 4, marginRight: 6 }}
+            style={{ padding: 4, marginRight: 4 }}
             onPress={() => { setLocationText(""); performSearch(""); }}
           >
             <Icon name="close-circle" size={18} color="#9ca3af" />
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.searchIconBtn} onPress={handleLocationSubmit}>
-          <Icon name="search" size={18} color="#fff" />
-        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* ── Popular Location Chips ── */}
-        <View style={styles.popularLocContainer}>
-          <Text style={styles.popularLocTitle}>Popular:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {POPULAR_LOCATIONS.map((loc) => {
-              const isSelected = locationText.toLowerCase().includes(loc.toLowerCase());
-              return (
-                <TouchableOpacity
-                  key={loc}
-                  style={[styles.locChip, isSelected && styles.locChipActive]}
-                  onPress={() => handleQuickLocationSelect(loc)}
-                >
-                  <Text style={[styles.locChipText, isSelected && styles.locChipTextActive]}>
-                    {loc}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* ── Sort Filter (Price: Low to High / High to Low / Newest) ── */}
-        <View style={styles.filterSection}>
-          <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>⚡ Sort by Price & Relevance</Text>
-          </View>
-          <View style={styles.sortRow}>
-            {SORT_OPTIONS.map((sortOpt) => {
-              const isActive = selectedSort === sortOpt.value;
-              return (
-                <TouchableOpacity
-                  key={sortOpt.value}
-                  style={[styles.sortBtn, isActive && styles.sortBtnActive]}
-                  onPress={() => handleSortSelect(sortOpt.value)}
-                  activeOpacity={0.8}
-                >
-                  <Icon
-                    name={sortOpt.icon}
-                    size={16}
-                    color={isActive ? "#0066ff" : "#64748b"}
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text style={[styles.sortBtnText, isActive && styles.sortBtnTextActive]}>
-                    {sortOpt.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ── Budget Filter: "Kitne rupees ka property chahiye?" ── */}
-        <View style={styles.filterSection}>
-          <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>💰 Budget (Price Range)</Text>
-          </View>
-
-          {/* Quick Budget Pills */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillRow}>
-            {BUDGET_PRESETS.map((preset, idx) => {
-              const isActive = selectedBudgetIndex === idx && !customMaxPrice;
-              return (
-                <TouchableOpacity
-                  key={preset.label}
-                  style={[styles.pill, isActive && styles.pillActive]}
-                  onPress={() => handleBudgetSelect(idx)}
-                >
-                  <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
-                    {preset.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Custom Budget Input */}
-          <View style={styles.customBudgetRow}>
-            <TextInput
-              style={styles.customBudgetInput}
-              placeholder="Or enter custom max ₹ (e.g. 2500000)..."
-              placeholderTextColor="#9ca3af"
-              keyboardType="numeric"
-              value={customMaxPrice}
-              onChangeText={setCustomMaxPrice}
+      {/* ── Quick Filter Bar & Popular Chips ── */}
+      <View style={styles.quickBarContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickBarScroll}>
+          {/* Filter Modal Trigger Pill */}
+          <TouchableOpacity
+            style={[styles.quickFilterTrigger, activeFilterCount > 0 && styles.quickFilterTriggerActive]}
+            onPress={() => setFilterModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Icon
+              name="options-outline"
+              size={14}
+              color={activeFilterCount > 0 ? "#ffffff" : "#0066ff"}
+              style={{ marginRight: 4 }}
             />
-            <TouchableOpacity style={styles.customApplyBtn} onPress={handleApplyCustomBudget}>
-              <Text style={styles.customApplyText}>Apply</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+            <Text style={[styles.quickFilterTriggerText, activeFilterCount > 0 && styles.quickFilterTriggerTextActive]}>
+              Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
+            </Text>
+            <Icon
+              name="chevron-down"
+              size={13}
+              color={activeFilterCount > 0 ? "#ffffff" : "#0066ff"}
+              style={{ marginLeft: 2 }}
+            />
+          </TouchableOpacity>
 
-        {/* ── Property Type Filter ── */}
-        <View style={styles.filterSection}>
-          <Text style={styles.sectionTitle}>🏠 Property Type</Text>
-          <View style={styles.typeRow}>
-            {TYPE_PRESETS.map((t) => {
-              const isActive = selectedType === t.value;
-              return (
-                <TouchableOpacity
-                  key={t.value}
-                  style={[styles.typeBtn, isActive && styles.typeBtnActive]}
-                  onPress={() => handleTypeSelect(t.value)}
-                >
-                  <Text style={[styles.typeBtnText, isActive && styles.typeBtnTextActive]}>
-                    {t.label}
-                  </Text>
+          {/* Active Filter Removable Chips */}
+          {selectedType !== "all" && (
+            <TouchableOpacity
+              style={styles.activeFilterChip}
+              onPress={() => handleTypeSelect("all")}
+            >
+              <Text style={styles.activeFilterChipText}>
+                {TYPE_PRESETS.find((t) => t.value === selectedType)?.label || selectedType}
+              </Text>
+              <Icon name="close-circle" size={14} color="#0066ff" style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          )}
+
+          {(selectedBudgetIndex !== 0 || customMaxPrice) && (
+            <TouchableOpacity
+              style={styles.activeFilterChip}
+              onPress={() => {
+                setSelectedBudgetIndex(0);
+                setCustomMaxPrice("");
+                performSearch(locationText, BUDGET_PRESETS[0], selectedType, selectedSort);
+              }}
+            >
+              <Text style={styles.activeFilterChipText}>
+                {customMaxPrice ? `Max ₹${customMaxPrice}` : BUDGET_PRESETS[selectedBudgetIndex].label}
+              </Text>
+              <Icon name="close-circle" size={14} color="#0066ff" style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          )}
+
+          {selectedSort !== "newest" && (
+            <TouchableOpacity
+              style={styles.activeFilterChip}
+              onPress={() => handleSortSelect("newest")}
+            >
+              <Text style={styles.activeFilterChipText}>
+                {SORT_OPTIONS.find((s) => s.value === selectedSort)?.label}
+              </Text>
+              <Icon name="close-circle" size={14} color="#0066ff" style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          )}
+
+          {/* Divider */}
+          <View style={styles.quickBarDivider} />
+
+          {/* Popular Locations Chips */}
+          {POPULAR_LOCATIONS.map((loc) => {
+            const isSelected = locationText.toLowerCase().includes(loc.toLowerCase());
+            return (
+              <TouchableOpacity
+                key={loc}
+                style={[styles.locChip, isSelected && styles.locChipActive]}
+                onPress={() => handleQuickLocationSelect(loc)}
+              >
+                <Text style={[styles.locChipText, isSelected && styles.locChipTextActive]}>
+                  {loc}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* ── Native Mobile Filter BottomSheet Modal ── */}
+      <Modal
+        visible={filterModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setFilterModalVisible(false)}
+        >
+          <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
+            {/* Sheet Handle */}
+            <View style={styles.sheetDragHandle} />
+
+            {/* Modal Header */}
+            <View style={styles.sheetHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Icon name="options" size={20} color="#0066ff" />
+                <Text style={styles.sheetTitle}>Filters & Sort</Text>
+                {activeFilterCount > 0 && (
+                  <View style={styles.activeCountBadge}>
+                    <Text style={styles.activeCountBadgeText}>{activeFilterCount} active</Text>
+                  </View>
+                )}
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+                <TouchableOpacity onPress={handleClearFilters} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.modalResetLink}>Reset All</Text>
                 </TouchableOpacity>
-              );
-            })}
+                <TouchableOpacity
+                  onPress={() => setFilterModalVisible(false)}
+                  style={styles.sheetCloseBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Icon name="close" size={22} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Scrollable Filters Content */}
+            <ScrollView style={styles.sheetBody} showsVerticalScrollIndicator={false}>
+              {/* 1. Sort by Price & Relevance */}
+              <View style={styles.modalSectionCard}>
+                <Text style={styles.modalSectionTitle}>⚡ Sort by Price & Relevance</Text>
+                <View style={styles.sortRow}>
+                  {SORT_OPTIONS.map((sortOpt) => {
+                    const isActive = selectedSort === sortOpt.value;
+                    return (
+                      <TouchableOpacity
+                        key={sortOpt.value}
+                        style={[styles.sortBtn, isActive && styles.sortBtnActive]}
+                        onPress={() => handleSortSelect(sortOpt.value)}
+                        activeOpacity={0.8}
+                      >
+                        <Icon
+                          name={sortOpt.icon}
+                          size={16}
+                          color={isActive ? "#0066ff" : "#64748b"}
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text style={[styles.sortBtnText, isActive && styles.sortBtnTextActive]}>
+                          {sortOpt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* 2. Budget (Price Range) */}
+              <View style={styles.modalSectionCard}>
+                <Text style={styles.modalSectionTitle}>💰 Budget (Price Range)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillRow}>
+                  {BUDGET_PRESETS.map((preset, idx) => {
+                    const isActive = selectedBudgetIndex === idx && !customMaxPrice;
+                    return (
+                      <TouchableOpacity
+                        key={preset.label}
+                        style={[styles.pill, isActive && styles.pillActive]}
+                        onPress={() => handleBudgetSelect(idx)}
+                      >
+                        <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                          {preset.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Custom Budget Input */}
+                <View style={styles.customBudgetRow}>
+                  <TextInput
+                    style={styles.customBudgetInput}
+                    placeholder="Or enter custom max ₹ (e.g. 2500000)..."
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="numeric"
+                    value={customMaxPrice}
+                    onChangeText={setCustomMaxPrice}
+                  />
+                  <TouchableOpacity style={styles.customApplyBtn} onPress={handleApplyCustomBudget}>
+                    <Text style={styles.customApplyText}>Apply</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* 3. Property Type */}
+              <View style={styles.modalSectionCard}>
+                <Text style={styles.modalSectionTitle}>🏠 Property Type</Text>
+                <View style={styles.typeRow}>
+                  {TYPE_PRESETS.map((t) => {
+                    const isActive = selectedType === t.value;
+                    return (
+                      <TouchableOpacity
+                        key={t.value}
+                        style={[styles.typeBtn, isActive && styles.typeBtnActive]}
+                        onPress={() => handleTypeSelect(t.value)}
+                      >
+                        <Text style={[styles.typeBtnText, isActive && styles.typeBtnTextActive]}>
+                          {t.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Sticky Sheet Footer Actions */}
+            <View style={styles.sheetFooter}>
+              <TouchableOpacity
+                style={styles.sheetClearBtn}
+                onPress={handleClearFilters}
+              >
+                <Text style={styles.sheetClearBtnText}>Clear All</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sheetApplyBtn}
+                onPress={() => {
+                  setFilterModalVisible(false);
+                  performSearch();
+                }}
+              >
+                <Text style={styles.sheetApplyBtnText}>
+                  Show Properties ({properties.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
         {/* ── Results Header ── */}
         <View style={styles.resultsHeader}>
@@ -431,6 +578,231 @@ const SearchScreen = ({ navigation, route }) => {
 export default SearchScreen;
 
 const styles = StyleSheet.create({
+  // --- Native Filter Button & Badges in Search Bar ---
+  filterIconBtn: {
+    backgroundColor: '#eff6ff',
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  filterIconBtnActive: {
+    backgroundColor: '#0066ff',
+    borderColor: '#0066ff',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  filterBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+
+  // --- Quick Horizontal Filter Bar ---
+  quickBarContainer: {
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  quickBarScroll: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  quickFilterTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#0066ff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 8,
+    shadowColor: '#0066ff',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  quickFilterTriggerActive: {
+    backgroundColor: '#0066ff',
+    borderColor: '#0066ff',
+  },
+  quickFilterTriggerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0066ff',
+  },
+  quickFilterTriggerTextActive: {
+    color: '#ffffff',
+  },
+  activeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#93c5fd',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    marginRight: 6,
+  },
+  activeFilterChipText: {
+    fontSize: 12,
+    color: '#1d4ed8',
+    fontWeight: '600',
+  },
+  quickBarDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: '#cbd5e1',
+    marginHorizontal: 6,
+  },
+
+  // --- Native Bottom Sheet Modal Styles ---
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 20,
+    overflow: 'hidden',
+  },
+  sheetDragHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#cbd5e1',
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  sheetTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  activeCountBadge: {
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  activeCountBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0066ff',
+  },
+  modalResetLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ef4444',
+  },
+  sheetCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sheetBody: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  modalSectionCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  modalSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 10,
+  },
+  sheetFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    backgroundColor: '#ffffff',
+  },
+  sheetClearBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  sheetClearBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  sheetApplyBtn: {
+    flex: 2,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: '#0066ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0066ff',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  sheetApplyBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",

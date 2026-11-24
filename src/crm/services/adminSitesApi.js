@@ -555,6 +555,217 @@ export const getDirectExportUrl = (type, params = {}) => {
   return `${BASE_URL}/admin/export/csv?${query}`;
 };
 
+
+/**
+ * ========================================================
+ * SITE ISSUES & SITE ISSUE CATEGORIES APIs
+ * ========================================================
+ */
+
+export const getSiteIssueCategories = async () => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/site-issues/categories`, {
+      method: 'GET',
+      headers,
+    });
+    const data = await handleResponse(response);
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching site issue categories:', error);
+    return [];
+  }
+};
+
+export const createSiteIssueCategory = async (categoryData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/site-issues/categories`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(categoryData),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error creating site issue category:', error);
+    throw error;
+  }
+};
+
+export const deleteSiteIssueCategory = async (id) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/site-issues/categories/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error deleting site issue category:', error);
+    throw error;
+  }
+};
+
+export const getSiteIssues = async (params = {}) => {
+  try {
+    const headers = await getAuthHeaders();
+    const query = new URLSearchParams(params).toString();
+    const url = `${BASE_URL}/admin/site-issues${query ? '?' + query : ''}`;
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers,
+    });
+    const data = await handleResponse(response);
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching site issues:', error);
+    return [];
+  }
+};
+
+export const createSiteIssue = async (issueData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/site-issues`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(issueData),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error creating site issue:', error);
+    throw error;
+  }
+};
+
+export const updateSiteIssue = async (id, issueData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/site-issues/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(issueData),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error updating site issue:', error);
+    throw error;
+  }
+};
+
+export const deleteSiteIssue = async (id) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/site-issues/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error deleting site issue:', error);
+    throw error;
+  }
+};
+
+/**
+ * ========================================================
+ * TOOLS & VERIFY TOOLS APIs
+ * ========================================================
+ */
+
+export const getSiteTools = async (params = {}) => {
+  try {
+    const headers = await getAuthHeaders();
+    const query = new URLSearchParams(params).toString();
+    const url = `${BASE_URL}/admin/site-tools${query ? '?' + query : ''}`;
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers,
+    });
+    const data = await handleResponse(response);
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching site tools:', error);
+    return [];
+  }
+};
+
+export const createSiteTool = async (toolData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/site-tools`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(toolData),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error creating site tool:', error);
+    throw error;
+  }
+};
+
+export const updateSiteTool = async (id, toolData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/site-tools/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(toolData),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error updating site tool:', error);
+    throw error;
+  }
+};
+
+export const deleteSiteTool = async (id) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/site-tools/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error deleting site tool:', error);
+    throw error;
+  }
+};
+
+export const verifyToolTransfer = async (transferData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/admin/site-tools/verify-transfer`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(transferData),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error verifying/transferring tool:', error);
+    throw error;
+  }
+};
+
+export const getToolTransfers = async (params = {}) => {
+  try {
+    const headers = await getAuthHeaders();
+    const query = new URLSearchParams(params).toString();
+    const url = `${BASE_URL}/admin/site-tools/transfers${query ? '?' + query : ''}`;
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers,
+    });
+    const data = await handleResponse(response);
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching tool transfers:', error);
+    return [];
+  }
+};
+
 export { BASE_URL };
 
 
@@ -586,4 +797,17 @@ export default {
   deleteWorkStatus,
   generateExportFile,
   getDirectExportUrl,
+  getSiteIssueCategories,
+  createSiteIssueCategory,
+  deleteSiteIssueCategory,
+  getSiteIssues,
+  createSiteIssue,
+  updateSiteIssue,
+  deleteSiteIssue,
+  getSiteTools,
+  createSiteTool,
+  updateSiteTool,
+  deleteSiteTool,
+  verifyToolTransfer,
+  getToolTransfers,
 };

@@ -1417,6 +1417,16 @@ const Homescreen = ({ navigation }) => {
                             <Icon name="search" size={16} color="#fff" />
                         </LinearGradient>
                     </View>
+                    <TouchableOpacity
+                        style={styles.homeFilterBtn}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            navigation.navigate('SearchScreen', { openFilter: true });
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <Icon name="options-outline" size={17} color={theme.COLORS.primary} />
+                    </TouchableOpacity>
                 </TouchableOpacity>
             </View>
 
@@ -1722,6 +1732,15 @@ const styles = StyleSheet.create({
         color: '#1F2937',
         fontWeight: '600',
         paddingVertical: Platform.OS === 'ios' ? 12 : 0,
+    },
+    homeFilterBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 14,
+        backgroundColor: 'rgba(30, 144, 255, 0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 6,
     },
     searchSubmitBtn: {
         borderRadius: 14,

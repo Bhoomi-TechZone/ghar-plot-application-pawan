@@ -24,6 +24,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import * as adminSitesApi from '../../services/adminSitesApi';
 import sitesMasterCache from '../../services/sitesMasterCache';
+import SiteIssuesAndToolsModule from '../../components/SiteManagement/SiteIssuesAndToolsModule';
 
 const { width } = Dimensions.get('window');
 
@@ -256,6 +257,16 @@ const SitesManagementScreen = ({ route, navigation }) => {
       case 'add_client_payment':
       case 'edit_client_payment':
         setCurrentView('client_payments');
+        break;
+      case 'add_site_issues':
+        setCurrentView('site_issues');
+        break;
+      case 'add_site_issue_category':
+        setCurrentView('site_issue_category');
+        break;
+      case 'add_tool':
+      case 'verify_tool':
+        setCurrentView('tools');
         break;
       default:
         if (navigation.canGoBack()) {
@@ -1468,6 +1479,20 @@ const SitesManagementScreen = ({ route, navigation }) => {
         return { title: 'Add Client Payment' };
       case 'edit_client_payment':
         return { title: 'Edit Client Payment' };
+      case 'site_issues':
+        return { title: 'Site Issues' };
+      case 'add_site_issues':
+        return { title: 'Add Site Issues' };
+      case 'add_site_issue_category':
+        return { title: 'Add Site Issue Category' };
+      case 'site_issue_category':
+        return { title: 'Site Issue Category' };
+      case 'tools':
+        return { title: 'Tools Management' };
+      case 'add_tool':
+        return { title: 'Add Tool' };
+      case 'verify_tool':
+        return { title: 'Verify Tool' };
       default:
         return { title: 'Sites Management' };
     }
@@ -4098,6 +4123,23 @@ const SitesManagementScreen = ({ route, navigation }) => {
       case 'add_client_payment':
       case 'edit_client_payment':
         return renderAddClientPayment();
+      case 'site_issues':
+      case 'add_site_issues':
+      case 'add_site_issue_category':
+      case 'site_issue_category':
+      case 'tools':
+      case 'add_tool':
+      case 'verify_tool':
+        return (
+          <SiteIssuesAndToolsModule
+            currentView={currentView}
+            setCurrentView={setCurrentView}
+            apiProjects={apiProjects}
+            apiClients={apiClients}
+            apiEmployees={apiEmployees}
+            apiBusinessAssociates={apiEmployees}
+          />
+        );
       default:
         return (
           <View style={styles.centerAlignContainer}>

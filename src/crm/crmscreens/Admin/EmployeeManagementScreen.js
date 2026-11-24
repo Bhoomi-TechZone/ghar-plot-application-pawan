@@ -921,46 +921,45 @@ const EmployeeManagementScreen = ({ navigation }) => {
         />
       </View>
 
-      <ScrollView
-        style={styles.cardActionsContainer}
-        horizontal={true}
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-      >
+      <View style={styles.cardActionsContainer}>
         <View style={styles.cardActions}>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, styles.remindersButton]}
             onPress={() => handleViewReminders(item)}
+            activeOpacity={0.7}
           >
-            <Icon name="list" size={16} color="#3b82f6" />
-            <Text style={styles.actionText}>Reminders</Text>
+            <Icon name="list" size={13} color="#2563eb" />
+            <Text style={[styles.actionText, { color: '#2563eb' }]} numberOfLines={1}>Reminders</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, styles.editButton]}
             onPress={() => openEditEmployee(item)}
+            activeOpacity={0.7}
           >
-            <Icon name="create" size={16} color="#3b82f6" />
-            <Text style={styles.actionText}>Edit</Text>
+            <Icon name="create" size={13} color="#0284c7" />
+            <Text style={[styles.actionText, { color: '#0369a1' }]} numberOfLines={1}>Edit</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, styles.uspButton]}
             onPress={() => openUspModal(item)}
+            activeOpacity={0.7}
           >
-            <Icon name="star" size={16} color="#f59e0b" />
-            <Text style={styles.actionText}>USP</Text>
+            <Icon name="star" size={13} color="#d97706" />
+            <Text style={[styles.actionText, { color: '#d97706' }]} numberOfLines={1}>USP</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, styles.deleteButton]}
             onPress={() => handleDeleteEmployee(item)}
+            activeOpacity={0.7}
           >
-            <Icon name="trash" size={16} color="#ef4444" />
-            <Text style={styles.actionText}>Delete</Text>
+            <Icon name="trash" size={13} color="#dc2626" />
+            <Text style={[styles.actionText, { color: '#dc2626' }]} numberOfLines={1}>Delete</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 
@@ -1780,50 +1779,56 @@ const styles = StyleSheet.create({
   },
   cardActionsContainer: {
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
     backgroundColor: '#ffffff',
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
   },
   cardActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
+    width: '100%',
   },
   actionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    justifyContent: 'center',
     paddingVertical: 7,
+    paddingHorizontal: 2,
     borderRadius: 8,
     backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    minWidth: 90,
-    justifyContent: 'center',
-    flexShrink: 0,
-    gap: 4,
+    borderColor: '#e2e8f0',
+    gap: 3,
+  },
+  remindersButton: {
+    borderColor: '#bfdbfe',
+    backgroundColor: '#eff6ff',
   },
   editButton: {
-    borderColor: '#dbeafe',
-    backgroundColor: '#eff6ff',
+    borderColor: '#bae6fd',
+    backgroundColor: '#f0f9ff',
   },
   passwordButton: {
     borderColor: '#fef3c7',
     backgroundColor: '#fffbeb',
   },
   uspButton: {
-    borderColor: '#fef3c7',
+    borderColor: '#fde68a',
     backgroundColor: '#fffbeb',
   },
   deleteButton: {
-    borderColor: '#fee2e2',
+    borderColor: '#fecaca',
     backgroundColor: '#fef2f2',
   },
   actionText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#374151',
   },
   loadingContainer: {
