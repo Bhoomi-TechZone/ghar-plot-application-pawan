@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Employee Follow-ups Screen
  * Manage follow-up activities with leads and contacts
  */
@@ -416,7 +416,13 @@ const EmployeeFollowUps = ({ navigation, openDrawer }) => {
               <View key={idx} style={styles.commentBubble}>
                 <View style={styles.commentHeader}>
                   <Text style={styles.commentAuthor}>
-                    {comment.commentByName || 'Unknown'}
+                    {comment.commentByName ||
+                      comment.commentBy?.name ||
+                      comment.commentBy?.fullName ||
+                      comment.commentBy?.email ||
+                      item.assignedAgent?.name ||
+                      item.createdBy?.name ||
+                      'Employee'}
                   </Text>
                   <View style={[styles.actionBadge, { backgroundColor: getActionTypeColor(comment.actionTaken) }]}>
                     <Icon 
@@ -497,8 +503,8 @@ const EmployeeFollowUps = ({ navigation, openDrawer }) => {
               onPress={() => handleCloseFollowUp(item)}
               activeOpacity={0.8}
             >
-              <Icon name="check-circle" size={16} color="#fff" />
-              <Text style={styles.actionButtonText}>Close</Text>
+              <Icon name="check-circle" size={14} color="#fff" />
+              <Text style={styles.actionButtonText} numberOfLines={1}>Close</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -506,8 +512,8 @@ const EmployeeFollowUps = ({ navigation, openDrawer }) => {
               onPress={() => handleAddComment(item)}
               activeOpacity={0.8}
             >
-              <Icon name="comment-plus" size={16} color="#fff" />
-              <Text style={styles.actionButtonText}>Comment</Text>
+              <Icon name="comment-plus" size={14} color="#fff" />
+              <Text style={styles.actionButtonText} numberOfLines={1}>Comment</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -515,8 +521,8 @@ const EmployeeFollowUps = ({ navigation, openDrawer }) => {
               onPress={() => handleMarkNotInterested(item._id, clientName)}
               activeOpacity={0.8}
             >
-              <Icon name="close-circle" size={16} color="#fff" />
-              <Text style={styles.actionButtonText}>Reject</Text>
+              <Icon name="close-circle" size={14} color="#fff" />
+              <Text style={styles.actionButtonText} numberOfLines={1}>Reject</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1262,20 +1268,23 @@ const styles = StyleSheet.create({
   // Actions Row
   actionsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 12,
-    gap: 8,
+    gap: 6,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
   actionButton: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 6,
     borderRadius: 10,
-    gap: 6,
+    gap: 4,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -1293,12 +1302,15 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: '#6B7280',
+    flex: 0,
+    width: 38,
+    paddingHorizontal: 0,
   },
   actionButtonText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.2,
+    flexShrink: 1,
   },
   
   // Result Section

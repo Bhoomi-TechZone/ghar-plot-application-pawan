@@ -199,8 +199,12 @@ const EmployeeLogin = () => {
                 style={[styles.tab, activeTab === "admin" && styles.activeTab]}
                 onPress={switchToAdminLogin}
               >
-                <Icon name="shield-checkmark" size={20} color={activeTab === "admin" ? "#fff" : "#666"} />
-                <Text style={[styles.tabText, activeTab === "admin" && styles.activeTabText]}>
+                <Icon name="shield-checkmark" size={18} color={activeTab === "admin" ? "#fff" : "#666"} />
+                <Text
+                  style={[styles.tabText, activeTab === "admin" && styles.activeTabText]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
                   Admin Login
                 </Text>
               </TouchableOpacity>
@@ -208,8 +212,12 @@ const EmployeeLogin = () => {
                 style={[styles.tab, activeTab === "employee" && styles.activeTab]}
                 onPress={() => setActiveTab("employee")}
               >
-                <Icon name="person" size={20} color={activeTab === "employee" ? "#fff" : "#1E90FF"} />
-                <Text style={[styles.tabText, activeTab === "employee" && styles.activeTabText]}>
+                <Icon name="person" size={18} color={activeTab === "employee" ? "#fff" : "#1E90FF"} />
+                <Text
+                  style={[styles.tabText, activeTab === "employee" && styles.activeTabText]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
                   Employee Login
                 </Text>
               </TouchableOpacity>
@@ -332,8 +340,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     borderRadius: 12,
+    gap: 6,
   },
   activeTab: {
     backgroundColor: "#1E90FF",
@@ -344,10 +354,10 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   tabText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     color: "#666",
-    marginLeft: 8,
+    flexShrink: 1,
   },
   activeTabText: {
     color: "#fff",

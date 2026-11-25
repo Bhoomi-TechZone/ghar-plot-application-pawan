@@ -38,6 +38,9 @@ const AdminAttendanceScreen = ({ navigation }) => {
   const [matrixData, setMatrixData] = useState(null);
   const [shiftsList, setShiftsList] = useState([]);
 
+  // Day Details Modal state
+  const [dayDetailInfo, setDayDetailInfo] = useState(null);
+
   // Regularize Attendance Modal state
   const [regularizeModalVisible, setRegularizeModalVisible] = useState(false);
   const [regularizeForm, setRegularizeForm] = useState({
@@ -164,6 +167,52 @@ const AdminAttendanceScreen = ({ navigation }) => {
     } catch (e) {
       Alert.alert('Export Error', e.message);
     }
+  };
+
+  const formatHHMMTo12Hr = (hhmm) => {
+    if (!hhmm) return '';
+    const str = String(hhmm).trim();
+    if (/AM|PM/i.test(str)) return str.toUpperCase();
+    const parts = str.split(':');
+    if (parts.length < 2) return str;
+    let h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return str;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+
+  const formatShiftRange = (rangeStr) => {
+    const raw = String(rangeStr || '09:30 - 18:30');
+    const parts = raw.split('-').map((p) => p.trim());
+    if (parts.length === 2) {
+      return `${formatHHMMTo12Hr(parts[0])} - ${formatHHMMTo12Hr(parts[1])}`;
+    }
+    return raw;
+  };
+
+  const formatDuration = (hoursDecimal) => {
+    const totalMins = Math.max(0, Math.round((Number(hoursDecimal) || 0) * 60));
+    if (totalMins <= 0) return '0 mins';
+    if (totalMins < 60) return `${totalMins} mins`;
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h} hrs`;
+  };
+
+  const openDayDetailModal = (emp, dayInfo) => {
+    const formattedDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(dayInfo.day).padStart(2, '0')}`;
+    const rawSt = dayInfo.status;
+    const displayStatus =
+      rawSt === 'P' ? 'Present'
+      : rawSt === 'L' ? 'Late'
+      : rawSt === 'HD' ? 'Half Day'
+      : rawSt === 'A' ? 'Absent'
+      : rawSt === 'OFF' ? 'Week Off'
+      : rawSt === '-' ? 'Upcoming'
+      : rawSt;
+    setDayDetailInfo({ emp, dayInfo, dateStr: formattedDate, displayStatus });
   };
 
   const openRegularizeModal = (emp, dayInfo) => {
@@ -421,7 +470,7 @@ const AdminAttendanceScreen = ({ navigation }) => {
                           <TouchableOpacity
                             key={dayItem.day}
                             style={[styles.matrixBadgeCell, { backgroundColor: bg }]}
-                            onPress={() => openRegularizeModal(emp, dayItem)}
+                            onPress={() => openDayDetailModal(emp, dayItem)}
                           >
                             <Text style={[styles.matrixBadgeText, { color: fg }]}>{text}</Text>
                           </TouchableOpacity>
@@ -477,11 +526,11 @@ const AdminAttendanceScreen = ({ navigation }) => {
             <View style={styles.shiftDetailGrid}>
               <View style={styles.shiftParamBox}>
                 <Text style={styles.shiftParamLbl}>Shift Start</Text>
-                <Text style={styles.shiftParamVal}>{selectedShift?.startTime || '09:30'} AM</Text>
+                <Text style={styles.shiftParamVal}>{formatHHMMTo12Hr(selectedShift?.startTime || '09:30')}</Text>
               </View>
               <View style={styles.shiftParamBox}>
                 <Text style={styles.shiftParamLbl}>Shift End</Text>
-                <Text style={styles.shiftParamVal}>{selectedShift?.endTime || '18:30'} PM</Text>
+                <Text style={styles.shiftParamVal}>{formatHHMMTo12Hr(selectedShift?.endTime || '18:30')}</Text>
               </View>
               <View style={styles.shiftParamBox}>
                 <Text style={styles.shiftParamLbl}>Grace Period</Text>
@@ -512,6 +561,115 @@ const AdminAttendanceScreen = ({ navigation }) => {
             </Text>
           </View>
         </ScrollView>
+      )}
+
+      {/* Day Details Modal */}
+      {dayDetailInfo && (
+        <Modal transparent animationType="fade" visible={!!dayDetailInfo}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Attendance Details</Text>
+                <TouchableOpacity onPress={() => setDayDetailInfo(null)}>
+                  <Icon name="close" size={22} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSubHeader}>
+                {dayDetailInfo.emp.name} ({dayDetailInfo.emp.code}) • {dayDetailInfo.dateStr}
+              </Text>
+
+              <View style={styles.dayDetailRow}>
+                <Text style={styles.dayDetailLbl}>Day Status:</Text>
+                <Text
+                  style={[
+                    styles.dayDetailVal,
+                    {
+                      fontWeight: '700',
+                      color:
+                        dayDetailInfo.displayStatus === 'Present'
+                          ? '#16a34a'
+                          : dayDetailInfo.displayStatus === 'Late'
+                          ? '#d97706'
+                          : dayDetailInfo.displayStatus === 'Half Day'
+                          ? '#ea580c'
+                          : dayDetailInfo.displayStatus === 'Absent'
+                          ? '#dc2626'
+                          : '#64748b',
+                    },
+                  ]}
+                >
+                  {dayDetailInfo.displayStatus}
+                </Text>
+              </View>
+
+              <View style={styles.dayDetailRow}>
+                <Text style={styles.dayDetailLbl}>Check-In Time:</Text>
+                <Text style={styles.dayDetailVal}>
+                  {dayDetailInfo.dayInfo.checkIn || 'Not Checked In'}
+                </Text>
+              </View>
+
+              <View style={styles.dayDetailRow}>
+                <Text style={styles.dayDetailLbl}>Check-Out Time:</Text>
+                <Text style={styles.dayDetailVal}>
+                  {dayDetailInfo.dayInfo.checkOut || 'Not Checked Out'}
+                </Text>
+              </View>
+
+              <View style={styles.dayDetailRow}>
+                <Text style={styles.dayDetailLbl}>Working Hours:</Text>
+                <Text style={[styles.dayDetailVal, { color: '#0284c7', fontWeight: '700' }]}>
+                  {formatDuration(dayDetailInfo.dayInfo.hours)}
+                </Text>
+              </View>
+
+              {!!dayDetailInfo.dayInfo.shiftTiming && (
+                <View style={styles.dayDetailRow}>
+                  <Text style={styles.dayDetailLbl}>Shift Timing:</Text>
+                  <Text style={styles.dayDetailVal}>{formatShiftRange(dayDetailInfo.dayInfo.shiftTiming)}</Text>
+                </View>
+              )}
+
+              {dayDetailInfo.dayInfo.lateMinutes > 0 && (
+                <View style={styles.dayDetailRow}>
+                  <Text style={styles.dayDetailLbl}>Late By:</Text>
+                  <Text style={[styles.dayDetailVal, { color: '#d97706', fontWeight: '700' }]}>
+                    {dayDetailInfo.dayInfo.lateMinutes} mins
+                  </Text>
+                </View>
+              )}
+
+              {!!dayDetailInfo.dayInfo.lateReason && (
+                <View style={styles.dayDetailRow}>
+                  <Text style={styles.dayDetailLbl}>Late Reason:</Text>
+                  <Text style={[styles.dayDetailVal, { flex: 1, textAlign: 'right', marginLeft: 12 }]}>
+                    {dayDetailInfo.dayInfo.lateReason}
+                  </Text>
+                </View>
+              )}
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+                <TouchableOpacity
+                  style={[styles.submitBtn, { flex: 1, marginTop: 0, backgroundColor: '#64748b' }]}
+                  onPress={() => setDayDetailInfo(null)}
+                >
+                  <Text style={styles.btnTextWhite}>Close</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.submitBtn, { flex: 1, marginTop: 0, backgroundColor: '#0ea5e9' }]}
+                  onPress={() => {
+                    const { emp, dayInfo } = dayDetailInfo;
+                    setDayDetailInfo(null);
+                    openRegularizeModal(emp, dayInfo);
+                  }}
+                >
+                  <Text style={styles.btnTextWhite}>Edit / Regularize</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
 
       {/* Regularize Modal */}
@@ -1101,6 +1259,23 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '700',
+  },
+  dayDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dayDetailLbl: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  dayDetailVal: {
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '600',
   },
 });
 

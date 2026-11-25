@@ -163,6 +163,8 @@ const USPEmployeesScreen = ({ navigation }) => {
 
   // Filter State
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showCategoryFilters, setShowCategoryFilters] = useState(false);
+  const [listSearchQuery, setListSearchQuery] = useState('');
 
   // Form States
   const [formData, setFormData] = useState({
@@ -563,10 +565,34 @@ const USPEmployeesScreen = ({ navigation }) => {
     });
   };
 
-  // Filtered Employees
-  const filteredEmployees = selectedCategory === 'all'
-    ? employees
-    : employees.filter(emp => emp.category?._id === selectedCategory);
+  // Filtered Employees (category + search query)
+  const filteredEmployees = employees.filter(emp => {
+    const matchesCategory = selectedCategory === 'all' || emp.category?._id === selectedCategory;
+    if (!matchesCategory) return false;
+    if (!listSearchQuery.trim()) return true;
+    const normalizeText = (s) =>
+      String(s || '')
+        .toLowerCase()
+        .replace(/[\u2018\u2019\u201A\u201B\u2032\u02BC`´]/g, "'")
+        .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const q = normalizeText(listSearchQuery);
+    const empName = normalizeText(emp.employeeType === 'manual' ? emp.manualName : emp.employee?.name);
+    const empPhone = normalizeText(emp.employeeType === 'manual' ? emp.manualPhone : emp.employee?.phone);
+    const catName = normalizeText(emp.category?.name);
+    const expertise = normalizeText(emp.expertise);
+    const desc = normalizeText(emp.description);
+    const remTitle = normalizeText(emp.reminderTitle);
+    return (
+      empName.includes(q) ||
+      empPhone.includes(q) ||
+      catName.includes(q) ||
+      expertise.includes(q) ||
+      desc.includes(q) ||
+      remTitle.includes(q)
+    );
+  });
 
   // Handle Show Modal
   const handleShowModal = (type = 'system', employee = null) => {
@@ -1144,48 +1170,85 @@ const USPEmployeesScreen = ({ navigation }) => {
             )}
           </View>
 
-          {/* Filter Section */}
+          {/* Filter & Search Section */}
           <View style={styles.filterContainer}>
-            <View style={styles.filterHeader}>
-              <Icon name="filter-list" size={20} color="#10b981" />
-              <Text style={styles.filterTitle}>Filter by Category</Text>
+            <View style={[styles.filterHeader, { marginBottom: 10 }]}>
+              <Text style={styles.filterTitle}>Team USP Directory</Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{filteredEmployees.length} Employees</Text>
               </View>
             </View>
-            <View style={styles.categoryFilterContainer}>
+
+            {/* Search Bar + Filter Icon Toggle */}
+            <View style={styles.uspSearchRow}>
+              <View style={styles.uspSearchBox}>
+                <Icon name="search" size={19} color="#6b7280" style={{ marginRight: 6 }} />
+                <TextInput
+                  style={styles.uspSearchInput}
+                  placeholder="Search by name, phone, category..."
+                  placeholderTextColor="#6b7280"
+                  value={listSearchQuery}
+                  onChangeText={setListSearchQuery}
+                />
+                {listSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setListSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Icon name="close" size={18} color="#6b7280" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
               <TouchableOpacity
                 style={[
-                  styles.categoryFilterItem,
-                  selectedCategory === 'all' && styles.categoryFilterItemActive
+                  styles.filterToggleBtn,
+                  (showCategoryFilters || selectedCategory !== 'all') && styles.filterToggleBtnActive,
                 ]}
-                onPress={() => setSelectedCategory('all')}
+                onPress={() => setShowCategoryFilters(prev => !prev)}
+                activeOpacity={0.8}
               >
-                <Text style={[
-                  styles.categoryFilterText,
-                  selectedCategory === 'all' && styles.categoryFilterTextActive
-                ]}>
-                  All Categories
-                </Text>
+                <Icon
+                  name="filter-list"
+                  size={20}
+                  color={(showCategoryFilters || selectedCategory !== 'all') ? '#ffffff' : '#10b981'}
+                />
               </TouchableOpacity>
-              {categories.map(category => (
+            </View>
+
+            {/* Collapsible Category Filter Keys */}
+            {showCategoryFilters && (
+              <View style={[styles.categoryFilterContainer, { marginTop: 12 }]}>
                 <TouchableOpacity
-                  key={category._id}
                   style={[
                     styles.categoryFilterItem,
-                    selectedCategory === category._id && styles.categoryFilterItemActive
+                    selectedCategory === 'all' && styles.categoryFilterItemActive
                   ]}
-                  onPress={() => setSelectedCategory(category._id)}
+                  onPress={() => setSelectedCategory('all')}
                 >
                   <Text style={[
                     styles.categoryFilterText,
-                    selectedCategory === category._id && styles.categoryFilterTextActive
+                    selectedCategory === 'all' && styles.categoryFilterTextActive
                   ]}>
-                    {category.name}
+                    All Categories
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+                {categories.map(category => (
+                  <TouchableOpacity
+                    key={category._id}
+                    style={[
+                      styles.categoryFilterItem,
+                      selectedCategory === category._id && styles.categoryFilterItemActive
+                    ]}
+                    onPress={() => setSelectedCategory(category._id)}
+                  >
+                    <Text style={[
+                      styles.categoryFilterText,
+                      selectedCategory === category._id && styles.categoryFilterTextActive
+                    ]}>
+                      {category.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Employees List */}
@@ -2381,6 +2444,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#6b7280',
+  },
+  uspSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  uspSearchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    height: 42,
+  },
+  uspSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
+    paddingVertical: 0,
+  },
+  filterToggleBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterToggleBtnActive: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
   },
   categoryFilterContainer: {
     flexDirection: 'row',

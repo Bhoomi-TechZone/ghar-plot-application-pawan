@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
   Modal,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -47,6 +48,9 @@ const EmployeeAttendanceScreen = ({ navigation, route }) => {
   const [monthlyData, setMonthlyData] = useState(null);
 
   const [selectedDayDetail, setSelectedDayDetail] = useState(null);
+  const [lateModalVisible, setLateModalVisible] = useState(false);
+  const [lateReason, setLateReason] = useState('');
+  const [lateMinutesPreview, setLateMinutesPreview] = useState(0);
 
   // Digital live clock
   useEffect(() => {
@@ -92,17 +96,145 @@ const EmployeeAttendanceScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleCheckIn = async () => {
+  const parseTimeMins = (timeStr, fallbackMins = 9 * 60 + 30) => {
+    if (!timeStr) return fallbackMins;
+    const parts = String(timeStr).split(':');
+    const h = parseInt(parts[0], 10) || 0;
+    const m = parseInt(parts[1], 10) || 0;
+    return h * 60 + m;
+  };
+
+  const getISTMinutesNow = () => {
+    const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    return ist.getUTCHours() * 60 + ist.getUTCMinutes();
+  };
+
+  const formatIST12Hour = (isoOrDate) => {
+    if (!isoOrDate) return '';
+    const d = new Date(isoOrDate);
+    if (isNaN(d.getTime())) return '';
+    return d
+      .toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      })
+      .toUpperCase();
+  };
+
+  const formatHHMMTo12Hr = (hhmm) => {
+    if (!hhmm) return '';
+    const str = String(hhmm).trim();
+    if (/AM|PM/i.test(str)) return str.toUpperCase();
+    const parts = str.split(':');
+    if (parts.length < 2) return str;
+    let h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return str;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+
+  const formatShiftRange = (startOrRange, endOpt) => {
+    if (endOpt !== undefined) {
+      return `${formatHHMMTo12Hr(startOrRange)} - ${formatHHMMTo12Hr(endOpt)}`;
+    }
+    const raw = String(startOrRange || '09:30 - 18:30');
+    const parts = raw.split('-').map((p) => p.trim());
+    if (parts.length === 2) {
+      return `${formatHHMMTo12Hr(parts[0])} - ${formatHHMMTo12Hr(parts[1])}`;
+    }
+    return raw;
+  };
+
+  const formatDuration = (hoursDecimal, startIso = null, endIso = null) => {
+    let totalMins = 0;
+    if (startIso && endIso) {
+      const s = new Date(startIso).getTime();
+      const e = new Date(endIso).getTime();
+      if (!isNaN(s) && !isNaN(e) && e >= s) {
+        totalMins = Math.round((e - s) / 60000);
+      }
+    }
+    if (totalMins === 0 && hoursDecimal) {
+      totalMins = Math.max(0, Math.round(Number(hoursDecimal) * 60));
+    }
+    if (totalMins <= 0) return '0 mins';
+    if (totalMins < 60) return `${totalMins} mins`;
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h} hrs`;
+  };
+
+  const liveTimer = useMemo(() => {
+    if (!todayState?.isCheckedIn || todayState?.isCheckedOut || !todayState?.checkInTime) {
+      return null;
+    }
+    const checkInMs = new Date(todayState.checkInTime).getTime();
+    if (isNaN(checkInMs)) return null;
+
+    // Shift end timestamp in IST for today
+    let effectiveEndMs = currentTime.getTime();
+    const shiftEndStr = todayState?.shift?.endTime;
+    if (shiftEndStr) {
+      const endMins = parseTimeMins(shiftEndStr, 18 * 60 + 30);
+      const endH = Math.floor(endMins / 60);
+      const endM = endMins % 60;
+      const istNow = new Date(currentTime.getTime() + 5.5 * 60 * 60 * 1000);
+      const shiftEndMs =
+        Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate(), endH, endM, 0) -
+        5.5 * 60 * 60 * 1000;
+      // Stop timer at shift end if checked in before shift end
+      if (checkInMs < shiftEndMs && effectiveEndMs > shiftEndMs) {
+        effectiveEndMs = shiftEndMs;
+      }
+    }
+
+    const diffSec = Math.max(0, Math.floor((effectiveEndMs - checkInMs) / 1000));
+    const hrs = Math.floor(diffSec / 3600);
+    const mins = Math.floor((diffSec % 3600) / 60);
+    const secs = diffSec % 60;
+    const formatted = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    const decimalHours = (diffSec / 3600).toFixed(2);
+    return { formatted, decimalHours };
+  }, [todayState, currentTime]);
+
+  const submitCheckIn = async (reasonText = '') => {
     try {
       setPunchLoading(true);
-      const res = await attendanceApi.checkIn();
+      const payload = reasonText.trim() ? { lateReason: reasonText.trim() } : {};
+      const res = await attendanceApi.checkIn(payload);
+      setLateModalVisible(false);
+      setLateReason('');
       Alert.alert('Attendance', res.message || 'Checked In successfully!');
       loadData();
     } catch (e) {
-      Alert.alert('Error', e.message || 'Check-in failed');
+      const msg = e.message || 'Check-in failed';
+      if (msg.toLowerCase().includes('reason') || msg.toLowerCase().includes('grace')) {
+        setLateModalVisible(true);
+      } else {
+        Alert.alert('Error', msg);
+      }
     } finally {
       setPunchLoading(false);
     }
+  };
+
+  const handleCheckIn = async () => {
+    const shiftStartMins = parseTimeMins(todayState?.shift?.startTime, 9 * 60 + 30);
+    const graceMins = todayState?.shift?.gracePeriodMinutes ?? 15;
+    const nowMins = getISTMinutesNow();
+
+    if (nowMins > shiftStartMins + graceMins) {
+      setLateMinutesPreview(nowMins - shiftStartMins);
+      setLateReason('');
+      setLateModalVisible(true);
+      return;
+    }
+
+    await submitCheckIn();
   };
 
   const handleCheckOut = async () => {
@@ -156,9 +288,6 @@ const EmployeeAttendanceScreen = ({ navigation, route }) => {
           <View style={styles.punchCard}>
             <View style={styles.punchTopRow}>
               <View>
-                <Text style={styles.digitalClock}>
-                  {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </Text>
                 <Text style={styles.digitalDate}>
                   {currentTime.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                 </Text>
@@ -167,7 +296,9 @@ const EmployeeAttendanceScreen = ({ navigation, route }) => {
               <View style={styles.shiftBadge}>
                 <Icon name="business" size={13} color="#0284c7" style={{ marginRight: 4 }} />
                 <Text style={styles.shiftBadgeText}>
-                  {todayState?.shift ? `${todayState.shift.startTime} - ${todayState.shift.endTime}` : '09:30 - 18:30'}
+                  {todayState?.shift
+                    ? formatShiftRange(todayState.shift.startTime, todayState.shift.endTime)
+                    : '09:30 AM - 06:30 PM'}
                 </Text>
               </View>
             </View>
@@ -179,13 +310,13 @@ const EmployeeAttendanceScreen = ({ navigation, route }) => {
               <View style={styles.todayStatusItem}>
                 <Text style={styles.todayStatusLbl}>Check In</Text>
                 <Text style={[styles.todayStatusVal, { color: todayState?.isCheckedIn ? '#10b981' : '#94a3b8' }]}>
-                  {todayState?.checkInTimeStr || '--:--'}
+                  {(todayState?.checkInTime ? formatIST12Hour(todayState.checkInTime) : todayState?.checkInTimeStr) || '--:--'}
                 </Text>
               </View>
               <View style={styles.todayStatusItem}>
                 <Text style={styles.todayStatusLbl}>Check Out</Text>
                 <Text style={[styles.todayStatusVal, { color: todayState?.isCheckedOut ? '#0284c7' : '#94a3b8' }]}>
-                  {todayState?.checkOutTimeStr || '--:--'}
+                  {(todayState?.checkOutTime ? formatIST12Hour(todayState.checkOutTime) : todayState?.checkOutTimeStr) || '--:--'}
                 </Text>
               </View>
               <View style={styles.todayStatusItem}>
@@ -210,6 +341,20 @@ const EmployeeAttendanceScreen = ({ navigation, route }) => {
               </View>
             </View>
 
+            {/* Live Working Hours Timer */}
+            {liveTimer && (
+              <View style={styles.liveTimerBox}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Icon name="timer-outline" size={18} color="#0284c7" style={{ marginRight: 6 }} />
+                  <Text style={styles.liveTimerLabel}>Working Timer</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.liveTimerVal}>{liveTimer.formatted}</Text>
+                  <Text style={styles.liveTimerSub}>{liveTimer.decimalHours} hrs (till shift end)</Text>
+                </View>
+              </View>
+            )}
+
             {/* Action Buttons */}
             <View style={{ marginTop: 16 }}>
               {punchLoading ? (
@@ -226,14 +371,31 @@ const EmployeeAttendanceScreen = ({ navigation, route }) => {
                   <Icon name="exit-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
                   <Text style={styles.btnTextWhite}>Punch Out (Check Out)</Text>
                 </TouchableOpacity>
-              ) : (
-                <View style={styles.completedBox}>
-                  <Icon name="checkmark-circle" size={18} color="#10b981" style={{ marginRight: 6 }} />
-                  <Text style={styles.completedText}>
-                    Attendance completed today ({todayState.totalWorkingHours} hrs)
-                  </Text>
-                </View>
-              )}
+              ) : (() => {
+                const dayConf = STATUS_CONFIG[todayState?.status] || STATUS_CONFIG.Present;
+                return (
+                  <View
+                    style={[
+                      styles.completedBox,
+                      {
+                        backgroundColor: dayConf.bg,
+                        borderColor: dayConf.color,
+                        borderWidth: 1,
+                      },
+                    ]}
+                  >
+                    <Icon name={dayConf.icon} size={20} color={dayConf.color} style={{ marginRight: 8 }} />
+                    <View>
+                      <Text style={[styles.completedText, { color: dayConf.color, fontWeight: '700' }]}>
+                        Day Status: {todayState?.status || 'Present'}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: '#475569', marginTop: 1 }}>
+                        Working Time: {formatDuration(todayState?.totalWorkingHours, todayState?.checkInTime, todayState?.checkOutTime)}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
           </View>
         )}
@@ -273,8 +435,10 @@ const EmployeeAttendanceScreen = ({ navigation, route }) => {
             <Text style={styles.statLabel}>Absent</Text>
           </View>
           <View style={[styles.statBox, { borderColor: '#0ea5e9' }]}>
-            <Text style={[styles.statNumber, { color: '#0ea5e9' }]}>{summary.totalWorkingHours}h</Text>
-            <Text style={styles.statLabel}>Hours</Text>
+            <Text style={[styles.statNumber, { color: '#0ea5e9', fontSize: 14 }]}>
+              {formatDuration(summary.totalWorkingHours)}
+            </Text>
+            <Text style={styles.statLabel}>Worked</Text>
           </View>
         </View>
 
@@ -372,7 +536,7 @@ const EmployeeAttendanceScreen = ({ navigation, route }) => {
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLbl}>Shift Timing:</Text>
-                <Text style={styles.detailVal}>{selectedDayDetail.shiftTiming || '09:30 - 18:30'}</Text>
+                <Text style={styles.detailVal}>{formatShiftRange(selectedDayDetail.shiftTiming || '09:30 - 18:30')}</Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLbl}>Check In:</Text>
@@ -390,14 +554,79 @@ const EmployeeAttendanceScreen = ({ navigation, route }) => {
                   </Text>
                 </View>
               )}
+              {!!selectedDayDetail.lateReason && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLbl}>Late Reason:</Text>
+                  <Text style={[styles.detailVal, { flex: 1, textAlign: 'right', marginLeft: 12 }]}>
+                    {selectedDayDetail.lateReason}
+                  </Text>
+                </View>
+              )}
               <View style={styles.detailRow}>
                 <Text style={styles.detailLbl}>Working Hours:</Text>
-                <Text style={styles.detailVal}>{selectedDayDetail.totalWorkingHours} hrs</Text>
+                <Text style={styles.detailVal}>{formatDuration(selectedDayDetail.totalWorkingHours)}</Text>
               </View>
             </View>
           </TouchableOpacity>
         </Modal>
       )}
+
+      {/* Late Check-In Reason Modal */}
+      <Modal transparent animationType="fade" visible={lateModalVisible}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Late Check-In Reason</Text>
+              <TouchableOpacity onPress={() => setLateModalVisible(false)}>
+                <Icon name="close" size={22} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.lateInfoText}>
+              Shift grace window ({todayState?.shift?.startTime || '09:30'} + {todayState?.shift?.gracePeriodMinutes ?? 15} mins) has passed
+              {lateMinutesPreview > 0 ? ` (${lateMinutesPreview} mins late)` : ''}. Please enter a reason to check in:
+            </Text>
+
+            <TextInput
+              style={styles.lateInput}
+              placeholder="Enter reason for late check-in..."
+              placeholderTextColor="#6b7280"
+              value={lateReason}
+              onChangeText={setLateReason}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+
+            <View style={styles.lateBtnRow}>
+              <TouchableOpacity
+                style={styles.lateCancelBtn}
+                onPress={() => setLateModalVisible(false)}
+                disabled={punchLoading}
+              >
+                <Text style={styles.lateCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.lateSubmitBtn, (!lateReason.trim() || punchLoading) && { opacity: 0.6 }]}
+                disabled={punchLoading}
+                onPress={() => {
+                  if (!lateReason.trim()) {
+                    Alert.alert('Reason Required', 'Please enter a reason for late check-in.');
+                    return;
+                  }
+                  submitCheckIn(lateReason);
+                }}
+              >
+                {punchLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.btnTextWhite}>Submit & Check In</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -684,6 +913,74 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#0f172a',
     fontWeight: '500',
+  },
+  liveTimerBox: {
+    marginTop: 12,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  liveTimerLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0369a1',
+  },
+  liveTimerVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0284c7',
+  },
+  liveTimerSub: {
+    fontSize: 10,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  lateInfoText: {
+    fontSize: 13,
+    color: '#475569',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  lateInput: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    padding: 10,
+    minHeight: 80,
+    fontSize: 14,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
+  },
+  lateBtnRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 14,
+  },
+  lateCancelBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+  },
+  lateCancelText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  lateSubmitBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 8,
+    backgroundColor: '#0ea5e9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

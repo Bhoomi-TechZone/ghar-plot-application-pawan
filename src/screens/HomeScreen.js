@@ -1409,24 +1409,6 @@ const Homescreen = ({ navigation }) => {
                             Search property (e.g. Delhi, Kalka ji)...
                         </Text>
                     </View>
-                    <View style={styles.searchSubmitBtn} pointerEvents="none">
-                        <LinearGradient
-                            colors={theme.GRADIENTS.primary}
-                            style={styles.searchSubmitBtnGradient}
-                        >
-                            <Icon name="search" size={16} color="#fff" />
-                        </LinearGradient>
-                    </View>
-                    <TouchableOpacity
-                        style={styles.homeFilterBtn}
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            navigation.navigate('SearchScreen', { openFilter: true });
-                        }}
-                        activeOpacity={0.7}
-                    >
-                        <Icon name="options-outline" size={17} color={theme.COLORS.primary} />
-                    </TouchableOpacity>
                 </TouchableOpacity>
             </View>
 

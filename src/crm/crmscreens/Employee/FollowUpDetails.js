@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Follow-Up Details Screen
  * Complete details of a follow-up with all comments
  */
@@ -523,7 +523,13 @@ const FollowUpDetails = ({ route, navigation }) => {
                   <View style={styles.commentItemHeader}>
                     <View>
                       <Text style={styles.commentAuthor}>
-                        {comment.commentByName || 'Unknown'}
+                        {comment.commentByName ||
+                          comment.commentBy?.name ||
+                          comment.commentBy?.fullName ||
+                          comment.commentBy?.email ||
+                          followUp.assignedAgent?.name ||
+                          followUp.createdBy?.name ||
+                          'Employee'}
                       </Text>
                       <Text style={styles.commentDateTime}>
                         {formatDateTime(comment.commentDate)}
