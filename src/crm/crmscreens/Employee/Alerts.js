@@ -239,6 +239,7 @@ const EmployeeAlertsScreen = ({ navigation }) => {
           <Icon name="search-outline" size={20} color="#6b7280" style={styles.searchIcon} />
           <TextInput
             placeholder="Search by title or reason..."
+            placeholderTextColor="#6b7280"
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={(text) => {

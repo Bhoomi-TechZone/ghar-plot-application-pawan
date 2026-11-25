@@ -831,6 +831,7 @@ const AdminReminderControlScreen = () => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name, email, or department..."
+          placeholderTextColor="#6b7280"
           value={searchTerm}
           onChangeText={setSearchTerm}
         />

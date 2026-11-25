@@ -131,8 +131,8 @@ class NotificationHandler {
           global.triggerProfessionalReminder({
             ...tappedData,
             type: tappedData.alertId ? 'admin_reminder' : (tappedType || 'reminder'),
-            title: detail.notification?.title || tappedData.title || 'Reminder',
-            note: detail.notification?.body || tappedData.note || tappedData.reason || tappedData.body || '',
+            title: tappedData.alertTitle || tappedData.reminderTitle || tappedData.title || detail.notification?.title || 'Reminder',
+            note: tappedData.alertReason || tappedData.reason || tappedData.note || tappedData.message || tappedData.body || detail.notification?.body || '',
           });
           setTimeout(() => { this.isNavigating = false; }, this.NAVIGATION_COOLDOWN);
           return;
@@ -660,8 +660,8 @@ class NotificationHandler {
              ...notifData,
              fromTap: true,
              type: notifType,
-             title: notification?.title || notifData.title || notifData.alertTitle || (notifType === 'alert' ? 'Alert' : 'Reminder'),
-             note: notification?.body || notifData.note || notifData.message || notifData.reason || notifData.alertReason || ''
+             title: notifData.alertTitle || notifData.reminderTitle || notifData.title || notification?.title || (notifType === 'alert' ? 'Alert' : 'Reminder'),
+             note: notifData.alertReason || notifData.reason || notifData.note || notifData.message || notifData.body || notification?.body || ''
            },
            timestamp: Date.now()
          };

@@ -175,7 +175,7 @@ const AppMain = () => {
       clientName: resolvedClient,
       categoryName: resolvedCategory,
       title: reminder.title || reminder.reminderTitle || (isActuallyAlert ? 'Alert' : 'Reminder'),
-      note: reminder.note || reminder.body || reminder.message || 'Scheduled notification',
+      note: reminder.reason || reminder.note || reminder.alertReason || reminder.message || reminder.body || 'Scheduled notification',
     };
 
     const handlePopupEdit = () => {
@@ -244,16 +244,55 @@ const AppMain = () => {
 
     if (isActuallyAdmin) {
       console.log('🚨🚨🚨 [DEBUG APP] 🔔 SHOWING ADMIN POPUP NOW:', normalizedReminder.title);
-      setAdminPopupData({ ...normalizedReminder, onEdit: handlePopupEdit });
+      setAdminPopupData({ ...normalizedReminder, _popupRemId: remId, onEdit: handlePopupEdit });
       setAdminPopupVisible(true);
     } else if (isActuallyAlert) {
       console.log('🚨🚨🚨 [DEBUG APP] 🔔 SHOWING RED ALERT POPUP NOW:', normalizedReminder.title);
-      setEmployeePopupData({ ...normalizedReminder, onEdit: handlePopupEdit });
+      setEmployeePopupData({ ...normalizedReminder, _popupRemId: remId, onEdit: handlePopupEdit });
       setEmployeePopupVisible(true);
     } else {
       console.log('🚨🚨🚨 [DEBUG APP] 🔔 SHOWING STANDARD REMINDER POPUP NOW:', normalizedReminder.title);
-      setCurrentReminder({ ...normalizedReminder, onEdit: handlePopupEdit });
+      setCurrentReminder({ ...normalizedReminder, _popupRemId: remId, onEdit: handlePopupEdit });
       setShowReminderPopup(true);
+    }
+
+    // 🔥 Hydrate popup with full, untruncated reminder/alert details from backend
+    if (remId && /^[a-f\d]{24}$/i.test(remId)) {
+      (async () => {
+        try {
+          const { getAlertById } = require('./src/crm/services/crmAlertApi');
+          const res = await getAlertById(remId);
+          const full = res?.alert || res?.data;
+          if (!full) return;
+
+          const fullReason = full.reason || full.note || full.comment || '';
+          const fullTitle = full.title || normalizedReminder.title;
+          if (!fullReason && !fullTitle) return;
+
+          const patch = {
+            ...(fullTitle ? { title: fullTitle, alertTitle: fullTitle, reminderTitle: fullTitle } : {}),
+            ...(fullReason ? { reason: fullReason, note: fullReason, alertReason: fullReason } : {}),
+            ...(full.createdAt ? { createdAt: full.createdAt } : {}),
+            ...(full.date ? { date: full.date } : {}),
+            ...(full.time ? { time: full.time } : {}),
+            ...(full.scheduledDateTime ? { scheduledDateTime: full.scheduledDateTime } : {}),
+            ...(full.nextScheduledAt ? { nextScheduledAt: full.nextScheduledAt } : {}),
+            ...(full.repeatFrequency ? { repeatFrequency: full.repeatFrequency } : {}),
+            ...(full.repeatDaily !== undefined ? { repeatDaily: full.repeatDaily } : {}),
+            ...(full.repeatMetadata ? { repeatMetadata: full.repeatMetadata } : {}),
+          };
+
+          if (isActuallyAdmin) {
+            setAdminPopupData((prev) => (prev && prev._popupRemId === remId ? { ...prev, ...patch } : prev));
+          } else if (isActuallyAlert) {
+            setEmployeePopupData((prev) => (prev && prev._popupRemId === remId ? { ...prev, ...patch } : prev));
+          } else {
+            setCurrentReminder((prev) => (prev && prev._popupRemId === remId ? { ...prev, ...patch } : prev));
+          }
+        } catch (fetchErr) {
+          console.log('ℹ️ Could not hydrate full reminder details from API:', fetchErr?.message);
+        }
+      })();
     }
   };
 
@@ -652,8 +691,8 @@ const AppMain = () => {
                   ...notifData,
                   fromTap: true,
                   type: notifData.alertId ? 'admin_reminder' : (isActuallyAlert ? 'alert' : 'reminder'),
-                  title: remoteMessage.notification?.title || notifData.title || notifData.reminderTitle || (isActuallyAlert ? 'Alert' : 'Reminder'),
-                  note: remoteMessage.notification?.body || notifData.note || notifData.reason || notifData.message || notifData.body || '',
+                  title: notifData.alertTitle || notifData.reminderTitle || notifData.title || remoteMessage.notification?.title || (isActuallyAlert ? 'Alert' : 'Reminder'),
+                  note: notifData.alertReason || notifData.reason || notifData.note || notifData.message || notifData.body || remoteMessage.notification?.body || '',
                 };
 
                 // If popup callback is already available in foreground, trigger directly

@@ -743,6 +743,7 @@ const formatDateTime = (iso, reminderTime = null) => {
           <TextInput
             style={styles.searchInput}
             placeholder="Search by title..."
+            placeholderTextColor="#6b7280"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -815,9 +816,17 @@ const formatDateTime = (iso, reminderTime = null) => {
           data={[...alerts]
             .filter(item => {
               if (!searchQuery) return true;
-              const searchLower = searchQuery.toLowerCase();
-              const title = (item.title || '').toLowerCase();
-              const description = (item.reason || item.note || item.message || item.description || '').toLowerCase();
+              const normalizeText = (s) =>
+                String(s || '')
+                  .toLowerCase()
+                  .replace(/[\u2018\u2019\u201A\u201B\u2032\u02BC`´]/g, "'")
+                  .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+              const searchLower = normalizeText(searchQuery);
+              if (!searchLower) return true;
+              const title = normalizeText(item.title);
+              const description = normalizeText(item.reason || item.note || item.message || item.description);
               return title.includes(searchLower) || description.includes(searchLower);
             })}
           renderItem={renderRow}
