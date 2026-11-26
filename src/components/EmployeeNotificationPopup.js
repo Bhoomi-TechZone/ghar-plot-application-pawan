@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { cleanNotificationSuffix } from '../utils/commentHelper';
+import { CommentThreadView, parseCommentHistory } from '../utils/reminderCommentHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +28,7 @@ const EmployeeNotificationPopup = ({
   note = '',
   scheduledAt = '',
   nextScheduledAt = '',
+  commentHistory = null,
   onEdit,
 }) => {
   // 🔥 SYNCED DETECTION: Separate Admin status from Reminder status
@@ -143,24 +145,34 @@ const EmployeeNotificationPopup = ({
                 </View>
               ) : null}
 
-              {/* Reason (for alerts) */}
-              {!isReminder && reason ? (
-                <View style={styles.detailRow}>
-                  <MaterialIcons name="description" size={20} color={primaryColor} />
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Reason</Text>
-                    <Text style={styles.detailValue}>{cleanNotificationSuffix(reason)}</Text>
-                  </View>
-                </View>
-              ) : null}
-
-              {/* Note (for reminders) */}
-              {isReminder && note ? (
+              {/* Reason / Note */}
+              {((!isReminder && reason) || (isReminder && note) || (Array.isArray(commentHistory) && commentHistory.length > 0)) ? (
                 <View style={[styles.detailRow, styles.noteRow]}>
-                  <MaterialIcons name="notes" size={20} color={primaryColor} />
+                  <MaterialIcons name={isReminder ? 'notes' : 'description'} size={20} color={primaryColor} />
                   <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Note</Text>
-                    <Text style={styles.detailValue}>{cleanNotificationSuffix(note)}</Text>
+                    <Text style={styles.detailLabel}>{isReminder ? 'Note' : 'Reason'}</Text>
+                    {(() => {
+                      const rawText = cleanNotificationSuffix(isReminder ? (note || reason) : (reason || note));
+                      const parsedComments = parseCommentHistory({
+                        commentHistory,
+                        reason: rawText,
+                        note: rawText,
+                        clientName,
+                      });
+                      const showThread =
+                        parsedComments.length > 1 ||
+                        (Array.isArray(commentHistory) && commentHistory.length > 1);
+                      if (showThread) {
+                        return (
+                          <CommentThreadView
+                            comments={parsedComments}
+                            maxHeight={180}
+                            style={{ marginTop: 4 }}
+                          />
+                        );
+                      }
+                      return <Text style={styles.detailValue}>{rawText}</Text>;
+                    })()}
                   </View>
                 </View>
               ) : null}

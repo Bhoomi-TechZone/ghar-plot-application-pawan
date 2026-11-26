@@ -399,8 +399,10 @@ const EmployeeReminders = ({ navigation, route, openDrawer }) => {
   const openNotificationPopup = (item) => {
     setPopupData({
       _id: item._id || item.id,
+      alertId: item._id || item.id,
       title: item.title || item.reason,
       reason: item.reason,
+      commentHistory: item.commentHistory || null,
       date: item.date,
       time: item.time,
       nextScheduledAt: item.nextScheduledAt,

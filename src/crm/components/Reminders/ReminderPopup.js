@@ -13,6 +13,7 @@ import {
   Vibration,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { CommentThreadView, parseCommentHistory } from '../../../utils/reminderCommentHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -93,12 +94,32 @@ const ReminderPopup = ({ visible, onClose, reminder, onEdit }) => {
               )}
 
               {/* Note */}
-              {!!note && (
+              {(!!note || (Array.isArray(reminder?.commentHistory) && reminder.commentHistory.length > 0)) && (
                 <View style={[styles.detailRow, styles.noteRow]}>
                   <MaterialIcons name="notes" size={20} color={primaryColor} />
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>Note</Text>
-                    <Text style={styles.detailValue}>{note}</Text>
+                    {(() => {
+                      const parsedComments = parseCommentHistory({
+                        commentHistory: reminder?.commentHistory,
+                        reason: note,
+                        note,
+                        clientName,
+                      });
+                      const showThread =
+                        parsedComments.length > 1 ||
+                        (Array.isArray(reminder?.commentHistory) && reminder.commentHistory.length > 1);
+                      if (showThread) {
+                        return (
+                          <CommentThreadView
+                            comments={parsedComments}
+                            maxHeight={180}
+                            style={{ marginTop: 4 }}
+                          />
+                        );
+                      }
+                      return <Text style={styles.detailValue}>{note}</Text>;
+                    })()}
                   </View>
                 </View>
               )}

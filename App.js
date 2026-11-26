@@ -272,6 +272,7 @@ const AppMain = () => {
           const patch = {
             ...(fullTitle ? { title: fullTitle, alertTitle: fullTitle, reminderTitle: fullTitle } : {}),
             ...(fullReason ? { reason: fullReason, note: fullReason, alertReason: fullReason } : {}),
+            ...(Array.isArray(full.commentHistory) ? { commentHistory: full.commentHistory } : {}),
             ...(full.createdAt ? { createdAt: full.createdAt } : {}),
             ...(full.date ? { date: full.date } : {}),
             ...(full.time ? { time: full.time } : {}),
@@ -1096,6 +1097,7 @@ const AppMain = () => {
         note={employeePopupData?.note || employeePopupData?.body || employeePopupData?.message || ''}
         scheduledAt={employeePopupData?.scheduledAt || employeePopupData?.scheduledDateTime || employeePopupData?.reminderDateTime || ''}
         nextScheduledAt={employeePopupData?.nextScheduledAt || ''}
+        commentHistory={employeePopupData?.commentHistory || null}
         onEdit={employeePopupData?.onEdit}
         onClose={() => {
           setEmployeePopupVisible(false);
@@ -1106,6 +1108,8 @@ const AppMain = () => {
       {/* NEW: Specialized Admin Notification Popup */}
       <AdminNotificationPopup
         visible={adminPopupVisible}
+        alertId={adminPopupData?.alertId || adminPopupData?.reminderId || adminPopupData?._id || ''}
+        commentHistory={adminPopupData?.commentHistory || null}
         employeeName={adminPopupData?.employeeName || 'Admin'}
         title={adminPopupData?.title || 'Admin Reminder'}
         clientName={adminPopupData?.clientName || adminPopupData?.name || ''}

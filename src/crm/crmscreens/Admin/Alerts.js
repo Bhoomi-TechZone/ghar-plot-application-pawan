@@ -482,6 +482,7 @@ const formatDateTime = (iso, reminderTime = null) => {
       clientName: item.clientName || item.employee?.name || '',
       reason: item.reason || item.note || '',
       note: item.note,
+      commentHistory: item.commentHistory || null,
       message: item.message,
       date: item.date,
       time: item.time,

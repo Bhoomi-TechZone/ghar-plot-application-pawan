@@ -224,7 +224,7 @@
  * Specifically for Admin Reminders & Alerts
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -236,6 +236,8 @@ import {
 } from 'react-native';
 
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { CommentThreadView, parseCommentHistory } from '../utils/reminderCommentHelper';
+import { getAlertById } from '../crm/services/crmAlertApi';
 
 const { width, height } = Dimensions.get('window');
 
@@ -268,7 +270,44 @@ const AdminNotificationPopup = ({
   repeatMetadata = {},           // 🔥 object or JSON string
   customRepeatMinutes = 0,       // 🔥 direct minutes field
   customIntervalMinutes = 0,     // 🔥 alternate minutes field
+  commentHistory = null,
+  alertId = '',
+  reminderId = '',
+  _id = '',
+  id = '',
 }) => {
+  const [hydratedRecord, setHydratedRecord] = useState(null);
+
+  const rawItemId = alertId || reminderId || _id || id || '';
+  const cleanItemId = rawItemId ? String(rawItemId).replace(/^(alert_|reminder_|notif_)/, '') : '';
+
+  useEffect(() => {
+    let isMounted = true;
+    setHydratedRecord(null);
+
+    if (visible && cleanItemId && /^[a-f\d]{24}$/i.test(cleanItemId)) {
+      getAlertById(cleanItemId)
+        .then((res) => {
+          if (!isMounted) return;
+          const fetched = res?.alert || res?.data;
+          if (fetched) {
+            setHydratedRecord(fetched);
+          }
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [visible, cleanItemId]);
+
+  const effectiveNote = hydratedRecord?.reason || hydratedRecord?.note || note;
+  const effectiveReason = hydratedRecord?.reason || reason;
+  const effectiveCommentHistory =
+    (Array.isArray(hydratedRecord?.commentHistory) && hydratedRecord.commentHistory.length > 0)
+      ? hydratedRecord.commentHistory
+      : commentHistory;
   // Always use Indigo theme for Admin
   const primaryColor = '#4F46E5';
   const secondaryColor = '#64748b';
@@ -1037,8 +1076,9 @@ const AdminNotificationPopup = ({
 
               {/* Details */}
               {(
-                note ||
-                reason ||
+                effectiveNote ||
+                effectiveReason ||
+                (Array.isArray(effectiveCommentHistory) && effectiveCommentHistory.length > 0) ||
                 scheduledTimeDisplay ||
                 formattedCreated
               ) ? (
@@ -1059,51 +1099,93 @@ const AdminNotificationPopup = ({
                       Details
                     </Text>
 
-                    <Text style={styles.detailValue}>
-                      {(() => {
-                        const raw = String(note || reason || '').trim();
-                        const cleaned = raw
-                          .split('\n')
-                          .map(line => {
-                            let l = line.trim();
-                            // If the line only contains Client and/or Category information, strip it out completely
-                            if (/^((👤\s*)?Client:[^|\n]*|(\🏷️\s*)?Category:[^|\n]*|\s*\|\s*)+$/i.test(l)) {
-                              return '';
-                            }
-                            // If mixed in line with other text, strip out client and category parts
-                            l = l.replace(/👤\s*Client:[^|\n]+(\|)?/gi, '');
-                            l = l.replace(/🏷️\s*Category:[^|\n]+(\|)?/gi, '');
-                            l = l.replace(/Client:[^|\n]+(\|)?/gi, '');
-                            l = l.replace(/Category:[^|\n]+(\|)?/gi, '');
-                            l = l.replace(/\s*⏰\s*Scheduled:[^\n]*(?:\s*🔁\s*Next:[^\n]*)?(?:\s*⏳\s*In[^\n]*)?/gi, '');
-                            l = l.replace(/\s*🔁\s*Next:[^\n]*(?:\s*⏳\s*In[^\n]*)?/gi, '');
-                            l = l.replace(/\s*⏳\s*In\s+[^\n]*/gi, '');
-                            return l.trim().replace(/^\|\s*|\s*\|$/g, '');
-                          })
-                          .filter(line => {
-                            const l = line.trim();
-                            return l.length > 0 &&
-                              !l.startsWith('⏰ Scheduled:') &&
-                              !l.startsWith('🔁 Next:') &&
-                              !l.startsWith('⏳ In ');
-                          })
-                          .join('\n')
-                          .trim();
-                        return cleaned || 'N/A';
-                      })()}
+                    {(() => {
+                      const rawForComments = String(effectiveReason || effectiveNote || '').trim();
+                      const cleanedRawForComments = rawForComments
+                        .replace(/\s*⏰\s*Scheduled:[^\n]*(?:\s*🔁\s*Next:[^\n]*)?(?:\s*⏳\s*In[^\n]*)?/gi, '')
+                        .replace(/\s*🔁\s*Next:[^\n]*(?:\s*⏳\s*In[^\n]*)?/gi, '')
+                        .replace(/\s*⏳\s*In\s+[^\n]*/gi, '')
+                        .trim();
 
-                      {scheduledTimeDisplay
-                        ? `\n⏰ Scheduled: ${scheduledTimeDisplay}`
-                        : ''}
+                      const parsedComments = parseCommentHistory({
+                        commentHistory: effectiveCommentHistory,
+                        reason: cleanedRawForComments,
+                        note: cleanedRawForComments,
+                        createdAt,
+                        clientName: resolvedClientName,
+                      });
 
-                      {formattedCreated
-                        ? `\n🗓️ Created On: ${formattedCreated}`
-                        : ''}
+                      const showThreadView =
+                        parsedComments.length > 1 ||
+                        (Array.isArray(effectiveCommentHistory) && effectiveCommentHistory.length > 1);
 
-                      {repeatFrequencyLabel
-                        ? `\n🔁 Repeat: ${repeatFrequencyLabel}`
-                        : ''}
-                    </Text>
+                      if (showThreadView) {
+                        return (
+                          <View>
+                            <CommentThreadView
+                              comments={parsedComments}
+                              maxHeight={210}
+                              style={{ marginTop: 6, marginBottom: 6 }}
+                            />
+                            {(scheduledTimeDisplay || formattedCreated || repeatFrequencyLabel) ? (
+                              <Text style={styles.detailValue}>
+                                {[
+                                  scheduledTimeDisplay ? `⏰ Scheduled: ${scheduledTimeDisplay}` : '',
+                                  formattedCreated ? `🗓️ Created On: ${formattedCreated}` : '',
+                                  repeatFrequencyLabel ? `🔁 Repeat: ${repeatFrequencyLabel}` : '',
+                                ].filter(Boolean).join('\n')}
+                              </Text>
+                            ) : null}
+                          </View>
+                        );
+                      }
+
+                      return (
+                        <Text style={styles.detailValue}>
+                          {(() => {
+                            const raw = String(effectiveNote || effectiveReason || '').trim();
+                            const cleaned = raw
+                              .split('\n')
+                              .map(line => {
+                                let l = line.trim();
+                                if (/^((👤\s*)?Client:[^|\n]*|(\🏷️\s*)?Category:[^|\n]*|\s*\|\s*)+$/i.test(l)) {
+                                  return '';
+                                }
+                                l = l.replace(/👤\s*Client:[^|\n]+(\|)?/gi, '');
+                                l = l.replace(/🏷️\s*Category:[^|\n]+(\|)?/gi, '');
+                                l = l.replace(/Client:[^|\n]+(\|)?/gi, '');
+                                l = l.replace(/Category:[^|\n]+(\|)?/gi, '');
+                                l = l.replace(/\s*⏰\s*Scheduled:[^\n]*(?:\s*🔁\s*Next:[^\n]*)?(?:\s*⏳\s*In[^\n]*)?/gi, '');
+                                l = l.replace(/\s*🔁\s*Next:[^\n]*(?:\s*⏳\s*In[^\n]*)?/gi, '');
+                                l = l.replace(/\s*⏳\s*In\s+[^\n]*/gi, '');
+                                return l.trim().replace(/^\|\s*|\s*\|$/g, '');
+                              })
+                              .filter(line => {
+                                const l = line.trim();
+                                return l.length > 0 &&
+                                  !l.startsWith('⏰ Scheduled:') &&
+                                  !l.startsWith('🔁 Next:') &&
+                                  !l.startsWith('⏳ In ');
+                              })
+                              .join('\n')
+                              .trim();
+                            return cleaned || 'N/A';
+                          })()}
+
+                          {scheduledTimeDisplay
+                            ? `\n⏰ Scheduled: ${scheduledTimeDisplay}`
+                            : ''}
+
+                          {formattedCreated
+                            ? `\n🗓️ Created On: ${formattedCreated}`
+                            : ''}
+
+                          {repeatFrequencyLabel
+                            ? `\n🔁 Repeat: ${repeatFrequencyLabel}`
+                            : ''}
+                        </Text>
+                      );
+                    })()}
                   </View>
                 </View>
               ) : null}
