@@ -1115,9 +1115,16 @@ const AdminNotificationPopup = ({
                         clientName: resolvedClientName,
                       });
 
+                      const isClientReminder = Boolean(
+                        resolvedClientName ||
+                        (hydratedRecord?.clientName && String(hydratedRecord.clientName).trim().length > 0) ||
+                        hydratedRecord?.enquiryId
+                      );
+
                       const showThreadView =
-                        parsedComments.length > 1 ||
-                        (Array.isArray(effectiveCommentHistory) && effectiveCommentHistory.length > 1);
+                        isClientReminder &&
+                        (parsedComments.length > 1 ||
+                        (Array.isArray(effectiveCommentHistory) && effectiveCommentHistory.length > 1));
 
                       if (showThreadView) {
                         return (
@@ -1140,10 +1147,14 @@ const AdminNotificationPopup = ({
                         );
                       }
 
+                      const plainOrJoined = (!isClientReminder && parsedComments.length > 1)
+                        ? parsedComments.map(c => c.text).filter(Boolean).join('\n\n')
+                        : String(effectiveNote || effectiveReason || '').trim();
+
                       return (
                         <Text style={styles.detailValue}>
                           {(() => {
-                            const raw = String(effectiveNote || effectiveReason || '').trim();
+                            const raw = plainOrJoined;
                             const cleaned = raw
                               .split('\n')
                               .map(line => {

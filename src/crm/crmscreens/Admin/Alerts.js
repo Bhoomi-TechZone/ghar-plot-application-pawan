@@ -413,10 +413,19 @@ const formatDateTime = (iso, reminderTime = null) => {
     console.log('ðŸ“ Editing notification:', itemId, itemCategory);
 
     if (itemCategory === 'reminder') {
+      const hasClient = Boolean(alert.clientName && String(alert.clientName).trim().length > 0);
+      const historyCombined = (!hasClient && Array.isArray(alert.commentHistory) && alert.commentHistory.length > 0)
+        ? alert.commentHistory.map(c => (c && c.text ? String(c.text).trim() : '')).filter(Boolean).join('\n\n')
+        : '';
+      const rawFallbackMsg = alert.note || alert.reason || alert.message || '';
+      const bestInitialMsg = historyCombined.length > rawFallbackMsg.length ? historyCombined : rawFallbackMsg;
+
       navigation.navigate('EditReminder', {
         reminderId: itemId,
         clientName: alert.clientName || alert.title || 'Reminder',
-        originalMessage: alert.note || alert.reason || alert.message || '',
+        hasClientName: hasClient,
+        commentHistory: alert.commentHistory || null,
+        originalMessage: bestInitialMsg,
         enquiryId: alert.enquiryId,
         phone: alert.phone,
         location: alert.location,

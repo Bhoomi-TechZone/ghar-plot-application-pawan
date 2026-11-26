@@ -53,9 +53,33 @@ const EditReminderScreen = ({ route, navigation }) => {
       ? (initialPlaceReminderParam === true || initialPlaceReminderParam === 'true')
       : true
   );
+  const stripThreadMetadata = (raw) => {
+    const str = String(raw || '').trim();
+    if (!str) return '';
+    if (!str.includes('---') && !/by:\s*[^\n]+date:/i.test(str)) return str;
+    const parsed = parseCommentHistory({ reason: str });
+    if (parsed && parsed.length > 0) {
+      return parsed.map((c) => c.text).filter(Boolean).join('\n\n');
+    }
+    return str;
+  };
+
+  const initialIsClient = (() => {
+    if (route.params?.hasClientName !== undefined) return Boolean(route.params.hasClientName);
+    if (route.params?.enquiryId) return true;
+    const cName = String(clientName || '').trim();
+    const rTitle = String(route.params?.reminderTitle || '').trim();
+    if (cName && rTitle && cName !== rTitle) return true;
+    return false;
+  })();
+
+  const [isClientReminder, setIsClientReminder] = useState(initialIsClient);
   const [title, setTitle] = useState(clientName || '');
-  const [message, setMessage] = useState(originalMessage || '');
+  const [message, setMessage] = useState(() =>
+    initialIsClient ? (originalMessage || '') : stripThreadMetadata(originalMessage || '')
+  );
   const [commentHistory, setCommentHistory] = useState(() => {
+    if (!initialIsClient) return [];
     if (route.params?.commentHistory && Array.isArray(route.params.commentHistory)) {
       return route.params.commentHistory;
     }
@@ -321,13 +345,34 @@ const EditReminderScreen = ({ route, navigation }) => {
       const cleanId = String(reminderId).replace(/^(alert_|reminder_)/, '');
       getAlertById(cleanId)
         .then((res) => {
-          if (res?.data) {
-            const fetched = res.data;
-            const parsed = parseCommentHistory(fetched);
-            if (parsed && parsed.length > 0) {
-              setCommentHistory(parsed);
-              if (fetched.reason && !originalMessage) {
-                setMessage(fetched.reason);
+          const fetched = res?.data || res?.alert;
+          if (fetched) {
+            const fetchedHasClient = Boolean(
+              (fetched.clientName && String(fetched.clientName).trim().length > 0) ||
+              fetched.enquiryId
+            );
+            setIsClientReminder(fetchedHasClient);
+
+            if (fetchedHasClient) {
+              const parsed = parseCommentHistory(fetched);
+              if (parsed && parsed.length > 0) {
+                setCommentHistory(parsed);
+                if (fetched.reason && !originalMessage) {
+                  setMessage(fetched.reason);
+                }
+              }
+            } else {
+              // Personal reminder (no clientName): combine all existing messages without ever overwriting a fuller initial message
+              setCommentHistory([]);
+              const historyTexts = Array.isArray(fetched.commentHistory) && fetched.commentHistory.length > 0
+                ? fetched.commentHistory.map((c) => (c && c.text ? String(c.text).trim() : '')).filter(Boolean).join('\n\n')
+                : '';
+              const reasonText = stripThreadMetadata(fetched.reason || fetched.note || '');
+              const initialClean = stripThreadMetadata(originalMessage || '');
+              const candidates = [historyTexts, reasonText, initialClean].filter(Boolean);
+              const bestMsg = candidates.sort((a, b) => b.length - a.length)[0] || '';
+              if (bestMsg && (!initialClean || bestMsg.length > initialClean.length)) {
+                setMessage(bestMsg);
               }
             }
           }
