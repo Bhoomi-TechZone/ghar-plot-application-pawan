@@ -43,10 +43,10 @@ const STATUS_COLOR = {
 };
 
 const STATUS_LABEL = {
-    pending: '? Pending',
-    completed: '? Completed',
-    snoozed: '?? Snoozed',
-    dismissed: '? Dismissed',
+    pending: '⏳ Pending',
+    completed: '✅ Completed',
+    snoozed: '💤 Snoozed',
+    dismissed: '❌ Dismissed',
 };
 
 // -- Main Component ------------------------------------------------------------
@@ -111,7 +111,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
         } else if (reminder.clientName || reminder.phone) {
             // Show info if no enquiry linked
             CrossPlatformAlert.alert(
-                '?? Client Info',
+                '👤 Client Info',
                 `Name: ${reminder.clientName || 'N/A'}\nPhone: ${reminder.phone || 'N/A'}\nEmail: ${reminder.email || 'N/A'}\nLocation: ${reminder.location || 'N/A'}`,
                 [{ text: 'OK' }]
             );
@@ -151,7 +151,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
 
     // -- Render single reminder card (Minimal) ---------------------------------
     const renderItem = ({ item }) => {
-        const employeeName = item.employeeId?.name || '�';
+        const employeeName = item.employeeId?.name || item.employeeId?.fullName || "Unknown";
         const status = item.status || 'pending';
         const clientName = item.clientName || item.manualInquiryId?.clientName || 'Unknown Client';
         const phone = item.phone || item.manualInquiryId?.contactNumber || '';
@@ -169,14 +169,14 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
                 </View>
 
                 <View style={styles.cardDetailRow}>
-                    <Text style={styles.cardClientTxt}>{clientName}{phone ? ` � ${phone}` : ''}</Text>
+                    <Text style={styles.cardClientTxt}>{clientName}{phone ? ` • ${phone}` : ""}</Text>
                 </View>
 
                 <View style={styles.cardFooterRow}>
-                    <Text style={styles.cardSubTxt}>?? {employeeName}</Text>
+                    <Text style={styles.cardSubTxt}>👤 {employeeName}</Text>
                     {reminderTime ? (
                         <Text style={styles.cardSubTxt}>
-                            {pad(reminderTime.getDate())} {MONTHS[reminderTime.getMonth()]} � {pad(reminderTime.getHours())}:{pad(reminderTime.getMinutes())}
+                            {pad(reminderTime.getDate())} {MONTHS[reminderTime.getMonth()]} • {pad(reminderTime.getHours())}:{pad(reminderTime.getMinutes())}
                         </Text>
                     ) : (<Text style={styles.cardSubTxt}>No time</Text>)}
                 </View>
@@ -219,18 +219,18 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
 
                     <View style={styles.pickerBtnRow}>
                         <TouchableOpacity style={styles.pickerArrow} onPress={() => changePickerDateBy(-1)}>
-                            <Text style={styles.pickerArrowTxt}>?  -1 day</Text>
+                            <Text style={styles.pickerArrowTxt}>‹  -1 day</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.pickerArrow} onPress={() => changePickerDateBy(1)}>
-                            <Text style={styles.pickerArrowTxt}>+1 day  ?</Text>
+                            <Text style={styles.pickerArrowTxt}>+1 day  ›</Text>
                         </TouchableOpacity>
                     </View>
                     <View style={styles.pickerBtnRow}>
                         <TouchableOpacity style={styles.pickerArrow} onPress={() => changePickerDateBy(-7)}>
-                            <Text style={styles.pickerArrowTxt}>??  -7 days</Text>
+                            <Text style={styles.pickerArrowTxt}>«  -7 days</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.pickerArrow} onPress={() => changePickerDateBy(7)}>
-                            <Text style={styles.pickerArrowTxt}>+7 days  ??</Text>
+                            <Text style={styles.pickerArrowTxt}>+7 days  »</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -239,7 +239,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
                             <Text style={{ color: '#fff', fontWeight: '600' }}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.pickerConfirm} onPress={applyDate}>
-                            <Text style={{ color: '#fff', fontWeight: '600' }}>? Apply</Text>
+                            <Text style={{ color: '#fff', fontWeight: '600' }}>✓ Apply</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -255,7 +255,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
             {/* Header � hidden when embedded in AllReportsHome */}
             {!hideHeader && (
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>?? Reminder Report</Text>
+                    <Text style={styles.headerTitle}>📊 Reminder Report</Text>
                     <Text style={styles.headerSubtitle}>Filter reminders by date range</Text>
                 </View>
             )}
@@ -266,7 +266,7 @@ const AllReportsScreen = ({ navigation, hideHeader = false }) => {
                     <Text style={styles.dateSelectorTxt}>{fmt(startDate)}</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.toText}>?</Text>
+                <Text style={styles.toText}>→</Text>
 
                 <TouchableOpacity style={styles.dateSelector} onPress={() => openPicker('end')}>
                     <Text style={styles.dateSelectorTxt}>{fmt(endDate)}</Text>

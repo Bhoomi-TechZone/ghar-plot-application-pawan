@@ -196,7 +196,12 @@ const AdminNavigator = ({ onLogout }) => {
         component={CreateAlertScreen}
         options={({ route }) => ({
           headerShown: true,
-          title: route.params?.forceCategory === 'reminder' ? 'Create Reminder' : 'Create Alert',
+          title:
+            route.params?.forceCategory === 'knowledge_base'
+              ? (route.params?.alertToEdit ? 'Edit Knowledge' : 'Add Knowledge')
+              : route.params?.forceCategory === 'reminder'
+              ? 'Create Reminder'
+              : 'Create Alert',
           headerStyle: {
             backgroundColor: '#007AFF',
           },
@@ -309,6 +314,14 @@ const AdminNavigator = ({ onLogout }) => {
         name="MyReminders"
         component={Alerts}
         initialParams={{ filterCategory: 'reminder' }}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="KnowledgeBase"
+        component={Alerts}
+        initialParams={{ filterCategory: 'knowledge_base' }}
         options={{
           headerShown: false,
         }}

@@ -30,12 +30,14 @@ const CreateAlertScreen = ({ navigation, route }) => {
   // ✅ Read forceCategory at component level — not inside async handleSubmit
   // This determines which category gets saved: 'alert' (from Alerts screen) or 'reminder' (from My Reminders)
   const forceCategoryFromNav = route?.params?.forceCategory;
+  const isKnowledgeBase = forceCategoryFromNav === 'knowledge_base';
   console.log('🏷️ CreateAlertScreen opened | forceCategory from nav:', forceCategoryFromNav);
 
   const [formData, setFormData] = useState({
     title: alertToEdit?.title || '',
     clientName: alertToEdit?.clientName || '',
     phone: alertToEdit?.phone || '',
+    knowledgeCategory: alertToEdit?.knowledgeCategory || '',
     date: alertToEdit ? new Date(alertToEdit.date) : new Date(),
     time: alertToEdit ? (() => {
       const [hours, minutes] = (alertToEdit.time || '00:00').split(':');
@@ -106,12 +108,16 @@ const CreateAlertScreen = ({ navigation, route }) => {
 
   const handleSubmit = async () => {
     // Validate required fields
-    if (!formData.title.trim()) {
+    if (!(formData.title || '').trim()) {
       CrossPlatformAlert.alert('Error', 'Please enter a title for the alert');
       return;
     }
-    if (!formData.reason.trim()) {
-      CrossPlatformAlert.alert('Error', 'Please enter a reason for the alert');
+    if (!(formData.reason || '').trim()) {
+      CrossPlatformAlert.alert('Error', isKnowledgeBase ? 'Please enter content / details' : 'Please enter a reason for the alert');
+      return;
+    }
+    if (isKnowledgeBase && !(formData.knowledgeCategory || '').trim()) {
+      CrossPlatformAlert.alert('Error', 'Please select or enter a category');
       return;
     }
 
@@ -202,8 +208,8 @@ const CreateAlertScreen = ({ navigation, route }) => {
       } catch (_) {}
 
       const empId = employeeInfo?._id || employeeInfo?.id || null;
-      const empPhone = formData.phone || employeeInfo?.phone || '';
-      const empClientName = formData.clientName || employeeInfo?.name || '';
+      const empPhone = isKnowledgeBase ? '' : (formData.phone || employeeInfo?.phone || '');
+      const empClientName = isKnowledgeBase ? '' : (formData.clientName || employeeInfo?.name || '');
 
       // Prepare alert data
       const alertData = {
@@ -217,7 +223,8 @@ const CreateAlertScreen = ({ navigation, route }) => {
         repeatDaily: formData.repeatFrequency === 'daily',
         isActive: true,
         placeReminder: isPlaceReminder,
-        category: finalCategory, // ✅ 'alert' from Alerts screen, 'reminder' from My Reminders screen
+        category: finalCategory, // ✅ 'alert', 'reminder', or 'knowledge_base'
+        knowledgeCategory: isKnowledgeBase ? (formData.knowledgeCategory || '').trim() : '',
         assignedEmployeeId: empId,
         clientName: empClientName,
         phone: empPhone,
@@ -242,7 +249,7 @@ const CreateAlertScreen = ({ navigation, route }) => {
 
         if (alertId && isPlaceReminder) {
           // Determine notification type based on category rather than just admin status
-          const finalNotificationType = finalCategory === 'reminder' ? 'admin_reminder' : 'alert';
+          const finalNotificationType = (finalCategory === 'reminder' || finalCategory === 'knowledge_base') ? 'admin_reminder' : 'alert';
 
 
           console.log(`📤 ${isEditMode ? 'Rescheduling' : 'Scheduling'} FCM notification for alert:`, alertId);
@@ -332,7 +339,7 @@ const CreateAlertScreen = ({ navigation, route }) => {
           // ⚠️ Skip if current user is admin OR if this is a reminder creation
           // ℹ️ Immediate notification to admin on reminder creation has been disabled as per user requirement.
           // Scheduled notifications will trigger at due time via backend cron.
-          const isReminderCreation = finalCategory === 'reminder' || finalNotificationType === 'admin_reminder';
+          const isReminderCreation = finalCategory === 'reminder' || finalCategory === 'knowledge_base' || finalNotificationType === 'admin_reminder';
           if (!isAdmin && !isReminderCreation) {
             try {
               console.log('📤 Checking if admin notification should be sent...');
@@ -366,11 +373,16 @@ const CreateAlertScreen = ({ navigation, route }) => {
         // Reset form
         setFormData({
           title: '',
+          clientName: '',
+          phone: '',
+          knowledgeCategory: '',
           date: new Date(),
           time: new Date(),
           reason: '',
           repeatFrequency: 'none',
           repeatDaily: false,
+          customIntervalMinutes: '',
+          placeReminder: true,
         });
 
         // Get repeat message with specific details
@@ -407,12 +419,16 @@ const CreateAlertScreen = ({ navigation, route }) => {
         if (isPlaceReminder) {
           CrossPlatformAlert.alert(
             '✅ Success',
-            `${finalCategory === 'reminder' ? 'Reminder' : 'Alert'} ${isEditMode ? 'updated' : 'created'} successfully!\n\n${scheduleInfo}\n\n🔔 You will receive notification${repeatMsg}`,
+            `${isKnowledgeBase ? 'Knowledge' : (finalCategory === 'reminder' ? 'Reminder' : 'Alert')} ${isEditMode ? 'updated' : 'created'} successfully!\n\n${scheduleInfo}\n\n🔔 You will receive notification${repeatMsg}`,
             [
               {
                 text: 'OK',
                 onPress: () => {
-                  navigation.goBack();
+                  if (isKnowledgeBase) {
+                    navigation.navigate('KnowledgeBase');
+                  } else {
+                    navigation.goBack();
+                  }
                 }
               },
             ]
@@ -420,12 +436,16 @@ const CreateAlertScreen = ({ navigation, route }) => {
         } else {
           CrossPlatformAlert.alert(
             '✅ Note Saved',
-            `Note ${isEditMode ? 'updated' : 'recorded'} successfully!\n\n(No reminder notification or popup will be sent)`,
+            `${isKnowledgeBase ? 'Knowledge note' : 'Note'} ${isEditMode ? 'updated' : 'recorded'} successfully!\n\n(No reminder notification or popup will be sent)`,
             [
               {
                 text: 'OK',
                 onPress: () => {
-                  navigation.goBack();
+                  if (isKnowledgeBase) {
+                    navigation.navigate('KnowledgeBase');
+                  } else {
+                    navigation.goBack();
+                  }
                 }
               },
             ]
@@ -461,11 +481,16 @@ const CreateAlertScreen = ({ navigation, route }) => {
     // Reset form
     setFormData({
       title: '',
+      clientName: '',
+      phone: '',
+      knowledgeCategory: '',
       date: new Date(),
       time: new Date(),
       reason: '',
       repeatFrequency: 'none',
       repeatDaily: false,
+      customIntervalMinutes: '',
+      placeReminder: true,
     });
     navigation.goBack();
   };
@@ -585,30 +610,65 @@ const CreateAlertScreen = ({ navigation, route }) => {
             />
           </View>
 
-          {/* Client Name (Optional) */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Client Name (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter client name (or leave empty for self)"
-              value={formData.clientName}
-              onChangeText={(value) => handleInputChange('clientName', value)}
-              placeholderTextColor="#9ca3af"
-            />
-          </View>
+          {/* Category (for Knowledge Base) OR Client Name & Phone (for Reminder/Alert) */}
+          {isKnowledgeBase ? (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                Category <Text style={styles.required}>*</Text>
+              </Text>
+              <View style={styles.kbCategoryChipsRow}>
+                {['General', 'Sales', 'Legal', 'Site', 'Property', 'Process', 'Training'].map((cat) => {
+                  const selected = (formData.knowledgeCategory || '').trim().toLowerCase() === cat.toLowerCase();
+                  return (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[styles.kbCategoryChip, selected && styles.kbCategoryChipActive]}
+                      onPress={() => handleInputChange('knowledgeCategory', cat)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.kbCategoryChipText, selected && styles.kbCategoryChipTextActive]}>
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <TextInput
+                style={[styles.input, { marginTop: 8 }]}
+                placeholder="Select above or enter custom category..."
+                value={formData.knowledgeCategory}
+                onChangeText={(value) => handleInputChange('knowledgeCategory', value)}
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
+          ) : (
+            <>
+              {/* Client Name (Optional) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Client Name (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter client name (or leave empty for self)"
+                  value={formData.clientName}
+                  onChangeText={(value) => handleInputChange('clientName', value)}
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
 
-          {/* Phone Number (Optional) */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone Number (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter contact number"
-              keyboardType="phone-pad"
-              value={formData.phone}
-              onChangeText={(value) => handleInputChange('phone', value)}
-              placeholderTextColor="#9ca3af"
-            />
-          </View>
+              {/* Phone Number (Optional) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Phone Number (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter contact number"
+                  keyboardType="phone-pad"
+                  value={formData.phone}
+                  onChangeText={(value) => handleInputChange('phone', value)}
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+            </>
+          )}
 
           {/* Toggle: Place a Reminder */}
           <View style={styles.toggleCard}>
@@ -1002,6 +1062,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 30,
+  },
+  kbCategoryChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  kbCategoryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  kbCategoryChipActive: {
+    backgroundColor: '#4f46e5',
+    borderColor: '#4f46e5',
+  },
+  kbCategoryChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  kbCategoryChipTextActive: {
+    color: '#ffffff',
   },
   checkbox: {
     width: 20,

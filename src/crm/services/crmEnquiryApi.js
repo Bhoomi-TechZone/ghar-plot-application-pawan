@@ -255,6 +255,7 @@ export const getAllEnquiriesMerged = async () => {
             assignedAt: assignmentData.assignedDate || assignmentData.assignedAt,
             notes: assignmentData.notes || '',
           } : null,
+          assignments: Array.isArray(enquiry.assignments) ? enquiry.assignments : (assignmentData ? [assignmentData] : []),
           propertyId: enquiry.propertyId?._id || enquiry.propertyId || null,
           buyerId: buyerData._id || enquiry.buyerId?._id || enquiry.buyerId || null,
           ownerId: ownerData._id || enquiry.ownerId?._id || enquiry.ownerId || null,
@@ -281,6 +282,7 @@ export const getAllEnquiriesMerged = async () => {
         status: enquiry.caseStatus || enquiry.status || 'new',
         createdAt: enquiry.createdAt,
         assignment: enquiry.assignment || null,
+        assignments: Array.isArray(enquiry.assignments) ? enquiry.assignments : (enquiry.assignment ? [enquiry.assignment] : []),
         // Manual enquiry specific fields
         s_No: enquiry.s_No,
         ClientCode: enquiry.ClientCode,
@@ -571,25 +573,29 @@ export const assignEnquiriesToEmployee = async (assignmentData) => {
 };
 
 /**
- * Unassign enquiry from employee
+ * Unassign enquiry from employee (all employees or a specific employeeId)
  */
-export const unassignEnquiry = async (enquiryId, enquiryType) => {
+export const unassignEnquiry = async (enquiryId, enquiryType, employeeId = null) => {
   try {
-    console.log('🔄 Unassigning enquiry:', enquiryId);
+    console.log('🔄 Unassigning enquiry:', enquiryId, 'employeeId:', employeeId);
 
     const adminToken = await AsyncStorage.getItem('adminToken');
 
-    // Try the new format first with enquiryIds array
+    const payload = {
+      enquiryIds: [enquiryId],
+      enquiryType,
+    };
+    if (employeeId) {
+      payload.employeeId = employeeId;
+    }
+
     const response = await fetch(`${CRM_BASE_URL}/admin/leads/unassign`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${adminToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        enquiryIds: [enquiryId], // Send as array
-        enquiryType
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await handleCRMResponse(response);

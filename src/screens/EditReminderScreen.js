@@ -73,6 +73,8 @@ const EditReminderScreen = ({ route, navigation }) => {
     return false;
   })();
 
+  const [isKnowledgeBase, setIsKnowledgeBase] = useState(Boolean(route.params?.isKnowledgeBase));
+  const [knowledgeCategory, setKnowledgeCategory] = useState(route.params?.knowledgeCategory || '');
   const [isClientReminder, setIsClientReminder] = useState(initialIsClient);
   const [title, setTitle] = useState(clientName || '');
   const [message, setMessage] = useState(() =>
@@ -347,6 +349,12 @@ const EditReminderScreen = ({ route, navigation }) => {
         .then((res) => {
           const fetched = res?.data || res?.alert;
           if (fetched) {
+            if (fetched.category === 'knowledge_base' || fetched.knowledgeCategory) {
+              setIsKnowledgeBase(true);
+              if (fetched.knowledgeCategory) {
+                setKnowledgeCategory(fetched.knowledgeCategory);
+              }
+            }
             const fetchedHasClient = Boolean(
               (fetched.clientName && String(fetched.clientName).trim().length > 0) ||
               fetched.enquiryId
@@ -645,6 +653,7 @@ const EditReminderScreen = ({ route, navigation }) => {
         repeatMetadata: null, // Reset previous metadata so daily does not carry over stale customIntervalMinutes
         isActive: placeReminder,
         placeReminder: placeReminder,
+        ...(isKnowledgeBase ? { knowledgeCategory: knowledgeCategory.trim() } : {}),
       };
 
       // 🔥 Build repeatMetadata for weekly/monthly/yearly/custom reminders
@@ -931,6 +940,43 @@ const EditReminderScreen = ({ route, navigation }) => {
             placeholderTextColor="#999"
           />
         </View>
+
+        {/* Knowledge Base Category */}
+        {isKnowledgeBase && (
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Category *</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+              {['General', 'Sales', 'Legal', 'Site', 'Property', 'Process', 'Training'].map((cat) => {
+                const selected = knowledgeCategory.trim().toLowerCase() === cat.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 16,
+                      backgroundColor: selected ? '#4f46e5' : '#f1f5f9',
+                      borderWidth: 1,
+                      borderColor: selected ? '#4f46e5' : '#cbd5e1',
+                    }}
+                    onPress={() => setKnowledgeCategory(cat)}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: selected ? '#ffffff' : '#475569' }}>
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <TextInput
+              style={styles.inputField}
+              value={knowledgeCategory}
+              onChangeText={setKnowledgeCategory}
+              placeholder="Select above or enter custom category..."
+              placeholderTextColor="#999"
+            />
+          </View>
+        )}
 
         {/* Message History Thread (Previous comments) */}
         {commentHistory && commentHistory.length > 0 && !isEditingFullHistory && (

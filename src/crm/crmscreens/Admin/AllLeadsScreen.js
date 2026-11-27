@@ -17,6 +17,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import * as crmLeadsApi from '../../services/crmLeadsApi';
+import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 
 const AllLeadsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -106,6 +107,30 @@ const AllLeadsScreen = ({ navigation }) => {
           isEdit,
         });
       }
+    };
+
+    const handleUnassign = () => {
+      if (!item._id) return;
+      CrossPlatformAlert.alert(
+        'Unassign Lead',
+        `Unassign "${clientName}" from ${employeeName}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Unassign',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await crmLeadsApi.unassignLeads({ assignmentIds: [item._id] });
+                CrossPlatformAlert.alert('Success', 'Lead unassigned successfully');
+                fetchLeads();
+              } catch (err) {
+                CrossPlatformAlert.alert('Error', err?.message || 'Failed to unassign lead');
+              }
+            },
+          },
+        ]
+      );
     };
 
     return (
@@ -208,6 +233,13 @@ const AllLeadsScreen = ({ navigation }) => {
           >
             <Icon name="create-outline" size={18} color="#10b981" />
             <Text style={[styles.actionText, { color: '#10b981' }]}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={handleUnassign}
+          >
+            <Icon name="person-remove-outline" size={18} color="#ef4444" />
+            <Text style={[styles.actionText, { color: '#ef4444' }]}>Unassign</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>

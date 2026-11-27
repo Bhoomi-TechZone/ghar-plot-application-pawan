@@ -107,7 +107,7 @@ const LeadAssignmentsScreen = ({ navigation }) => {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
-                  enquiryId: assignment.enquiryId,
+                  assignmentIds: [assignment._id],
                   enquiryType: assignment.enquiryType,
                 }),
               });
@@ -283,7 +283,7 @@ const LeadAssignmentsScreen = ({ navigation }) => {
         onPress={() => navigation.navigate('Enquiries')}
       >
         <MaterialIcons name="add-task" size={18} color="#7c3aed" />
-        <Text style={styles.newAssignText}>Assign New Lead  Go to Enquiries</Text>
+        <Text style={styles.newAssignText}>Assign New Lead • Go to Enquiries</Text>
         <MaterialIcons name="chevron-right" size={18} color="#7c3aed" />
       </TouchableOpacity>
 
@@ -292,11 +292,12 @@ const LeadAssignmentsScreen = ({ navigation }) => {
         <ActivityIndicator size="large" color="#7c3aed" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
+          style={{ flex: 1 }}
           data={filtered}
           keyExtractor={(item) => item._id}
           renderItem={renderItem}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={{ padding: 12 }}
+          contentContainerStyle={{ padding: 12, paddingBottom: 80 }}
           ListEmptyComponent={
             <View style={styles.empty}>
               <MaterialIcons name="assignment-late" size={52} color="#ccc" />
@@ -373,10 +374,10 @@ const styles = StyleSheet.create({
     borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb',
   },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: '#333' },
-  filterScroll: { maxHeight: 44 },
-  filterRow: { paddingHorizontal: 12, paddingBottom: 8, gap: 8 },
+  filterScroll: { flexGrow: 0 },
+  filterRow: { paddingHorizontal: 12, paddingVertical: 8, gap: 8, alignItems: 'center' },
   filterChip: {
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
     backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb',
   },
   filterChipActive: { backgroundColor: '#7c3aed', borderColor: '#7c3aed' },

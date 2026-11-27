@@ -48,6 +48,7 @@ import { getAllEmployees } from '../../services/crmEmployeeManagementApi';
 import EnquiryCard from '../../components/Enquiries/EnquiryCard';
 import AddEnquiryModal from '../../components/Enquiries/modals/AddEnquiryModal';
 import AssignEnquiryModal from '../../components/Enquiries/modals/AssignEnquiryModal';
+import ManageLeadAssignmentsModal from '../../components/Enquiries/modals/ManageLeadAssignmentsModal';
 import AutoAssignModal from '../../components/Enquiries/modals/AutoAssignModal';
 import ReminderModal from '../../components/Enquiries/modals/ReminderModal';
 import FollowUpModal from '../../components/Enquiries/modals/FollowUpModal';
@@ -94,6 +95,8 @@ const EnquiriesScreen = ({ navigation, route }) => {
   // Modal states
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [manageAssignModalVisible, setManageAssignModalVisible] = useState(false);
+  const [manageAssignEnquiry, setManageAssignEnquiry] = useState(null);
   const [autoAssignModalVisible, setAutoAssignModalVisible] = useState(false);
   const [reminderModalVisible, setReminderModalVisible] = useState(false);
   const [reminderToEdit, setReminderToEdit] = useState(null);
@@ -545,14 +548,8 @@ const EnquiriesScreen = ({ navigation, route }) => {
   const showWarningToast = (message) => showToast(`⚠️ ${message}`, 'LONG');
   const showInfoToast = (message) => showToast(`ℹ️ ${message}`, 'SHORT');
 
-  // Handle enquiry selection with validation (matching web)
+  // Handle enquiry selection (allows selecting both unassigned and already-assigned leads for multi-employee assignment)
   const handleEnquirySelect = (enquiry) => {
-    // Cannot select enquiries that are already assigned (matching web)
-    if (enquiry.assignment) {
-      showWarningToast('Cannot select enquiries that are already assigned to an employee');
-      return;
-    }
-
     const enquirySelection = {
       enquiryId: enquiry._id,
       enquiryType: enquiry.enquiryType
@@ -943,7 +940,6 @@ const EnquiriesScreen = ({ navigation, route }) => {
     const isSelected = selectedEnquiries.some(
       selected => selected.enquiryId === item._id
     );
-    const canSelect = !item.assignment; // Can only select unassigned enquiries
 
     return (
       <EnquiryCard
@@ -954,8 +950,12 @@ const EnquiriesScreen = ({ navigation, route }) => {
         onSetReminder={handleSetReminder}
         onFollowUp={handleFollowUp}
         onUnassign={handleUnassign}
+        onManageAssignments={(enq) => {
+          setManageAssignEnquiry(enq);
+          setManageAssignModalVisible(true);
+        }}
         onDelete={handleDeleteEnquiry}
-        canSelect={canSelect}
+        canSelect={true}
         showCheckbox={selectionMode}
       />
     );
@@ -1520,6 +1520,20 @@ const EnquiriesScreen = ({ navigation, route }) => {
         employees={employees}
         employeesLoading={employeesLoading}
         onSuccess={handleAssignSuccess}
+      />
+
+      <ManageLeadAssignmentsModal
+        visible={manageAssignModalVisible}
+        onClose={() => {
+          setManageAssignModalVisible(false);
+          setManageAssignEnquiry(null);
+        }}
+        enquiry={manageAssignEnquiry}
+        employees={employees}
+        onChanged={() => {
+          fetchEnquiries();
+          showSuccessToast('Lead assignments updated');
+        }}
       />
 
       <AutoAssignModal

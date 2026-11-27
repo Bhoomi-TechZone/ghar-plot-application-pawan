@@ -10,6 +10,8 @@ import {
   Alert,
   StyleSheet,
   RefreshControl,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,6 +28,8 @@ const ServiceManagementScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'add'
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modal States
   const [showDeleteMainModal, setShowDeleteMainModal] = useState(false);
@@ -153,7 +157,12 @@ const ServiceManagementScreen = ({ navigation }) => {
     setLoading(true);
     setError(null);
     try {
-      const token = await AsyncStorage.getItem('adminToken');
+      const keys = ['crm_auth_token', 'adminToken', 'admin_token', 'crm_admin_token'];
+      let token = null;
+      for (const k of keys) {
+        const t = await AsyncStorage.getItem(k);
+        if (t) { token = t; break; }
+      }
       const response = await fetch(`${API_BASE_URL}/api/services`, {
         headers: {
           'Content-Type': 'application/json',
@@ -468,83 +477,143 @@ const ServiceManagementScreen = ({ navigation }) => {
     'Entire Floor',
   ];
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Header */}
-        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Icon name="wrench" size={30} color="#fff" />
-            <Text style={styles.headerTitle}>Service Management</Text>
-          </View>
-          <Text style={styles.headerSubtitle}>Manage service types and configurations</Text>
-        </LinearGradient>
+  const filteredServices = services.filter((service) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    const mainMatch = (service.mainService || '').toLowerCase().includes(q);
+    const typeMatch = (service.serviceTypes || []).some((t) =>
+      (t.typeName || '').toLowerCase().includes(q)
+    );
+    return mainMatch || typeMatch;
+  });
 
-        {/* Statistics Cards */}
-        <View style={styles.statsContainer}>
-          <LinearGradient colors={['#667eea', '#764ba2']} style={styles.statCard}>
-            <Icon name="briefcase-outline" size={32} color="#fff" />
+  return (
+    <View style={styles.container}>
+      <StatusBar backgroundColor="#0f172a" barStyle="light-content" />
+
+      {/* Premium Header */}
+      <LinearGradient colors={['#0f172a', '#1e3a8a']} style={styles.header}>
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <MaterialIcons name="arrow-back" size={22} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.headerTitle}>Service Management</Text>
+            <Text style={styles.headerSubtitle}>Manage categories, types & pricing</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.headerAddBtn}
+            onPress={() => setActiveTab(activeTab === 'add' ? 'list' : 'add')}
+          >
+            <Icon name={activeTab === 'add' ? 'format-list-bulleted' : 'plus'} size={18} color="#fff" />
+            <Text style={styles.headerAddTxt}>{activeTab === 'add' ? 'List' : 'Add'}</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
+      {/* Clean KPI Stat Cards */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <View style={[styles.statIconCircle, { backgroundColor: '#eef2ff' }]}>
+            <Icon name="briefcase-outline" size={22} color="#4f46e5" />
+          </View>
+          <View style={styles.statTextWrap}>
             <Text style={styles.statValue}>{totalServicesCount}</Text>
             <Text style={styles.statLabel}>Total Services</Text>
-          </LinearGradient>
-
-          <LinearGradient colors={['#667eea', '#764ba2']} style={styles.statCard}>
-            <Icon name="format-list-bulleted" size={32} color="#fff" />
-            <Text style={styles.statValue}>{totalServiceTypesCount}</Text>
-            <Text style={styles.statLabel}>Total Types</Text>
-          </LinearGradient>
+          </View>
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        >
-          {/* Error Alert */}
-          {error && (
-            <View style={styles.errorAlert}>
-              <Icon name="alert-circle" size={20} color="#e53e3e" />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
+        <View style={styles.statCard}>
+          <View style={[styles.statIconCircle, { backgroundColor: '#ecfdf5' }]}>
+            <Icon name="format-list-bulleted" size={22} color="#059669" />
+          </View>
+          <View style={styles.statTextWrap}>
+            <Text style={styles.statValue}>{totalServiceTypesCount}</Text>
+            <Text style={styles.statLabel}>Service Types</Text>
+          </View>
+        </View>
+      </View>
 
-          {/* Add New Service Form */}
+      {/* Segmented Tab Switcher */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabPill, activeTab === 'list' && styles.tabPillActive]}
+          onPress={() => setActiveTab('list')}
+        >
+          <Icon name="view-grid-outline" size={16} color={activeTab === 'list' ? '#fff' : '#64748b'} />
+          <Text style={[styles.tabPillTxt, activeTab === 'list' && styles.tabPillTxtActive]}>
+            All Services ({totalServicesCount})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabPill, activeTab === 'add' && styles.tabPillActive]}
+          onPress={() => setActiveTab('add')}
+        >
+          <Icon name="plus-circle-outline" size={16} color={activeTab === 'add' ? '#fff' : '#64748b'} />
+          <Text style={[styles.tabPillTxt, activeTab === 'add' && styles.tabPillTxtActive]}>
+            Add Service
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {/* Error Alert */}
+        {error && (
+          <View style={styles.errorAlert}>
+            <Icon name="alert-circle" size={20} color="#dc2626" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {activeTab === 'add' ? (
+          /* Add New Service Form */
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Icon name="plus-circle" size={24} color="#667eea" />
-              <Text style={styles.cardTitle}>Add New Service</Text>
+              <View style={[styles.sectionIconBadge, { backgroundColor: '#eef2ff' }]}>
+                <Icon name="plus-circle" size={20} color="#4f46e5" />
+              </View>
+              <View>
+                <Text style={styles.cardTitle}>Add New Service</Text>
+                <Text style={styles.cardSub}>Configure service type & base rates</Text>
+              </View>
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Main Service</Text>
+              <Text style={styles.label}>Main Service *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g., Cleaning, Plumbing"
+                placeholder="e.g., Cleaning, Plumbing, Shifting"
+                placeholderTextColor="#94a3b8"
                 value={mainService}
                 onChangeText={setMainService}
               />
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Service Type</Text>
+              <Text style={styles.label}>Service Type *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g., Office, Apartment"
+                placeholder="e.g., Office, Apartment, Villa"
+                placeholderTextColor="#94a3b8"
                 value={typeName}
                 onChangeText={setTypeName}
               />
             </View>
 
-            <Text style={styles.sectionTitle}>Base Charges Configuration</Text>
+            <Text style={styles.sectionTitle}>Base Charges Configuration (₹)</Text>
             <View style={styles.chargesGrid}>
               {propertyTypes.map((type, index) => (
                 <View key={index} style={styles.chargeItem}>
-                  <Text style={styles.chargeLabel}>{type}</Text>
+                  <Text style={styles.chargeLabel} numberOfLines={1}>{type}</Text>
                   <TextInput
                     style={styles.chargeInput}
                     placeholder="0"
+                    placeholderTextColor="#94a3b8"
                     keyboardType="numeric"
                     value={adminConfig.baseCharges[type]?.toString()}
                     onChangeText={(value) => handleBaseChargeChange(type, value)}
@@ -558,6 +627,7 @@ const ServiceManagementScreen = ({ navigation }) => {
               <TextInput
                 style={styles.input}
                 placeholder="10"
+                placeholderTextColor="#94a3b8"
                 keyboardType="numeric"
                 value={adminConfig.distanceRatePerKm?.toString()}
                 onChangeText={handleDistanceRateChange}
@@ -573,96 +643,121 @@ const ServiceManagementScreen = ({ navigation }) => {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Icon name="plus" size={20} color="#fff" />
-                  <Text style={styles.buttonText}>Add Service</Text>
+                  <Icon name="check-circle-outline" size={20} color="#fff" />
+                  <Text style={styles.buttonText}>Save Service</Text>
                 </>
               )}
             </TouchableOpacity>
           </View>
-
-          {/* Existing Services List */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Icon name="format-list-bulleted" size={24} color="#667eea" />
-              <Text style={styles.cardTitle}>Existing Services</Text>
+        ) : (
+          /* Existing Services List */
+          <View>
+            {/* Search Box */}
+            <View style={styles.searchBox}>
+              <MaterialIcons name="search" size={20} color="#94a3b8" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search service or type..."
+                placeholderTextColor="#94a3b8"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <MaterialIcons name="close" size={18} color="#94a3b8" />
+                </TouchableOpacity>
+              )}
             </View>
 
             {loading && services.length === 0 ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#667eea" />
+                <ActivityIndicator size="large" color="#1e3a8a" />
                 <Text style={styles.loadingText}>Loading services...</Text>
               </View>
-            ) : services.length === 0 ? (
+            ) : filteredServices.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Icon name="information-outline" size={48} color="#ccc" />
-                <Text style={styles.emptyText}>No services found. Add a new service to get started.</Text>
+                <View style={styles.emptyIconBox}>
+                  <Icon name="wrench-outline" size={38} color="#64748b" />
+                </View>
+                <Text style={styles.emptyTitle}>No services found</Text>
+                <Text style={styles.emptyText}>
+                  {searchQuery ? 'Try a different search keyword.' : 'Tap "Add Service" to create your first service.'}
+                </Text>
               </View>
             ) : (
-              services.map((service) => (
+              filteredServices.map((service) => (
                 <View key={service._id} style={styles.serviceCard}>
                   <View style={styles.serviceHeader}>
                     <View style={styles.serviceHeaderLeft}>
-                      <Icon name="wrench" size={24} color="#667eea" />
-                      <Text style={styles.serviceName}>{service.mainService}</Text>
+                      <View style={styles.serviceAvatar}>
+                        <Icon name="wrench" size={18} color="#1e3a8a" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.serviceName}>{service.mainService}</Text>
+                        <Text style={styles.serviceCountSub}>
+                          {service.serviceTypes?.length || 0} {(service.serviceTypes?.length || 0) === 1 ? 'Type' : 'Types'} configured
+                        </Text>
+                      </View>
                     </View>
                     <TouchableOpacity
                       onPress={() => openDeleteMainModal(service)}
-                      style={styles.iconButton}
+                      style={styles.deleteMainBtn}
                     >
-                      <Icon name="delete" size={24} color="#e53e3e" />
+                      <Icon name="delete-outline" size={20} color="#dc2626" />
                     </TouchableOpacity>
                   </View>
 
-                  {/* Service Types */}
-                  <View style={styles.typesContainer}>
-                    {service.serviceTypes?.map((type) => (
-                      <View key={type._id} style={styles.typeBadge}>
-                        <Text style={styles.typeName}>{type.typeName}</Text>
-                        <View style={styles.typeActions}>
-                          <TouchableOpacity
-                            onPress={() => openEditTypeModal(service, type)}
-                            style={styles.typeActionButton}
-                          >
-                            <Icon name="pencil" size={16} color="#ed8936" />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => openDeleteTypeModal(service, type)}
-                            style={styles.typeActionButton}
-                          >
-                            <Icon name="delete" size={16} color="#e53e3e" />
-                          </TouchableOpacity>
+                  {/* Service Types + Charges */}
+                  {(service.serviceTypes || []).map((type) => {
+                    const baseEntries = Object.entries(type.adminConfig?.baseCharges || {}).filter(
+                      ([_, value]) => Number(value) > 0
+                    );
+                    return (
+                      <View key={type._id} style={styles.typeSubCard}>
+                        <View style={styles.typeSubHeader}>
+                          <View style={styles.typeTitlePill}>
+                            <View style={styles.typeDot} />
+                            <Text style={styles.typeName}>{type.typeName}</Text>
+                          </View>
+                          <View style={styles.typeActions}>
+                            <TouchableOpacity
+                              onPress={() => openEditTypeModal(service, type)}
+                              style={[styles.typeActionButton, { backgroundColor: '#fff7ed' }]}
+                            >
+                              <Icon name="pencil" size={15} color="#ea580c" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => openDeleteTypeModal(service, type)}
+                              style={[styles.typeActionButton, { backgroundColor: '#fef2f2' }]}
+                            >
+                              <Icon name="delete-outline" size={15} color="#dc2626" />
+                            </TouchableOpacity>
+                          </View>
                         </View>
-                      </View>
-                    ))}
-                  </View>
 
-                  {/* Charges Display */}
-                  {service.serviceTypes?.map((type) => (
-                    <View key={type._id} style={styles.chargesDisplay}>
-                      <Text style={styles.chargesTitle}>{type.typeName} Charges</Text>
-                      <View style={styles.chargesList}>
-                        {Object.entries(type.adminConfig?.baseCharges || {})
-                          .filter(([_, value]) => value > 0)
-                          .map(([key, value]) => (
-                            <View key={key} style={styles.chargeRow}>
-                              <Text style={styles.chargeKey}>{key}:</Text>
-                              <Text style={styles.chargeValue}>₹{value}</Text>
+                        <View style={styles.chargesChipsWrap}>
+                          {baseEntries.map(([key, value]) => (
+                            <View key={key} style={styles.priceChip}>
+                              <Text style={styles.priceChipKey}>{key}</Text>
+                              <Text style={styles.priceChipVal}>₹{value}</Text>
                             </View>
                           ))}
-                        <View style={styles.chargeRow}>
-                          <Text style={styles.chargeKey}>Distance Rate:</Text>
-                          <Text style={styles.chargeValue}>
-                            ₹{type.adminConfig?.distanceRatePerKm}/km
-                          </Text>
+                          <View style={[styles.priceChip, styles.distanceChip]}>
+                            <Text style={[styles.priceChipKey, { color: '#1d4ed8' }]}>Per Km</Text>
+                            <Text style={[styles.priceChipVal, { color: '#1e3a8a' }]}>
+                              ₹{type.adminConfig?.distanceRatePerKm ?? 0}/km
+                            </Text>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               ))
             )}
           </View>
-        </ScrollView>
+        )}
+      </ScrollView>
 
         {/* Delete Main Service Modal */}
         <Modal
@@ -833,315 +928,467 @@ const ServiceManagementScreen = ({ navigation }) => {
           </View>
         </Modal>
       </View>
-    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f1f5f9',
   },
   header: {
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 10 : 52,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
   },
-  backButton: {
-    marginBottom: 10,
-  },
-  headerContent: {
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleWrap: {
+    flex: 1,
+    marginLeft: 12,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#fff',
-    marginLeft: 10,
+    letterSpacing: 0.2,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
+    color: '#cbd5e1',
+    marginTop: 2,
+  },
+  headerAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 4,
+  },
+  headerAddTxt: {
     color: '#fff',
-    opacity: 0.9,
-    marginTop: 5,
+    fontSize: 13,
+    fontWeight: '700',
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    marginTop: -30,
-    marginBottom: 15,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    gap: 10,
   },
   statCard: {
     flex: 1,
-    marginHorizontal: 5,
-    padding: 20,
-    borderRadius: 15,
+    flexDirection: 'row',
     alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
+    backgroundColor: '#fff',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    elevation: 2,
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  statIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  statTextWrap: {
+    flex: 1,
   },
   statValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 10,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0f172a',
   },
   statLabel: {
     fontSize: 12,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    marginHorizontal: 14,
+    marginTop: 12,
+    marginBottom: 4,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  tabPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    borderRadius: 9,
+    gap: 6,
+  },
+  tabPillActive: {
+    backgroundColor: '#1e3a8a',
+  },
+  tabPillTxt: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  tabPillTxtActive: {
     color: '#fff',
-    marginTop: 5,
-    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    padding: 14,
+    paddingBottom: 90,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0f172a',
+    padding: 0,
+  },
   errorAlert: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fee',
-    padding: 15,
-    marginHorizontal: 15,
-    marginBottom: 15,
-    borderRadius: 10,
+    backgroundColor: '#fef2f2',
+    padding: 12,
+    marginBottom: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#fcc',
+    borderColor: '#fecaca',
   },
   errorText: {
-    color: '#e53e3e',
-    marginLeft: 10,
+    color: '#dc2626',
+    marginLeft: 8,
     flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
   },
   card: {
     backgroundColor: '#fff',
-    marginHorizontal: 15,
-    marginBottom: 15,
-    padding: 20,
-    borderRadius: 15,
-    elevation: 3,
-    shadowColor: '#000',
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    elevation: 2,
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 15,
+    marginBottom: 16,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#f1f5f9',
+    gap: 10,
+  },
+  sectionIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  cardSub: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 1,
   },
   formGroup: {
-    marginBottom: 15,
+    marginBottom: 14,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
     borderRadius: 10,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 14,
-    backgroundColor: '#f9f9f9',
+    color: '#0f172a',
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 15,
-    marginTop: 10,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 10,
+    marginTop: 4,
   },
   chargesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -5,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   chargeItem: {
-    width: '50%',
-    paddingHorizontal: 5,
-    marginBottom: 15,
+    width: '48.5%',
+    marginBottom: 10,
   },
   chargeLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 5,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 4,
   },
   chargeInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
     borderRadius: 8,
-    padding: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     fontSize: 14,
-    backgroundColor: '#f9f9f9',
+    color: '#0f172a',
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+    flex: 1,
   },
   primaryButton: {
-    backgroundColor: '#667eea',
-    flex: 1,
-    marginLeft: 5,
+    backgroundColor: '#1e3a8a',
   },
   secondaryButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    flex: 1,
-    marginRight: 5,
+    backgroundColor: '#f1f5f9',
+    marginRight: 10,
   },
   dangerButton: {
-    backgroundColor: '#e53e3e',
-    flex: 1,
-    marginLeft: 5,
+    backgroundColor: '#dc2626',
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: '700',
   },
   secondaryButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#334155',
+    fontSize: 14,
+    fontWeight: '700',
   },
   loadingContainer: {
+    paddingVertical: 48,
     alignItems: 'center',
-    paddingVertical: 40,
   },
   loadingText: {
     marginTop: 10,
-    color: '#666',
+    fontSize: 13,
+    color: '#64748b',
   },
   emptyContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 36,
     alignItems: 'center',
-    paddingVertical: 40,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  emptyIconBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 4,
   },
   emptyText: {
-    marginTop: 10,
-    color: '#999',
+    fontSize: 13,
+    color: '#64748b',
     textAlign: 'center',
   },
   serviceCard: {
-    backgroundColor: '#f9f9f9',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    elevation: 2,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
   },
   serviceHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   serviceHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    gap: 10,
+  },
+  serviceAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   serviceName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
   },
-  iconButton: {
-    padding: 5,
+  serviceCountSub: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 1,
   },
-  typesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 15,
+  deleteMainBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    backgroundColor: '#fef2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  typeBadge: {
-    backgroundColor: '#667eea',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 10,
-    marginBottom: 10,
+  typeSubCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  typeSubHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  typeTitlePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  typeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2563eb',
   },
   typeName: {
-    color: '#fff',
     fontSize: 14,
-    fontWeight: '500',
-    marginRight: 10,
+    fontWeight: '700',
+    color: '#1e293b',
   },
   typeActions: {
     flexDirection: 'row',
-    gap: 5,
+    gap: 6,
   },
   typeActionButton: {
-    padding: 4,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  chargesDisplay: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  chargesTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#667eea',
-    marginBottom: 10,
-  },
-  chargesList: {
-    gap: 5,
-  },
-  chargeRow: {
+  chargesChipsWrap: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  priceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 8,
     paddingVertical: 5,
+    gap: 6,
   },
-  chargeKey: {
-    fontSize: 13,
-    color: '#666',
+  distanceChip: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
   },
-  chargeValue: {
-    fontSize: 13,
+  priceChipKey: {
+    fontSize: 11,
+    color: '#64748b',
     fontWeight: '600',
-    color: '#333',
+  },
+  priceChipVal: {
+    fontSize: 12,
+    color: '#0f172a',
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderRadius: 15,
+    borderRadius: 18,
     width: '90%',
     maxWidth: 500,
-    maxHeight: '80%',
+    maxHeight: '85%',
   },
   editModalContent: {
     maxHeight: '90%',
@@ -1150,49 +1397,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 18,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#e2e8f0',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0f172a',
   },
   modalBody: {
     padding: 20,
     alignItems: 'center',
   },
   editModalBody: {
-    padding: 20,
-    maxHeight: 400,
+    padding: 18,
+    maxHeight: 420,
   },
   modalText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: '#334155',
     textAlign: 'center',
-    marginTop: 15,
-    marginBottom: 20,
+    marginTop: 14,
+    marginBottom: 16,
   },
   warningBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fee',
+    backgroundColor: '#fef2f2',
     padding: 10,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#fcc',
+    borderColor: '#fecaca',
   },
   warningText: {
-    color: '#e53e3e',
+    color: '#dc2626',
     marginLeft: 8,
-    fontWeight: '500',
+    fontWeight: '600',
+    fontSize: 13,
   },
   modalFooter: {
     flexDirection: 'row',
-    padding: 20,
+    padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#e2e8f0',
   },
 });
 

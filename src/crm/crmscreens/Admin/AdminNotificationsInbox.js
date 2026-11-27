@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   StatusBar,
+  Platform,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL, del } from '../../../services/api';
@@ -18,6 +19,11 @@ import CrossPlatformAlert from '../../../utils/crossPlatformAlert';
 import AdminNotificationPopup from '../../../components/AdminNotificationPopup';
 
 const AdminNotificationsInbox = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const statusBarTop = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0
+  );
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -325,17 +331,20 @@ const AdminNotificationsInbox = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#3b82f6" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#2563eb" translucent={false} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: statusBarTop + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Icon name="arrow-back" size={24} color="#fff" />
+          <Icon name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          Notifications {unreadCount > 0 ? `(${unreadCount} unread)` : ''}
-        </Text>
+        <View style={styles.headerTitleWrap}>
+          <Text style={styles.headerTitle} numberOfLines={1}>Notifications</Text>
+          {unreadCount > 0 && (
+            <Text style={styles.headerSub} numberOfLines={1}>{unreadCount} unread</Text>
+          )}
+        </View>
         <View style={styles.headerActions}>
           {unreadCount > 0 && (
             <TouchableOpacity onPress={markAllAsRead} style={styles.markAllBtn}>
@@ -344,7 +353,7 @@ const AdminNotificationsInbox = ({ navigation }) => {
           )}
           {notifications.length > 0 && (
             <TouchableOpacity onPress={clearAllNotifications} style={styles.clearAllBtn}>
-              <Icon name="trash-outline" size={20} color="#fff" />
+              <Icon name="trash-outline" size={18} color="#fff" />
             </TouchableOpacity>
           )}
         </View>
@@ -406,22 +415,35 @@ const AdminNotificationsInbox = ({ navigation }) => {
           onEdit={handlePopupEdit}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f3f4f6' },
   header: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#2563eb',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
     elevation: 4,
   },
-  backBtn: { padding: 4, marginRight: 8 },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  headerTitleWrap: {
+    flex: 1,
+    marginRight: 8,
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  headerSub: { fontSize: 12, color: '#dbeafe', fontWeight: '600', marginTop: 1 },
   markAllBtn: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 10,

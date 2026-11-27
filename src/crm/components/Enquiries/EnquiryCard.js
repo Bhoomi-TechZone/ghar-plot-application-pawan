@@ -20,6 +20,7 @@ const EnquiryCard = ({
   onSetReminder, 
   onFollowUp, 
   onUnassign,
+  onManageAssignments,
   onDelete,
   canSelect = true,
   showCheckbox = false,
@@ -221,37 +222,50 @@ const EnquiryCard = ({
         </View>
       </View>
 
-      {/* Assignment Details */}
-      {isAssigned && enquiry.assignment && (
-        <View style={styles.assignmentSection}>
-          <View style={styles.assignmentHeader}>
-            <Text style={styles.assignmentLabel}>👤 ASSIGNED TO</Text>
-          </View>
-          <View style={styles.assignmentContent}>
-            <Text style={styles.assignmentEmployee}>
-              {enquiry.assignment.employeeId?.fullName || enquiry.assignment.employeeId?.name || enquiry.assignment.employeeName || 'Unknown Employee'}
-            </Text>
-            {(enquiry.assignment.employeeId?.email || enquiry.assignment.employeeEmail) && (
-              <Text style={styles.assignmentEmail}>
-                📧 {enquiry.assignment.employeeId?.email || enquiry.assignment.employeeEmail}
+      {/* Assignment Details (supports single or multiple employees) */}
+      {(() => {
+        const assignmentsList = enquiry.assignments?.length
+          ? enquiry.assignments
+          : (enquiry.assignment ? [enquiry.assignment] : []);
+        if (!isAssigned || assignmentsList.length === 0) return null;
+
+        return (
+          <View style={styles.assignmentSection}>
+            <View style={styles.assignmentHeader}>
+              <Text style={styles.assignmentLabel}>
+                👤 ASSIGNED TO {assignmentsList.length > 1 ? `(${assignmentsList.length} EMPLOYEES)` : ''}
               </Text>
-            )}
-            <View style={styles.assignmentMetaRow}>
-              {enquiry.assignment.priority && (
-                <View style={[styles.assignmentPriorityBadge, { backgroundColor: getPriorityColor(enquiry.assignment.priority) }]}>
-                  <Text style={styles.assignmentPriorityText}>🚩 {enquiry.assignment.priority.toUpperCase()}</Text>
+            </View>
+            <View style={styles.assignmentContent}>
+              {assignmentsList.map((asgn, idx) => (
+                <View key={asgn._id || asgn.employeeId || idx} style={idx > 0 ? { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#dcfce7' } : undefined}>
+                  <Text style={styles.assignmentEmployee}>
+                    {asgn.employeeId?.fullName || asgn.employeeId?.name || asgn.employeeName || 'Unknown Employee'}
+                  </Text>
+                  {(asgn.employeeId?.email || asgn.employeeEmail) && (
+                    <Text style={styles.assignmentEmail}>
+                      📧 {asgn.employeeId?.email || asgn.employeeEmail}
+                    </Text>
+                  )}
                 </View>
-              )}
-              {enquiry.assignment.assignedAt && (
-                <Text style={styles.assignmentDate}>📅 {formatDate(enquiry.assignment.assignedAt)}</Text>
+              ))}
+              <View style={styles.assignmentMetaRow}>
+                {enquiry.assignment?.priority && (
+                  <View style={[styles.assignmentPriorityBadge, { backgroundColor: getPriorityColor(enquiry.assignment.priority) }]}>
+                    <Text style={styles.assignmentPriorityText}>🚩 {enquiry.assignment.priority.toUpperCase()}</Text>
+                  </View>
+                )}
+                {enquiry.assignment?.assignedAt && (
+                  <Text style={styles.assignmentDate}>📅 {formatDate(enquiry.assignment.assignedAt)}</Text>
+                )}
+              </View>
+              {enquiry.assignment?.notes && (
+                <Text style={styles.assignmentNotes}>📝 {enquiry.assignment.notes}</Text>
               )}
             </View>
-            {enquiry.assignment.notes && (
-              <Text style={styles.assignmentNotes}>📝 {enquiry.assignment.notes}</Text>
-            )}
           </View>
-        </View>
-      )}
+        );
+      })()}
 
       {/* Latest Comment / Note Display with Timestamp */}
       {enquiry.comments && enquiry.comments.length > 0 ? (
@@ -313,7 +327,19 @@ const EnquiryCard = ({
           </Text>
         </TouchableOpacity>
         
-        {isAssigned && (
+        {onManageAssignments && (
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: isAssigned ? '#fef3c7' : '#e0e7ff' }]}
+            onPress={() => onManageAssignments(enquiry)}
+          >
+            <Text style={{ fontSize: 18, color: isAssigned ? '#d97706' : '#4f46e5' }}>👥</Text>
+            <Text style={[styles.actionText, { color: isAssigned ? '#b45309' : '#4338ca' }]}>
+              {isAssigned ? 'Assign / Unassign' : 'Assign'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {isAssigned && onUnassign && (
           <TouchableOpacity style={[styles.actionButton, styles.unassignButton]} onPress={() => onUnassign(enquiry)}>
             <Text style={{ fontSize: 18, color: '#ef4444' }}>🚫</Text>
             <Text style={styles.actionText}>Unassign</Text>

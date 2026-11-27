@@ -851,6 +851,18 @@ const AdminDashboardScreen = ({ navigation, user }) => {
                   style={styles.drawerItem}
                   onPress={() => {
                     setDrawerVisible(false);
+                    navigation.navigate('KnowledgeBase');
+                  }}
+                >
+                  <Icon name="book-outline" size={20} color="#6366f1" />
+                  <Text style={styles.drawerItemText}>Knowledge Base</Text>
+                  <Icon name="chevron-forward" size={16} color="#9ca3af" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.drawerItem}
+                  onPress={() => {
+                    setDrawerVisible(false);
                     navigation.navigate('AdminRemindersControl');
                   }}
                 >

@@ -57,7 +57,12 @@ const BoughtPropertyScreen = () => {
 
   // Authentication Helper
   const getAuthHeaders = async () => {
-    const adminToken = (await AsyncStorage.getItem('adminToken')) || (await AsyncStorage.getItem('admin_token'));
+    const keys = ['crm_auth_token', 'adminToken', 'admin_token', 'crm_admin_token'];
+    let adminToken = null;
+    for (const k of keys) {
+      const t = await AsyncStorage.getItem(k);
+      if (t) { adminToken = t; break; }
+    }
     if (!adminToken) {
       console.warn('⚠️ Admin token missing in BoughtPropertyScreen');
       return null;
@@ -74,7 +79,10 @@ const BoughtPropertyScreen = () => {
       setLoading(true);
       setError(null);
       const headers = await getAuthHeaders();
-      if (!headers) return;
+      if (!headers) {
+        setError('Authentication token missing. Please login again.');
+        return;
+      }
 
       console.log('🏠 Fetching all bought properties...');
 
@@ -89,11 +97,16 @@ const BoughtPropertyScreen = () => {
       const data = await response.json();
       console.log('✅ Bought Properties Response:', data);
 
-      if (data.success && data.data) {
-        setProperties(data.data);
-        console.log(`📊 Loaded ${data.data.length} bought properties`);
+      if (response.status === 404 && !data?.data) {
+        setProperties([]);
+        return;
+      }
+
+      if (response.ok && (data.success || Array.isArray(data.data))) {
+        setProperties(data.data || []);
+        console.log(`📊 Loaded ${(data.data || []).length} bought properties`);
       } else {
-        setError('Failed to fetch bought properties');
+        setError(data?.message || 'Failed to fetch bought properties');
       }
     } catch (err) {
       console.error('❌ Error fetching bought properties:', err);

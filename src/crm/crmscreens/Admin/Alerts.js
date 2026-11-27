@@ -30,8 +30,11 @@ const AlertsScreen = ({ navigation, route }) => {
     insets.top,
     Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0
   );
-  const filterCategory = route?.params?.filterCategory || 'alert'; // 'alert' or 'reminder'
-  const screenTitle = filterCategory === 'reminder' ? 'My Reminders' : 'My Alerts';
+  const filterCategory = route?.params?.filterCategory || 'alert'; // 'alert', 'reminder', or 'knowledge_base'
+  const screenTitle =
+    filterCategory === 'knowledge_base'
+      ? 'Knowledge Base'
+      : (filterCategory === 'reminder' ? 'My Reminders' : 'My Alerts');
 
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -85,7 +88,9 @@ const AlertsScreen = ({ navigation, route }) => {
       const allAlerts = Array.isArray(data) ? data : [];
 
       let filtered;
-      if (filterCategory === 'reminder') {
+      if (filterCategory === 'knowledge_base') {
+        filtered = allAlerts.filter(item => item.category === 'knowledge_base');
+      } else if (filterCategory === 'reminder') {
         // My Reminders: show only items tagged as 'reminder'
         filtered = allAlerts.filter(item => item.category === 'reminder');
       } else {
@@ -405,15 +410,20 @@ const formatDateTime = (iso, reminderTime = null) => {
     );
   };
 
-  const getItemCategory = (item) => item?.category || (filterCategory === 'reminder' ? 'reminder' : 'alert');
+  const getItemCategory = (item) =>
+    item?.category ||
+    (filterCategory === 'knowledge_base'
+      ? 'knowledge_base'
+      : (filterCategory === 'reminder' ? 'reminder' : 'alert'));
 
   const handleEdit = (alert) => {
     const itemId = alert._id || alert.id || alert.alertId;
     const itemCategory = getItemCategory(alert);
     console.log('ðŸ“ Editing notification:', itemId, itemCategory);
 
-    if (itemCategory === 'reminder') {
-      const hasClient = Boolean(alert.clientName && String(alert.clientName).trim().length > 0);
+    if (itemCategory === 'reminder' || itemCategory === 'knowledge_base') {
+      const isKB = itemCategory === 'knowledge_base';
+      const hasClient = !isKB && Boolean(alert.clientName && String(alert.clientName).trim().length > 0);
       const historyCombined = (!hasClient && Array.isArray(alert.commentHistory) && alert.commentHistory.length > 0)
         ? alert.commentHistory.map(c => (c && c.text ? String(c.text).trim() : '')).filter(Boolean).join('\n\n')
         : '';
@@ -422,8 +432,10 @@ const formatDateTime = (iso, reminderTime = null) => {
 
       navigation.navigate('EditReminder', {
         reminderId: itemId,
-        clientName: alert.clientName || alert.title || 'Reminder',
+        clientName: isKB ? (alert.title || 'Knowledge Base') : (alert.clientName || alert.title || 'Reminder'),
         hasClientName: hasClient,
+        isKnowledgeBase: isKB,
+        knowledgeCategory: alert.knowledgeCategory || '',
         commentHistory: alert.commentHistory || null,
         originalMessage: bestInitialMsg,
         enquiryId: alert.enquiryId,
@@ -487,6 +499,7 @@ const formatDateTime = (iso, reminderTime = null) => {
       alertId: item._id || item.id,
       id: item._id || item.id,
       category: item.category || filterCategory,
+      categoryName: item.knowledgeCategory || '',
       title: item.title || item.reason || 'Notification',
       clientName: item.clientName || item.employee?.name || '',
       reason: item.reason || item.note || '',
@@ -508,7 +521,7 @@ const formatDateTime = (iso, reminderTime = null) => {
       repeatMetadata: item.repeatMetadata,
       customIntervalMinutes: item.customIntervalMinutes || item.customRepeatMinutes || item.repeatMetadata?.customIntervalMinutes || '',
       customRepeatMinutes: item.customRepeatMinutes || item.customIntervalMinutes || item.repeatMetadata?.customRepeatMinutes || item.repeatMetadata?.customIntervalMinutes || '',
-      type: filterCategory === 'reminder' ? 'admin_reminder' : 'alert',
+      type: (filterCategory === 'reminder' || filterCategory === 'knowledge_base') ? 'admin_reminder' : 'alert',
     });
     setPopupVisible(true);
   };
@@ -612,6 +625,16 @@ const formatDateTime = (iso, reminderTime = null) => {
         <Text style={styles.cardTitle} numberOfLines={1}>
           {item.title || item.reason}
         </Text>
+
+        {!!item.knowledgeCategory && (
+          <View style={[styles.badgeRow, { marginBottom: 6 }]}>
+            <View style={[styles.badge, { backgroundColor: '#ede9fe' }]}>
+              <Text style={[styles.badgeText, { color: '#5b21b6' }]}>
+                📁 {item.knowledgeCategory}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {item.title && (
           <Text style={styles.cardReason} numberOfLines={2}>
@@ -752,7 +775,11 @@ const formatDateTime = (iso, reminderTime = null) => {
           <Text style={styles.label}>Search</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by title..."
+            placeholder={
+              filterCategory === 'knowledge_base'
+                ? 'Search by title, message, or category...'
+                : 'Search by title...'
+            }
             placeholderTextColor="#6b7280"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -837,7 +864,16 @@ const formatDateTime = (iso, reminderTime = null) => {
               if (!searchLower) return true;
               const title = normalizeText(item.title);
               const description = normalizeText(item.reason || item.note || item.message || item.description);
-              return title.includes(searchLower) || description.includes(searchLower);
+              const historyText = normalizeText(
+                Array.isArray(item.commentHistory) ? item.commentHistory.map(c => c?.text || '').join(' ') : ''
+              );
+              const kbCat = normalizeText(item.knowledgeCategory);
+              return (
+                title.includes(searchLower) ||
+                description.includes(searchLower) ||
+                historyText.includes(searchLower) ||
+                kbCat.includes(searchLower)
+              );
             })}
           renderItem={renderRow}
           keyExtractor={(i) => i._id || i.id}
